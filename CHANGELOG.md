@@ -1,3 +1,214 @@
+## [1.8.009] - 2026-10-01
+
+### Fixed
+- Screen Wake Lock の sentinel リークを閉塞 (ADR-0983): `wakeLock.request` が後続ターンで resolve する際 ①pending 中の `leave()` で `_releaseWakeLock` が null を見て解放を逃し resolve 後の sentinel が永続保持 (タブ非表示まで画面点灯)、②保持中の2回目 acquire で旧 sentinel ハンドルが孤立 — の2経路。格納を `_active` ゲート化し、非アクティブ resolve・旧保持 sentinel の双方を `release()` で解放。同監査で `Persist.save` の put 時点 live 読み・WebRTC offer/answer の torn-read throw 表面化・import cascade の commit 時点 `pg` 刻印を確認。behavioural ピン3 assert + 既存ピンの非 vacuous 化
+
+## [1.8.008] - 2026-10-01
+
+### Fixed
+- モーダル/プレゼン中にフォーカス復帰先要素が remote op で再構築され detached 化した際、`focus()` の silent no-op で body へ脱力する実害を `isConnected===false` → canvas フォールバックで閉塞 (ADR-0982)。適用範囲は dialog `_restoreFocus` と presentation `leave()` の2経路。同監査で blob-URL revoke 網羅 (`_rO`/settle 全8サイト)、`innerHTML=`/`insertAdjacentHTML` ゼロ、`_focusables(_dlg)` の query-per-Tab 動的安全を検証。behavioural ピン4 assert + ソースピン2件
+
+## [1.8.007] - 2026-10-01
+
+### Docs / Test
+- リスナ登録ライフサイクル監査が clean 完走 (ADR-0981): `_on` 全サイトは init/wire 一回または要素と同一生存期 (エディタ生成要素) のいずれか、`_oC(_g(id))` は id 毎に唯一、`_watchDPR` は `{once:true}` + 再アーム、`Net.init` は旧チャネル close + bye + presence timer clear を確認。重複登録・累積ハンドラなし。behavioural ピン4 assert + ソースピン4件
+
+## [1.8.006] - 2026-10-01
+
+### Fixed
+- ctx メニュー外クリックリスナの `e.target.closest()` を `?.` 化 (ADR-0980): 非 Element ターゲット (Document ノード — ドキュメント枠クリック・AT 合成イベント) で TypeError が document mousedown リスナを貫通し得た 0909 同型の残穴を閉塞。`e.target`/`currentTarget` 全サイトの raw アクセス走査で確認した唯一の未ガードサイト
+
+## [1.8.005] - 2026-10-01
+
+### Docs / Test
+- LWW 仲裁比較子の統一性監査が clean 完走 (ADR-0979): prop wclock・`_born`/`_del`・`_lastRep` は全て `clockNewer` の (ts,peer,seq) 全順序、docName (`_nameWin`) と page 名 (`nts`/`ntp`) は両側 seq:0 の同一序 — 生 ts 比較の残存なし、`_tsOK` の wall+5min bound が全ドメインに先行。behavioural ピン9 assert (clockNewer 順序4件 + pageName op 仲裁 + snapshot union-heal 仲裁、実経路)
+
+## [1.8.004] - 2026-10-01
+
+### Docs / Test
+- `sortZ` 全順序性 × 反復順序収束監査が clean 完走 (ADR-0978): comparator は frac (base62 文字列辞書順) → id tie-break の strict total order で 0 は同一 id のみ (0790 dedupe で不成立)、keyless 図形は sort 前に stamp 済み、`z` NaN は `_cleanVal` で wire 拒否、keyBetween の alphabet 外文字 + prefix 尽き guard で終端。`connClears`/`group`/`del` 等の Set/Map 反復から生まれる op 配列は per-id 冪等で順序に意味を持たない。実害なし。behavioural ピン4 assert (同 frac→id 順・逆入力順同結果・legacy z-seed stamp・出力が comparator 順を遵守)
+
+## [1.8.003] - 2026-10-01
+
+### Docs / Test
+- プロトタイプ汚染 (proto-key) 監査が clean 完走 (ADR-0977): `JSON.parse` が `'__proto__'` を own enumerable data prop として生成するため、`Object.assign`/`for..in` 書き込みが plain-proto ターゲットの `__proto__` setter を叩き得る全経路を走査 — patch 系は `validPatch`→`_cleanVal` (任意深度 ≤8 で `__proto__`/`constructor`/`prototype` own key 拒否) gated、shape 系は `validShape` 経由、clock-map 書込は `_wM()` null-proto バケット (0788) + clock-merge ループの明示スキップ (8291)、id/groupId ストアは 0975 で null-proto 化済み、spread/`Shape.make` は CreateDataProperty で setter 不発。実害なし。behavioural ピン6 assert (JSON.parse own 化/validShape top+nested 拒否/鍛造 upd `_onRecv` 棄却/prototype untouched/legit upd 適用)
+
+## [1.8.002] - 2026-10-01
+
+### Fixed
+- `connEnds` が結合先図形の bbox を `_bb(a)` で解決する際、結合先が conn 自身または conn↔conn 循環だと `_cE`→`byId`→`_bb`→`_cE` の無限再帰で RangeError (stack overflow) となり、毎フレーム `_dS` で巻き戻し負荷＋図形非描画＋ヒットテスト/エクスポート不安定の DoS となる実害を閉塞 (ADR-0976): `_ceD` 再帰深度カウンタ (cap 15) + `s.a===s.id` 自己結合スキップで、循環は raw 端点 (x1/y1/x2/y2) へ縮退 — remote `add`/patch や import で `a:'self'` を鍛造可能だった経路を遮断。canvas 数値ドメイン監査も併走 clean (roundRect は `_max(0,_min(r,w/2,h/2))` 自衛、`_penR` は taper×size/2 で非負、ellipse `_abs`、setLineDash は `dashArr` マップ経由のみ)。behavioural ピン4件 (循環停止/自己結合 raw fallback/正当結合の contour 解決/深度カウンタ復帰)
+
+## [1.8.001] - 2026-10-01
+
+### Fixed
+- JS 予約名キー (`'__proto__'`/`'constructor'`/`'toString'` 等) による素 `{}` ストア汚染3実害+1整合を null-proto 化で閉塞 (ADR-0975): ①`excScene` の `gids` (id-keyed) が `id='__proto__'` で `Object.prototype` を返し `.push` で excalidraw エクスポートが TypeError クラッシュ、②`_dioCells` の `_gbx` (groupId-keyed) が `groupId='__proto__'` で **`Object.prototype.x` へ書込** — 全プロトタイプ不在 `.x` が NaN 化する静かな腐敗、③`_undoWire` の `reg` が同 groupId で undo 自体が TypeError クラッシュ (リモート 'group' gid=`'__proto__'` は `_idOK` で正当通過するため remote-reachable)、④`_stampWrites` の zorder バケットだけが素 `{}` で proto 読み取り窓を残す不整合を `_wM()` 統一。id-keyed 素 `{}` を網羅監査 — `bmap`/`bb` は `.groupId` 単一読みで benign、`_sbf`/`files` は prefix で不一致、`peers`/`_img*`/`_grpMap` は Map、`wclock` は 0788 済み — 残面なし。behavioural ピン4件 (excScene 不投げ/`Object.prototype` untouched/`_undoWire` 不投げ/zorder バケット null-proto)
+
+## [1.8.000] - 2026-10-01
+
+### Docs / Test
+- 全置換スワップ (`'replace'`) の収束対称性 × バックアップスロット監査が clean 完走 (ADR-0974): ローカル `_repC` swap 4入口が同一形 (`_rs`→wclock wipe→`_repC`)、`_recordCommitted` (墓標 `_wD`+墓標保全 `_wTb`+`_bT`) と remote `_apply` (keep `_bN` スキャン+`wc0` 復元+墓標ループ) の再刻印集合が対称 (`_stampWrites` は replace を `_lwwOp` 外で prop 時計非対称なし)。破壊的入口 5系統 (doClearAll 両分岐/importBoard/importFromHash/applyRemote 'replace'/restoreBackup=消費側) が saveBackup でカバー済み。ブート順序は restore→Net.init で broadcast 前でも墓標 commit 済みのため snapshot heal で収束。behavioural ピン2ブロック9 assert (remote-replace→saveBackup guard、newer-born keep 存続+墓標)
+
+## [1.7.999] - 2026-10-01
+
+### Fixed
+- dirty 追跡監査で実害: `_ps()` (save 予約) のみで `state.dirty` を刻まない変異サイトは `flushIfHidden`/`beforeunload` の `_dt()` ゲートをすり抜け、タブの hide/kill (500ms debounce 未発射) で無通知消失していた (ADR-0973): `switchPage` の curPg・リモート 'name' 改名・`_mergeSnapshotOp` 存在時計マージ・`_applySnapshot` 全盤採用・docName `_CH` ・share-hash import が該当。『snapshot』 union-heal (`state.pages`/`_lastRep`/page名 nts-LWW/`_pgHealS` pg 修復) は `_ps()` すら無く shape merge が採用しない限り永続化されなかった。`Persist.schedule()` 先頭に `_md(!0)` (保存予約=未保存状態の同値化、全サイト一括閉塞) + `'snapshot'` ケース末尾に `_ps()` を追加。viewport の連続変異は「次のコンテンツ保存へ便乗」契約を維持 (意図的)。behavioural ピン3件 (schedule→dirty、snapshot union-heal→dirty、switchPage→dirty)
+
+## [1.7.998] - 2026-10-01
+
+### Docs / Test
+- seenOps dedup × 収束監査が clean 完走 (ADR-0972): 3チョークポイント (`commit`/`applyRemote`/`_recordCommitted`) の同一 `_ck` dedup 規則、eviction 後の再適用冪等性 (全16 op が `_tmb`/`_lwwDrop`/`_pgById` 等でガード済み)、snapshot merge/undo-wire/`_slimOp` の downstream 収束機械を全検証。実害なし — dedup が clock キー (payload 非依存) で全到達経路に効くことを `Net._onRecv` 実経路 (direct + 'opc' fragment) と `commit` choke point で behavioural ピン化 (3 asserts)
+
+## [1.7.997] - 2026-10-01
+
+### Fixed
+- `_nug` pending op (キーボードナッジ/長押し共合セッション) の `_nugLock` 復元ドメイン (`op.orig`/`op.before`/`op.changes[].before`) が arm 時クローンのまま remote 書込を取り込まず、run 中に remote 書込→lock が着地したメンバーを arm 値へ巻き戻す一方向発散を閉塞 (ADR-0971、0969 のキーボード版同型): `_gTouch` を `_nug` 復元ドメインへ拡張し remote が触れたキーの live 値を pending op の復元値へマージ。`_oa` の `ptr.down` ゲート撤去 (キーボードセッションも対象化)、`zorder`/`group`/`ungroup` 適用サイトにも `_gTouch` 追加 (`frac`/`groupId`)。remote (re)birth は `_bT` で `_nug.reborn` へ刻印し `_nugLock` が復元スキップ (到着順、skew 免疫 — 0970 parity)。behavioural ピン3件追加
+
+## [1.7.996] - 2026-10-01
+
+### Fixed
+- `_rb` の born 判定を remote 時計比較 (`clockNewer(w._born, ptr.armC)`) から到着順マーキング (`ptr.reborn`) へ置換 (ADR-0970): ピア時計が前進 skew の場合、ジェスチャ arm 前に到着した born が armC を超過し復元が誤スキップされドラッグ途中値が cancel 後も残存 → 恒久発散; 後進 skew ではジェスチャ中到着の born が armC を下回り復元で remote 再誕生を clobber (0969 の residual)。「remote (re)birth がジェスチャ中に到着したか」は局所観測可能な事実のため、`_bT` で `ptr.down && c.peer!==_pi()` のみ `ptr.reborn` へ刻印し skew 両方向を閉塞。`ptr.armC` 機構を撤去 (~80B 節約)。local 誕生 (`c.peer===_pi()`: alt-drag 複製等) は従来通り復元対象 (0964 契約不変)。skew 両方向の behavioural ピン追加
+
+## [1.7.995] - 2026-10-01
+
+### Fixed
+- mid-gesture remote 書込が orig-restore に巻き戻される実害を閉塞 (ADR-0969): `_gRst` 系 (Esc/blur/abort/remote-lock cancel) が pre-gesture orig へ丸ごと復元するため、ジェスチャ中に着地した remote `style`/`upd`/`move`/snapshot merge 値をローカルだけ上書きする一方向発散。`_gTouch(id,ks)` で remote が触れたキーの live 値を全 live ジェスチャ orig (`dragStartShapes`/`gOrig`/`gAnc`+6 オブジェクト orig) へ遅延マージし、`_oa`/`'move'` forward/snapshot merge の各 remote 書込面から呼ぶ。さらに remote kill+resurrect/wholesale swap がジェスチャ中に着地した場合は PD 時刻の `ptr.armC` と `w._born` の remote peer 判定 (`_rb`) で復元自体をスキップ — local 誕生 (alt-drag 複製/自分の add) は peer 識別で従来通り復元対象。test.mjs は `_lastTs` 漏出 (先行未来日付 clock が後続の born<del 順序を反転) を `reset()` で遮断、0964 `_gRL` ピンを新ガード形へ追随
+
+## [1.7.994] - 2026-10-01
+
+### Docs / Test
+- ctx/キーアクション × remote 消滅監査が clean 完走 (ADR-0968): `openCtxMenu` は open 時に項目・述語をスナップショット (stale 表示は cosmetic) するが、全ハンドラが act 時に live 再解決 (`_selUL`/`_usI`/`_selL`/`_forSel`/`_forConn` + `_lk`/`_hd`/`_sv`/`_pgOk`/`byId` ゲート) し、remote del は `_sdl` で選択 id を除去するため stale メニューからも junk op を産まない。選択由来アクションの「dead/空集合で op を産まない」契約を `Net._onRecv` 実経路 del + 14関数スイープで behavioural ピン化
+
+## [1.7.993] - 2026-10-01
+
+### Fixed
+- mid-edit remote lock で収束が崩れる実害を閉塞 (ADR-0967): テキスト/ラベルエディタの blur commit は `!byId` のみ検査 (del のみ fold、0556) だったため、remote `locked` が編集中に着地すると `_teFollow`/`_lblFollow` の `_lk` fold と blur commit が同一フレームで競合 — blur 発火時に `_rcOp(upd)`/`_cmt(del)`/`resizeAfterTextEdit`/`hit.label=` がローカルだけ進み、ピアは locked gate で drop する一方向発散 (0964/0965 同型)。両 commit ハンドラを `!byId(id)||_lk(obj)` へ拡張し live mutation・全 commit 経路を省略 (typed 文字は破棄で remote と一致)。スライダー系は 0962 で gated 済みと確認
+
+## [1.7.992] - 2026-10-01
+
+### Docs / Test
+- pending op × mid-run 状態変化の収束監査完走 (ADR-0966): 盤面総取替え `_rs` 全5サイトが commit-head flush (`_repC`/`_recordCommitted`) または boot/remote 経路で時系列反転なし、undo/redo を含む全チョークポイントで pending が先に着地 (0957–0960 再確認)、own-lock exemption は live `s.locked` で判定し op 自身の unlock (`null` 書込) は partition 対象外・own-lock (`after.locked`) は exempt・remote re-lock は drop で収束 — 実害なし。exemption 方向の退行ガード (own-unlock 存続、lock 後消滅で commit 省略) + flush サイト契約ピンで固定
+
+## [1.7.991] - 2026-10-01
+
+### Fixed
+- pending op 中の mid-run lock/missing で収束が崩れる実害を閉塞 (ADR-0965): `_nug` 共合体の pending op は、ラン中に remote `locked` (またはリモート del による消滅) がメンバーに着地しても全リストのまま `_nugEnd` で flush し、ピアがメンバー書込を gate-drop するのにローカルだけ commit が通る一方向発散。`_nugLock` を `_nugEnd` 先頭へ内蔵 — 消滅メンバーは除外、locked メンバーは run-start 復元 (move は `op.orig` クローン、zorder は `changes.before`、他は before↔after 差分の触れた prop のみ、`locked`/未触 prop は不変) して全メンバーリストから除外、自己 op が書いた `after.locked` は remote と区別して除外対象にしない、全リスト空化で commit 自体を省略 (空 op + `_keepSel` 誤刻印を防ぐ)。併せて `endSelect` の move commit は `_ul` フィルタが除外だけで復元しなかった欠落を `_gRL(ptr.dragStartShapes)` 先置きで閉塞。`_slimOp` は restore 専用の `orig` を wire から剥がす。二重化していた復元行列を `_gR1`/`_gR2`/`_gRL` へ抽出 (~1.2KB 回収)。ピン/テストは新コード形へ追随 (doUngroup は 0965 の「mid-run lock は run-start 復元が収束」意味へ)
+
+## [1.7.990] - 2026-10-01
+
+### Fixed
+- ジェスチャ中のリモート lock で収束が崩れる実害を閉塞 (ADR-0964): ピア側の forward apply は全 prop-op で `sh.locked` をゲートするため、ドラッグ中に remote `locked` が着地した図形へローカル commit だけが通り一方向発散。PU commit 6サイト (resize/rotate/cbend/ebend/way/lblpos) に `if(sh.locked)_gRst()` ゲートを置き「commit せず orig へ復元」でピアと同じ見えへ収束。`_gresizeCommit`/`_grotCommit` は locked メンバーを `_geoR`+`_iv()` で復元し `after` から除外、gAnc コネクタも同型。`flushErase` は `_eraseBatch` クローン (byId fallback で remote lock が届く、ADR-0952) を `live`/`kept` に仕分けして locked メンバーを del 対象から除外。abort/cancel 二重化していた復元行列は `_gRst()` へ抽出 (abortGesture が gAnc 復元も拾うようになる副次修正含む)
+
+## [1.7.989] - 2026-10-01
+
+### Docs / Test
+- ライフサイクル×有界性監査完走 (ADR-0963): undo スタック `MAX_HISTORY=500` が `_recordCommitted`/`_recordRemote` 両経路で強制され shift 時の `histIdx` 整合も正しい (先頭削除後も tip を指す)、pending `_nug.sel` は `_selIds()` 配列スナップショット (後続の選択変更が pending op の origSel を書き換えない)、docName は keystroke 毎 LWW (設計意図 — 実値の直後追従)、`dupDelta` スマート複製チェーンは dead-id/空選択を全ルートで遮断、テキストエディタは blur で1 op (per-gesture commit)、presence は `NET_PRESENCE_TIMEOUT=15s` reap + `MAX_PEERS` cap + rtc: は onclose 管理 — 実害なし。監査結論を5ピンで固定
+
+## [1.7.988] - 2026-10-01
+
+### Fixed
+- スライダー before バッファのライフサイクル (ADR-0962): `_sbf` エントリが「capture 後 `change` 未発火」で永久残留し、(a) 間に図形値が外部変化すると次ジェスチャの op `before` が古い値を拾い undo が誤値を復元、(b) 選択外れした id のキーが flush で消費されずリーク — の2欠陥を閉塞。`blur` をジェスチャ境界とし `_sfbBlur` で「ドリフト済み (input プレビューで live が動いたが change 未発火)」エントリを1 style op として commit してからバッファ全消去 — カラーピッカー等の「プレビューのみ走り commit されない」派生収束欠陥も併せて解消。`_sfbFlush` は開始時に選択外 id の同 prop キーを破棄 (合成キー `id+p` の suffix プルーン、消費不能キーは残留させない)。capture の within-gesture スキップは維持 (focus→pointerdown→input 連鎖で before を汚さないため)
+
+## [1.7.987] - 2026-10-01
+
+### Fixed
+- held-key 共合体 第二波 (ADR-0961): `,`/`.`+⇧R 回転・⇧H/⇧V 反転・⌘⇧L ロック・⌘B/⌘I/⌘U/⌘⇧X テキストフラグ・⇧X スワップ・⌘G グループの長押しが押下毎に1 op を即時 commit していた残存経路を `_nug` へ接続 — セッションキーへ `dir` 接尾辞を追加して rotate/flip/lock の異種マージを防止、style/align/else マージに **net-zero 破棄** (lock→unlock や swap×2 は op 0 件で着地)、group マージは「最初の before + 最新 gid」。併せて `applyStyleToSelection` に no-change フィルタを追加し、数字キー長押し・同一 swatch 再クリックが op を一切産まない産出側閉塞に
+- テスト追随: `state.history` 直読3サイトへ `_nugEnd()`、doLock undo 対称性テストは各押下を独立 op 化 (仕様変更への正当な追随)
+
+## [1.7.986] - 2026-10-01
+
+### Fixed
+- `[ ]` / `⌘⇧,/.` 長押しを1 op へ集約 + `Store.commit` 先頭 flush (ADR-0960): 連打 `[` / `]` z-order と `⌘⇧,/.` フォントサイズステップが押下毎に1 op (history 汚染・wire 増幅・undo が1歩ずつしか戻らない) だった実害を、`_nug` コアレッサへ zorder/style マージを拡張して閉塞 — 「押下停止から400ms の遅延 commit」は 0957 ナッジと同規則。併せて `_recordCommitted` と並列だった `Store.commit` (del/clear/page 系・`_cmt` 経路) にも `_nugEnd()` を追加 — pending zorder が del commit を跨いで後着し、undo で図形が wrong frac のまま残る時系列反転 (fuzz seed-7) を解消
+
+## [1.7.985] - 2026-10-01
+
+### Fixed
+- タブ非表示/終了で pending ナッジを flush (ADR-0959): ナッジラン中に hidden/pagehide/beforeunload すると、live mutation は IDB に永続化されるのに蓄積 op が未 commit で broadcast されず、再読込後ローカルだけナッジ後位置を示す一方向発散が起き得た実害を閉塞。3 ハンドラ先頭に `_nugEnd()` を追加 — beforeunload では `_dt()` 判定前に flush して dirty 検査が新 commit を正しく捉える
+
+## [1.7.984] - 2026-10-01
+
+### Fixed
+- commit 時系列の不変条件を `_recordCommitted` へ内蔵 (ADR-0958): `_rcOp` を迂回する直接 `_recordCommitted` サイト (ungroup / unlockAll / beautify / `_repC` 系 import・clear) が pending ナッジセッションを flush せず、history/wire の順序が実時間順と反転し得た残穴を閉塞。`_nugEnd()` を `_recordCommitted` 先頭に移し「pending nudge は常に後続 commit より先に着地」を全経路で担保 — 再帰は `_nug=null` 先行で no-op、undo/redo/switchPage の明示 flush は維持 (非 commit 経路のため)
+
+## [1.7.983] - 2026-10-01
+
+### Fixed
+- 長押し矢印キーのナッジ共合体 (ADR-0957): `nudgeSelection` / ⌥arrow リサイズがキーリピート (~30/s) 毎に `move`/`resize` op を commit し、400 ops/13s で履歴を溢流 (実エントリの圧出・⌘Z が 1px 単位・wire フラッド) していた実害を閉塞。`_nugPush`/`_nugEnd` の trailing-edge セッション (400ms、キー=op 種+id 集合) でランを単一 op へ共合 — v1.6.29 `_sfbFlush` スライダー共合体のキー側 parity。flush 点は timer + `_rcOp` (次の真 commit) + undo/redo + `switchPage`。delta `move`/`resize` は arbitration 上等価 (収束は x/y の prop LWW、刻印回数が減るだけ)。remote 側はラン中 ~30Hz の live delta を失う代わりに、終了時に累積 delta を一度だけ受信 — 最終 state は同一に収束
+- origSel はセッション開始時に捕捉 (v1.7.42a parity: undo はナッジ前の選択へ復帰)
+
+## [1.7.982] - 2026-10-01
+
+### Fixed
+- SR ミラー再構築のフォーカス保持 (ADR-0956): `_mirrorSync` が `_gridVer` バンプ毎に `<ul>` を全再構築し、フォーカス中の `<button>` を破壊 → リモート op 1件ごとに SR の読み位置が `<body>` へ退避していた欠陥を閉塞。再構築前にフォーカス中ボタンのインデックスを保存し、新ノードの同一スロットへ復帰 (縮小時は末尾へクランプ)。ADR-0675 ページタブ parity のミラー側残穴 — ラベルが `describeShape` の位置を含むため再構築自体は必要、フォーカス半分を補完
+- fakeUl DOM スタブに contains/querySelectorAll/focus を拡張、フォーカス保存・ノード置換・縮小時クランプを実ピン
+
+## [1.7.981] - 2026-10-01
+
+### Tests
+- 派生参照の id キー化契約を実ピン (ADR-0955): 全置換 (`'replace'` によるシーンオブジェクト差替え) 後も `connEnds` が新オブジェクトへ id 解決することを検証 — stale-clone 参照が生じない契約を固定。監査: selection/editing/bindPreview/gAnc/connEnds/presence/eraseBatch/_img/frame 全て id または _gridVer キーで clean 完走
+
+## [1.7.980] - 2026-10-01
+
+### Fixed
+- `pageDel` メンバー kill の選択衛生を 'del' parity へ (ADR-0954): `_pgDel2` は kill するメンバーの id を `state.selection` から落とさず、リモート pageDel がページ集合を空にする経路 (ADR-0703, land=null) では switchPage の再検証も走らないため kill 済み id が選択に残存 — ステータス/アナウンスの過大カウント・presence への ghost id 送出・origSel 記録への混入。kill ループに `_sdl` を追加し全 `_pgDel2` 呼出側を一括閉塞 (locked/_bN 生存メンバーは 'del' と同様に選択維持)
+
+### Tests
+- pageDel 選択ピン4件 (空化 remote pageDel で kill メンバーの選択解除、locked 生存メンバーの選択維持、0679 tombstone ピンのリテラル更新)
+
+## [1.7.979] - 2026-10-01
+
+### Fixed
+- 消しゴムジェスチャ窓 × wholesale op の発散を閉塞 (ADR-0953): `_eraseBatch` 内メンバーが `_sh()` のみ走査する集合経路で「存在しない図形」扱いとなり、`'clear'`/`'replace'` の tomb-or-keep・`_pgDel2` のメンバー kill/rehome・`_rs` 全置換を素通りして cancel が ghost を復活させていた。`_unB` (wholesale 走査前の一括シーン戻し) でバッチメンバーをピア視点と同じ live 図形として通常ゲートへ通し、`_rs` 採用はペンディングバッチを旧盤と共に破棄
+
+### Tests
+- 消しゴム窓 × wholesale ピン3件 (remote replace swap-out・local clear・snapshot `_rs` 採用が cancel 後も `!byId` を維持)
+
+## [1.7.978] - 2026-10-01
+
+### Fixed
+- 消しゴムジェスチャ窓のリモート op 収束を閉塞 (ADR-0952): `_eraseBatch` ライフサイクルは消去対象を commit 前に `state.shapes` から外すため、ジェスチャ中に届いたリモート op が2系統で喪失していた — ①リモート `del` は `_del` 墓標を刻むのに cancel-restore が無条件 push-back で墓標を無視 → ローカルだけ図形が復活する ghost 発散 (union-heal snapshot で治癒不能)、②`byId` 未解決で prop patch が wclock 未刻印で drop → cancel が古い clone を復元。`byId` に `_eraseBatch` フォールバックを追加してリモート書込を復元対象の clone へ着地させ、両 cancel-restore サイトに `_tmb` 墓標ゲート (ADR-0922 同規則) で墓標済みメンバーは非復元化
+
+### Tests
+- 消しゴムバッチ窓ピン4件 (batch splice 検証・remote del 墓標で cancel 非復活・remote patch が clone へ着地・ジェスチャ終端一致) + v1.7.58e ピンを新契約へ更新
+
+## [1.7.977] - 2026-10-01
+
+### Fixed
+- `lblpos` (コネクタラベル位置ドラッグ) の cancel 復元欠落を閉塞 (ADR-0951): pointermove で `sh.labelPos` を live mutation するのに、`_cancelPointerGesture`/`abortGesture` 両方の復元チェーンに分岐がなく、mid-gesture cancel (⌘Z/blur/hidden/第2ポインタ等) で labelPos がドラッグ途中値のまま残存 — commit op 未発行のためピアと発散 + undo が残留値を拾えなかった。`labelPos` は `_geoR` キー外のため orig から明示 save-set 復元
+
+### Tests
+- lblpos cancel ピン 4件: in-flight labelPos 変異、`_cancelPointerGesture` (blur) 復元、`abortGesture` 復元、再 arm 健全性
+
+### Documentation
+- ADR-0951: dragKind 12系統の cancel 復元網羅監査結果 + lblpos 復元規則
+
+## [1.7.976] - 2026-10-01
+
+### Fixed
+- `_pointers` 簿記の ghost エントリによる phantom pinch-zoom を閉塞 (ADR-0950): エントリ削除が canvas `_PU`/`_PC` のみで、capture 無しポインタの canvas 外リリースや hover (`buttons===0`) move が残存 → stale id が次の実ポインタと ghost ペア化し、単指 move で偽 `zoomAt` が発火し得た。削除と `_resetPinch` を window へ移し全リリース経路を網羅、`_PM` は `buttons!==0` のみ記録 (hover は pinch 候補外)。`_pinchPrev` の stale 持越しによる1回分の zoom jump も同時解消
+- テスト harness `fire` が window リスナを実 DOM 順 (window capture→canvas capture→canvas bubble→window bubble) で dispatch するよう修正 — 実ブラウザの伝播を忠実化
+
+### Tests
+- ポインタ簿記リークピン 3件: hover (buttons===0) が記録を生まない、window-level up が canvas イベント無しでもエントリを掃除、実2ポインタ pinch は不変に zoom
+
+### Documentation
+- ADR-0950: ポインタ簿記の ghost エントリ規則 (window-level 削除 + hover 非記録の不変条件)
+
+## [1.7.975] - 2026-10-01
+
+### Documentation
+- ADR-0949: 送信 funnel 例外安全監査完走 — `Net.broadcast` は `Store.commit` の適用後に走るため、transport の同期 throw が伝播すれば「ローカル適用済み・ピア未通知・コミットスタック汚染」の三重害。全 funnel を検証: `_send` (bc.postMessage try/catch)、`_sendDC` (dc.send→catch→`_dcQ` キュー+low-water retry、>262144 drop、4096/32MB cap)、`_fragSend`→`_sendDC`、`_bcast`=`_send`+`_sendDC(_JS)`、`_JS` は `broadcast` 内の try 内、`._slimOp` は純粋。presence `peer.pg` ゲート (カーソル skip/avatar `_pgById`) と `_imgPending` bounds (256 cap+60s TTL+10s/key throttle) も clean — 実害なし
+
+### Tests
+- 送信 funnel 例外安全ピン 4件: `dc.send` throw が `_sendDC` を脱出しない、throw が `_dcQ` にキューされる、`_bcast` が live channel へ到達、成功送信が backlog を残さない
+
+## [1.7.974] - 2026-10-01
+
+### Fixed
+- mid-gesture 到達可能なコマンド経路が live ジェスチャをキャンセルしない残穴を閉塞 (ADR-0948): pointer capture は捕獲ポインタのみを再送するため、タッチの第2指がドラッグ中にツールバーボタンへ到達可能 — ①`UI.openShare()` (share モーダル、0945 parity)、②`UI.openCtxMenu()` (btnExportMenu 経路、contextmenu イベント側は既に取消)、③`Store.undo()/redo()` (btnUndo/btnRedo 経路、⌘Z キー側は 0574 で取消) の4サイトに `if(ptr.down)_cancelPointerGesture()` を関数側へ内蔵。オーバーレイ下での不可視 commit と stale before-snapshot での undo を解消。コメント尾3件+ADR-0519 コメント圧縮で帳尻
+
+### Tests
+- mid-gesture 取消の実経路ピン 8件: rect ジェスチャ中に `UI.openShare()`→取消+dialog 開放、`UI.openExportMenu()`→取消+menu 開放、`Store.undo()`→取消+undo 適用
+
 ## [1.7.973] - 2026-10-01
 
 ### Documentation
