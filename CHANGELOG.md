@@ -1,3 +1,18 @@
+## [1.8.013] - 2026-10-01
+
+### Fixed
+- frag ストリームを DC 限定へ閉塞 (ADR-0987): `_fragIn` は kind 毎単一スロットで src/n 不一致リスタートのため、**BC ピアが断片を不定期送信するだけで実 RTC ストリームと slot を相互奪い合い、両方とも完結しない永久 wedge DoS**。送信側は `_sendDC`/`_fragSend` 経由で frag は DC-only のため、intake も viaRtc 必須化 (src は定数 'rtc' へ畳込)。'snapshot' 全体型は 'snap' と等価能力のため許容として文書化。0987 ピン追加 + 0972/0383/0431/0782 の frag ピンを実ワイヤ形式 (viaRtc) へ更新
+
+## [1.8.012] - 2026-10-01
+
+### Fixed
+- RTC intake の未検証残穴を閉塞 (ADR-0986): ①DataChannel 経由の偽造 `hello`/`ping`/`sync-req` が `_touchPeer(msg.peer)` を叩き**任意 id の偽 presence 行を生成** (他者 id 詐称・`_loResp` 選出攪乱) — BC-only 種を viaRtc 早期棄却。②`bye` viaRtc が `_rtcPeerId=null` 化し link が生き続ける場合 (bfcache 復帰・race) に以後の cursor/selection が `peerKey=null` で永久棄却 — null 化を削除 (onclose が所有者としてクリア)。③'bye' で消えた presence 行が DC では復帰不能 — viaRtc cursor/selection 到着時に `_touchPeer` で蘇生 (「実際にメッセージを送るピアは present」が不変条件、BC は enrich-only を維持)。0825 ピンを新契約へ更新 + 偽造棄却/蘇生ピン追加
+
+## [1.8.011] - 2026-10-01
+
+### Fixed
+- 全置換パージ `_pcC()` の `Net._imgPending.clear()` が **生き残り図形の parked img 参照まで殺し** imgq 再送ループを断っていた実害を `_pcR()` 再 park で閉塞 (ADR-0985): 'replace' keep 存続・'clear' keep・pageDel 生存メンバー・`_rs` 取込 (ブート復元では `_attachShape` の park 直後に即 wipe!) — いずれも blob 応答喪失時に straggler 走査だけでは救えず永久 placeholder。存続図形の `img` 参照を swap 確定点で再 park して再送を維持 (ADR-0753 の「wipe 安全」契約を「解決は保持・再送も保持」へ拡張、既存ピンを新契約へ更新 + 新ピン5 assert)
+
 ## [1.8.010] - 2026-10-01
 
 ### Fixed

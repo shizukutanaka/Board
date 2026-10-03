@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.010';   // ADR-0984
+const V='1.8.013';   // ADR-0987
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1650,7 +1650,7 @@ const Store={
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
             _wc()[sh.id]=_wM({_del:op.clock});   // ADR-0734
-            _psc(sh.id);                     // ADR-0424/0427
+            _psc(sh.id);   // ADR-0424/0427
           }
           if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of _oe(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738
           // connector clears after shapes are gone
@@ -1699,7 +1699,7 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();}   // ADR-0626/0736/0926/0953
+        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}   // ADR-0626/0736/0926/0953/0985
         else{for(const s of op.shapes)if(!byId(s.id)&&!_tmb(s.id,op)){_sh().push(Net._attachShape(clone(s)));_bT(s.id,op.clock)}_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723/0922/0926
         break;}
       case 'replace':{
@@ -1712,7 +1712,7 @@ const Store={
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock));   // ADR-0736/0926
         _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
         for(const s of _uniq(next)){const wd=wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790/0922
-        for(const s of keep)_sh().push(s);   // ADR-0926: a newer re-add outranks the swap's removal
+        for(const s of keep)_sh().push(s);_pcR();   // ADR-0926/0985: a newer re-add outranks the swap's removal
         _iG();   // ADR-0613
         _sz();
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
@@ -2095,9 +2095,9 @@ let _penCachePx=0;
 // ADR-0424: per-shape caches keyed by shape id die with the shape — purge on
 // wholesale `state.shapes=` replacement — dead entries would otherwise sit
 // until the global caps evict them.
-const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
+const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins
-const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC()}   // ADR-0493/0790/0953: wholesale replace — dup ids; a live erase batch dies
+const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985: wholesale replace — dup ids; a live erase batch dies
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a heal misses them
@@ -2155,7 +2155,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the page's membe
   for(const s of _sh())if((s.pg||firstId)===op.id&&(s.locked||_bN(s.id,op.clock)))s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707: connectors on a removed member unbind — recorded for undo
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
-  state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();
+  state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();_pcR();   // ADR-0985
   const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725: land via switchPage — announced + cursor hidden
 }
 function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
@@ -8133,9 +8133,9 @@ const Net={
   },
   _onRecv(msg,viaRtc){
     if(!msg||!_iO(msg)||msg.peer===_pi())return;
-    // Defensive intake: the peer id feeds _touchPeer/_pr() directly; WebRTC is
-    // unfiltered — hello/ping never ride the DataChannel.
+    // Defensive intake: peer id feeds _touchPeer/_pr() directly.
     if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN||(!viaRtc&&_sw(msg.peer,'rtc:'))))return;   // ADR-0827
+    if(viaRtc&&(msg.k==='hello'||msg.k==='ping'||msg.k==='sync-req'))return;   // ADR-0986: BC-only kinds never legitimately ride the DC — a forged ping spoofed arbitrary presence rows under any peer id
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
@@ -8176,9 +8176,10 @@ const Net={
         if(d0&&(!_qt||_t-_qt>10000)){this._imgqT.set(msg.key,_t);_pu(this._imgOuts,[msg.key,d0]);this._flushImgOuts()}
         break;}
       case 'snap':case 'opc':{
-        // ADR-0383/0431: chunked intake — snapshots
-        // same reassembly (ops fragment only past the ~256KB SCTP ceiling).
-        const joined=this._fragIn(msg,msg.k==='snap'?'_snapIn':'_opcIn',viaRtc?'rtc':msg.peer);
+        // ADR-0383/0431/0987: frag streams are DC-only — a BC-forged chunk
+        // ping-pongs the single reassembly slot vs a real RTC stream (wedge DoS).
+        if(!viaRtc)break;
+        const joined=this._fragIn(msg,msg.k==='snap'?'_snapIn':'_opcIn','rtc');
         if(!joined||_ln(joined)>24_000_000)break;
         try{this._onRecv(_JP(joined),viaRtc)}catch(_){}
         break;}
@@ -8218,31 +8219,25 @@ const Net={
       case 'name':   // ADR-0402/0581: rename is LWW — a stale slower rename can't clobber a newer one
         if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)&&_tsOK(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}   // ADR-0701/0791
         break;
-      case 'bye':{   // ADR-0456: peer left — drop presence now, don't wait for the 15s reap
+      case 'bye':{   // ADR-0456/0986: peer left — drop presence now. viaRtc keeps _rtcPeerId: onclose clears it; the peer's own next msg resurrects the row
         const pk=this._pk(msg,viaRtc);
         if(pk&&_pr().delete(pk)){_ivO();if(this._onConnChange)this._onConnChange()}
-        if(viaRtc)this._rtcPeerId=null;
         break;}
       case 'ping':
         this._touchPeer(msg.peer);
         break;
       case 'cursor':{
-        // ADR-0010: hello/sync-req/ping never ride the DC (they're sent
-        // via _send(), BroadcastChannel-only), so a
-        // locally-generated synthetic id (_rtcPeerId) is the key — when
-        // looking this up by msg.peer over that transport
-        // create a duplicate/phantom peer entry).
-        if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;
+        if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;   // ADR-0010/0986
         const peerKey=this._pk(msg,viaRtc);
+        if(viaRtc&&peerKey&&!_pr().has(peerKey))this._touchPeer(peerKey);   // ADR-0986: live-link presence resurrect (bye-then-active, bfcache); BC stays enrich-only
         const p=peerKey&&_pr().get(peerKey);
         if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.cursor=msg.h===1?null:{x:msg.x,y:msg.y};p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0611/0647/0769: pg change repaints the '· page' tooltip
         break;}
-      case 'selection':{
-        // ADR-0011: same _rtcPeerId routing as 'curs'/'sel' (RTC peers live
-        // under synthetic rtc: ids); string ids only, capped at 64.
+      case 'selection':{   // ADR-0011
         if(!_iA(msg.ids))break;
-        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485: same ≤64 cap as every other wire id field
+        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485
         const peerKey=this._pk(msg,viaRtc);
+        if(viaRtc&&peerKey&&!_pr().has(peerKey))this._touchPeer(peerKey);   // ADR-0986
         const p=peerKey&&_pr().get(peerKey);
         if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.sel=ids;p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0647/0769
         break;}
