@@ -1,3 +1,12 @@
+## [1.8.063]
+- **Fix: IDB doc `wc` intake shares the `_wAdopt` gate** — `load()` used to
+  stamp every key of `d.wc[id]` after a bare `validClock`, so a stale or
+  tampered record could plant `frac`/`groupId`/`pg` prop clocks that veto
+  legitimate zorder/group ops via `_lwwSkip` (silent divergence until heal).
+  The intake now funnels `if(_idOK(k))_wAdopt(k,d.wc[k])` — the same
+  ≤64-key / validClock / structural+proto+junk skip gate the wire path uses,
+  ~90B reclaimed (ADR-1037).
+
 ## [1.8.062]
 - **Docs+pin: existence-clock pairwise merge audit (clean)** — `_mergeSnapshotOp`
   merges `_born`/`_del` per-key via independent `clockNewer` adopts, so a
