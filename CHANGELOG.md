@@ -1,3 +1,8 @@
+## [1.8.033] - 2026-10-01
+
+### Fix
+- **キー長押し auto-repeat で離散アクションが発火する実害を閉塞** (ADR-1007): `e.repeat` フィルタゼロで OS リピート毎 (~30/s) に全アクションが発火 — パリティ型トグル (`g` grid/`⇧G` snap/`m` minimap/`⌘F` search/`?` help/`⌘B/I/U`/`⇧H/V` flip/`⇧X` swap/`⌘⇧L` lock/`⌘⇧I` inverse) は終端状態が不定で UI が振動し、ワンショット系 (`⌘E` PNG/`⌘⇧E` SVG/`⌘P` PDF/`⌘⇧S` board エクスポート ×4、`⌘⌥G` wrapFrame 入れ子スパム、`⌘⇧G` ungroup、`Enter` スタンプ、`⌥B` beautify) が連続コミット。連続系 (undo/nudge/zoom/rotate/zorder/fontSize/`⌘D`/`⌘⇧V` cascade/Tab/Esc/tool) は従来通り流す設計で、discrete 集合のみを遮断。実キー経路ピン (repeat:true で grid/minimap/bold 非振動 + ⌘Z 通過)
+
 ## [1.8.032] - 2026-10-01
 
 ### Docs + Test

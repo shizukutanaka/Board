@@ -10432,6 +10432,16 @@ try {
   }
   pass += 7; // ADR-1006 timer/deferred-callback pins
 
+  // ADR-1007: held-key repeats pass only to the continuous action set —
+  // discrete toggles and one-shots are gated at the top of the chain.
+  {
+    assert.ok(html.includes("if(e.repeat){const B=meta?'fepibu':_aK(e)?'b':'gm?/'"),'repeat gate sits on the key chain');
+    assert.ok(html.includes("(!meta&&_sK(e)&&!_aK(e)&&'hvx'.includes(k))"),'⇧ flip/swap gated');
+    assert.ok(html.includes("_aK(e)&&e.code==='KeyG'"),'⌘⌥G wrap-frame gated');
+    console.log('  ✓ key-repeat gate pins (ADR-1007, 3 asserts)');
+  }
+  pass += 3; // ADR-1007 key-repeat pins
+
   // ADR-0606: a viewport resize during presentation re-fits the current
   // frame — without it the zoom drifts off the frame after window resize /
   // mobile rotation (visualViewport resize routes through the same handler).
@@ -16102,6 +16112,25 @@ try {
     assert.ok(!ptr.down,'undo mid-drag cancels the live gesture');
     assert.strictEqual(state.shapes.length,0,'the undo still applies');
     state.snap=true;
+    // ADR-1007: e.repeat suppresses parity toggles and one-shot spam while
+    // continuous actions (undo/nudge/zoom/dup cascade) still flow.
+    reset();
+    const g0=state.showGrid;
+    fireKey('g');assert.strictEqual(state.showGrid,!g0,'first g toggles the grid');
+    fireKey('g',{repeat:true});assert.strictEqual(state.showGrid,!g0,'repeat g does NOT oscillate the grid');
+    const m0=state.showMinimap;
+    fireKey('m');fireKey('m',{repeat:true});
+    assert.strictEqual(state.showMinimap,!m0,'repeat m does NOT oscillate the minimap');
+    const T5=Shape.make('text',{x:0,y:0,w:60,h:20,text:'hi'});
+    Store.commit({op:'add',shape:T5});
+    state.selection=new Set([T5.id]);
+    fireKey('b',{metaKey:true});   // bold on
+    fireKey('b',{metaKey:true,repeat:true});   // repeat must NOT toggle back off
+    assert.strictEqual(byId(T5.id).bold,true,'⌘B repeat does not oscillate bold');
+    _nugEnd();
+    fireKey('z',{metaKey:true,repeat:true});fireKey('z',{metaKey:true,repeat:true});   // undo stays allowed on repeat
+    assert.strictEqual(state.shapes.length,0,'repeat ⌘Z still undoes');
+    console.log('  ✓ repeat gate: parity toggles suppressed, continuous actions pass (ADR-1007)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
