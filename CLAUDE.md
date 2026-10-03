@@ -1000,6 +1000,7 @@ Board/
 │   └── ADR-0949-send-funnel-exception-safety.md # 送信 funnel 例外安全監査完走+ピン (_send/_sendDC/_bcast/fragSend は transport throw を伝播しない)
 │   └── ADR-0950-pointer-bookkeeping-leak.md  # _pointers ghost エントリ閉塞 (window-level 削除+hover 非記録で phantom pinch 解消)
 │   └── ADR-0951-lblpos-cancel-restore.md  # lblpos cancel 復元欠落閉塞 (labelPos を orig から save-set 復元、mid-gesture cancel 半mutation 解消)
+│   └── ADR-0952-erase-batch-remote-window.md  # 消しゴム窓のリモート op 収束 (byId に batch フォールバック + cancel-restore へ _tmb 墓標ゲート、ghost 復活と stale clone 復元を閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

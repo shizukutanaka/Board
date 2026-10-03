@@ -12637,7 +12637,8 @@ try {
     state.shapes=[es];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     state.viewport.zoom=1;state.viewport.x=0;state.viewport.y=0;   // undo any zoom left by an earlier test (pickTop tolerance is zoom-dependent)
     eraseAt({x:5,y:5});
-    assert.strictEqual(byId(es.id),undefined,'v1.7.58e: byId no longer resolves a shape immediately after eraseAt splices it out');
+    assert.ok(!state.shapes.some(s=>s.id===es.id),'v1.7.58e: eraseAt splices the shape out of the scene list');
+    assert.strictEqual(byId(es.id)?.id,es.id,'ADR-0952: batched ids stay addressable to remote ops via the restorable clone');
     abortGesture();
     assert.strictEqual(byId(es.id)?.id,es.id,'v1.7.58e: abortGesture restores the erased shape and byId resolves it again');
     console.log('  ✓ byId: eraseAt splice + abortGesture restore both correctly invalidate the id index (v1.7.58e, ADR-0009)');
@@ -14766,6 +14767,28 @@ try {
     abortGesture();
     assert.strictEqual(byId(C9.id).labelPos,0.2,'abortGesture restores the orig labelPos');
     console.log('  ✓ lblpos cancel restores labelPos on both cancel paths (ADR-0951)');
+
+    // ADR-0952: the erase stroke removes shapes from the scene before the del
+    // commits. Remote ops in that window: a del tombstones the id (cancel must
+    // NOT resurrect it — ghost divergence) and prop patches land on the
+    // restorable clone via the byId fallback (cancel restores the newer value).
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E9=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E9});
+    fire('pointerdown',5,5);
+    assert.ok(!state.shapes.some(s=>s.id===E9.id),'erase stroke batches the shape out of the scene');
+    Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(E9))],clock:{peer:'peer9',seq:1,ts:Date.now()+10}});
+    fireWin('blur');
+    assert.ok(!byId(E9.id),'cancel after a remote del keeps the shape deleted — no ghost');
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E10=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E10});
+    fire('pointerdown',5,5);
+    Store.applyRemote({op:'upd',id:E10.id,before:{id:E10.id},after:{id:E10.id,stroke:'#123456'},clock:{peer:'peer9',seq:2,ts:Date.now()+20}});
+    fireWin('blur');
+    assert.strictEqual(byId(E10.id)?.stroke,'#123456','cancel restores the clone carrying the remote patch');
+    assert.strictEqual(state.tool,'eraser','gesture state stays consistent through cancel');
+    console.log('  ✓ erase-batch window: remote del survives cancel, remote patch lands on the clone (ADR-0952)');
   }
 
     // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
@@ -15523,6 +15546,7 @@ pass += 3; // ADR-0947 labelPos domain-clamp pins
 pass += 4; // ADR-0949 send-funnel exception-safety pins
 pass += 3; // ADR-0950 pointer bookkeeping leak pins
 pass += 4; // ADR-0951 lblpos cancel-restore pins
+pass += 4; // ADR-0952 erase-batch remote-op window pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
