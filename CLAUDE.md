@@ -1049,6 +1049,7 @@ Board/
 │   └── ADR-0998-peer-clock-uniqueness.md  # ピア時計一意性監査 — (peer,seq) dedup 衝突 clean: peerId は per-boot suffix 付きで seq 巻き戻り衝突なし、wire op は全 ++state.seq、seq:0 は仲裁専用オブジェクト
 │   └── ADR-0999-reborn-mark-lifecycle.md  # reborn マークのライフサイクル監査 — _ptrReset/_nugEnd で終了時クリア、後続ジェスチャへの漏洩なし + dead snapBox 除去 ~150B
 │   └── ADR-1000-letterspacing-measure-parity.md  # measure 経路の ctx.letterSpacing 設定 — spacing>0 で s.w/s.h under-fit + wrapCache 毒入れを閉塞
+│   └── ADR-1001-throw-ctx-state-restore.md  # 0601 隔離の catch で ctx 全状態リセット (unbalanced save/rot/clip/props の後続図形漏洩を閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
