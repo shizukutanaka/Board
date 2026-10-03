@@ -1,3 +1,14 @@
+## [1.8.060]
+- **Docs+pin: wholesale intake bounds audit (clean)** — the snapshot family's
+  aux-field surface is bounded end to end: `msg.shapes`/`msg.ops` are sliced
+  at `SHARE_MAX_SHAPES` before iteration, adopted shapes pass `validShape` +
+  the `_tAlive` tomb gate, carried ops are adds-only, envelope-peer-bound and
+  re-run through `applyRemote` (never applied directly), `wc` maps take the
+  `_wAdopt` idiom (≤64 keys, per-key `validClock`, structural/proto skip),
+  `msg.pages` goes through `_vPages` + the 64-cap union-heal, and rep/name
+  markers are `validClock`/`_tsOK`/`_idOK`/`_s80` gated. Contract rule for
+  new wholesale fields + 12 pins (ADR-1034).
+
 ## [1.8.059]
 - **Fix: foreign img ordinal persisted verbatim (ADR-1033)** — a peer's
   parked `img:k:N` ref is store-relative: `:N` is a collision ordinal in
