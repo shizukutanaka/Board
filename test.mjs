@@ -1516,7 +1516,7 @@ const checks = [
     html.includes("function nextZ(){return _nS()?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
   // v1.7.44: _apply replace forward restores afterWc on redo
   ['_apply replace forward: if(forward&&op.afterWc) restores wclock on redo',
-    html.includes("if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));")],
+    html.includes("if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w)")],
   // v1.7.43: _apply zorder backward restores origSel (mirrors move/align/group/ungroup)
   ['_apply zorder backward: if(!forward&&op.origSel) restores selection',
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
@@ -16670,6 +16670,32 @@ try {
       assert.strictEqual(Net._imgIn.get(kN),'NEW!','same-src seq0 restart unaffected');
       console.log('  ✓ img slots are sender-tagged (ADR-1038)');
     }
+    {
+      // ADR-1039: every wclock-restore path funnels through sanitized _wR —
+      // a forged op.wc/afterWc carrying 'frac'/'groupId'/'pg'/proto/junk keys
+      // can no longer stamp veto clocks (_lwwSkip would silently reject
+      // legitimate zorder/group writes → divergence until snapshot heal).
+      assert.ok(html.includes("_wK=k=>k!=='id'&&k!=='type'&&k!=='pg'&&k!=='frac'&&k!=='groupId'"),'shared _wK prop-key filter exists');
+      reset();
+      const clk3={peer:'q',seq:1,ts:100};
+      Store.applyRemote({op:'replace',after:[{id:'r1',type:'rect',x:0,y:0,w:10,h:10,z:1}],afterWc:{r1:{frac:clk3,groupId:clk3,pg:clk3,_junk:clk3,x:clk3,__proto__:clk3}},clock:{peer:'rp',seq:1,ts:state._lastTs+1}});
+      const wr=state.wclock['r1'];
+      assert.ok(wr&&wr.x&&wr.x.ts===100,'legit afterWc prop clock lands');
+      assert.ok(!('frac' in wr)&&!('groupId' in wr)&&!('pg' in wr)&&!('_junk' in wr),'structural/junk keys filtered on afterWc adopt');
+      assert.ok(!('__proto__' in wr),'proto keys filtered on afterWc adopt');
+      // a legit frac clock must NOT be stuck → zorder applies
+      const zc={peer:'zp',seq:1,ts:state._lastTs+1};
+      Store.applyRemote({op:'zorder',changes:[{id:'r1',after:'b',before:'a'}],clock:zc});
+      assert.strictEqual(byId('r1').frac,'b','zorder lands past the filtered map');
+      // backward _wR path (del undo) applies the same filter
+      reset();state.shapes.push({id:'d1',type:'rect',x:0,y:0,w:1,h:1,z:1});
+      const wcJ={d1:{frac:clk3,x:clk3}};
+      Store._apply({op:'del',shapes:[{id:'d1',type:'rect',x:0,y:0,w:1,h:1,z:1}],wc:wcJ},false);
+      const wd=state.wclock['d1'];
+      assert.ok(wd&&wd.x&&wd.x.ts===100,'backward wc prop clock restores');
+      assert.ok(!('frac' in wd),'backward wc drops structural keys');
+      console.log('  ✓ wclock restore paths sanitized (ADR-1039)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17620,6 +17646,7 @@ pass += 12; // ADR-1035 dc-queue frag interleave pins
 pass += 11; // ADR-1036 existence-clock merge pins
 pass += 10; // ADR-1037 IDB wc intake gate parity pins
 pass += 8; // ADR-1038 img sender-tagged slot pins
+pass += 10; // ADR-1039 wclock-restore sanitize pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
