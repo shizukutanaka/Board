@@ -971,6 +971,7 @@ Board/
 │   └── ADR-0920-connClears-after-null.md  # connClears after:null 鍛造を閉塞 — mid-apply TypeError による墓碑+部分適用、rescan 抑止による束縛残存を2点ガードで解消
 │   └── ADR-0921-connclears-backward-lww.md  # del/pageDel 逆方向 connClears 復元の _lwwSkip 欠落 — 他逆適用経路と非対称で skew 下の束縛発散、_ccRest helper で per-key LWW ゲート化
 │   └── ADR-0922-backward-tomb-gate.md  # del/clear/pageDel/replace 逆適用 shape 復元の _del 墓標未検査 — wire 側 addMany/replace との非対称で skew 下の存在発散、_tmb helper で墓標ゲート化
+│   └── ADR-0923-group-ungroup-backward-locked.md  # group/ungroup 逆適用の sh.locked 未検査 — 前進+undo-wire は locked skip、ローカルだけ帰属変更で発散。到達不能の gids fallback も除去
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
