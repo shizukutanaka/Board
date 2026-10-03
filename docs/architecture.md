@@ -50,6 +50,13 @@ hidden/pagehide/blur の共通掃除口は `_clearTouchState()` — `_pointers` 
 ドラッグ中の 24px 端帯は rAF エッジオートパン (ADR-0519)。`pointerId` は
 `_pointers` Map で追跡し 2 本目でピンチ遷移。
 
+**ランタイム入力面 (ADR-0887–0910):** `setPointerCapture` は全サイト try/catch
+(release 側と parity、inactive pointerId の NotFoundError で arm しない —
+ADR-0906)。ボタン修飾は primary のみ arm (0896/0898: X1/X2・stylus barrel は
+ジェスチャ開始しない)。window-level の `e.target.matches()` は `?.` ガード
+(0909: 非 Element ターゲットでリスナを貫通する TypeError を閉塞)。passive/
+preventDefault/touch-action の3条件は全入力リスナで検証完走 (0908)。
+
 **ジェスチャ×外部変化の不変条件 (v1.7.66x — ADR-0634..0637):**
 - **overlay/モーダル突入はキャンセル先行**: `Presentation.enter()`・
   `editSelectedShapeKbd` (Enter) は冒頭で `if(ptr.down)_cancelPointerGesture()`
@@ -156,6 +163,13 @@ direct `state.selection.add` や新たな `_ss` バイパスを増やさない�
 フィルタする — 不可視内容がハロー・エクスポート余白・ミニマップ・第三者フォーマットへ
 漏洩しない。例外はデータ保持が目的の経路のみ: `.board` エクスポートは `visible` prop を
 保持し、`boardToDrawio` は `visible="0"` を emit して往復可能にする。
+
+**per-shape 隔離 (ADR-0887/0907):** エクスポート描画ループは `_dS` (per-shape
+try/catch) — 1図形の描画例外で PNG/SVG 全体が無通知失敗しない。ミニマップも
+同型隔離で ver を成功時のみ記録。描画数学の degenerate 面は 0888–0891 で完走
+(零extent `_mapToBox` の NaN member、extent 除算全サイト gated、SVG link badge の
+`esc()` 未定義 throw)。エディタ overlay の追従は `_gridVer`+`_teFollow` で図形
+commit/undo/remote op に応答 (0892/0893/0894)。
 
 **dead-id parity** (ADR-0621/0623): 選択由来の id/shape リストは **dead id を含まない**。
 remote del/replace と選択書込みの間には選択が stale id を持つ窓が残るため、派生リストは
@@ -284,7 +298,7 @@ IndexedDB (`board` / stores `docs` + `imgs`, DB_VER=2)。500ms デバウンス�
 
 **因果マーカーも永続化する** (ADR-0460/0695/0699/0701): doc レコードは `shapes`/`viewport`/`pages`/`curPg` に加えて `wc` (per-prop 書込みクロック) と `rep`/`nts`/`ntp` (最後の replace マーカー・改名クロック) を同梱する。リロードでこれらが null/0 に戻ると、ピアの古い pre-swap スナップショットや旧 rename が wipe 済み内容を復活させ得るため。読み込み側は `validClock`/`_fin` で検証してから採用する (0864/0700/0701 の非有限値拒否と同一規則)。`:prev` バックアップ (ADR-0004) はスコープ外 — 復元自体が replace op として commit され新しい causal marker を立てる。
 
-**open ライフサイクル** (ADR-0884/0885): 別タブが旧バージョンを保持する間 `indexedDB.open` は永久 pending になるため、`onblocked` は toast+in-memory 継続 (boot ハング解消)、`onversionchange` は接続を閉じて新版タブのアップグレードを通す。tx エラー面は監査完走 — 全書込 tx は `txDone` (complete/error/abort; abort は onerror を発火しないため両者必須)、全 request は `reqDone` (error→reject) で完結、quota/サイズ超過は `save()` try/catch → `_saveErrMsg` トースト。両ハンドラは fake IDB リクエストで実動作ピン済み (0885)。ホスト API エラーパス監査は 0881 で完走 (localStorage/IDB/crypto/encoding/window/dialog 全経路 fail-closed)。
+**open ライフサイクル** (ADR-0884/0885): 別タブが旧バージョンを保持する間 `indexedDB.open` は永久 pending になるため、`onblocked` は toast+in-memory 継続 (boot ハング解消)、`onversionchange` は接続を閉じて新版タブのアップグレードを通す。tx エラー面は監査完走 — 全書込 tx は `txDone` (complete/error/abort; abort は onerror を発火しないため両者必須)、全 request は `reqDone` (error→reject) で完結、quota/サイズ超過は `save()` try/catch → `_saveErrMsg` トースト。両ハンドラは fake IDB リクエストで実動作ピン済み (0885)。ホスト API エラーパス監査は 0881 で完走 (localStorage/IDB/crypto/encoding/window/dialog 全経路 fail-closed)。IDB 取込は load/restoreBackup/checkBackup 全経路が `validShape`/`_vPages`/`_vpOK`/`validClock` で gated (0905)。
 
 ## 座標系
 
@@ -375,6 +389,19 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - 画像: `data:image/` プレフィックス検証のみ許可
 - 受信 op: `REMOTE_OPS` 許可リスト + `validRemotePayload` で型チェック
 - `validShape` を全 intake パス (IDB, sync, URL, .board import) で適用
+
+## ブート・外部入力の検証 (ADR-0904/0910)
+
+- localStorage ブート値は使用前に検証: `board.peer` は `/^[a-z0-9-]{8,64}$/i`
+  (任意長/'rtc:' 接頭辞で local peer id へ流入する経路を閉塞)、`board.theme`
+  は `'light'|'dark'` enum、lang/minimap/docName も型/形 gated (0904)
+- wake lock は `navigator.wakeLock` 検出+try/catch、ブラウザの hide 自動解放に
+  対して `visibilitychange→visible && _active` で再取得 (0910)
+- clipboard: `copyText` は secure-context `writeText` → textarea+execCommand
+  fallback (file:// 主用途を網羅)、`copyPNG` は `ClipboardItem` 検出+rejection
+  toast、paste は `readText` ではなく `paste` イベント経由 (0910)
+- `window.onerror`/`unhandledrejection` は意図的に未設置 — 全失敗経路は
+  call-site catch で捕捉済み、拡張由来の雑多な例外を toast 化しない (0910)
 
 ## アクセシビリティ (v1.6.37+)
 
