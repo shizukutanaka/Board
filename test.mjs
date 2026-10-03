@@ -8611,6 +8611,32 @@ try {
     console.log('  ✓ search navigation: _sqAdvance steps, wraps, reverses, resets on new query (9 asserts)');
   }
 
+  // ADR-0903: the reverse FIRST step from a fresh query (uninitialized idx=-1) must
+  // land on the LAST match — treat idx<0 as "one past the end" for dir=-1, not n-2.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();
+    const a=Shape.make('rect',{x:0,y:0,w:10,h:10,label:'solo'});
+    Store.commit({op:'add',shape:a});
+    _setSq('solo');
+    const s1=_sqAdvance(-1);
+    assert.ok(s1&&s1.label==='solo','reverse nav: single match stays on the match');
+    const b=Shape.make('rect',{x:20,y:0,w:10,h:10,label:'solo B'});
+    const c=Shape.make('rect',{x:40,y:0,w:10,h:10,label:'solo C'});
+    Store.commit({op:'add',shape:b});Store.commit({op:'add',shape:c});
+    _setSq('solo');                          // fresh query → idx=-1, 3 matches
+    const s3=_sqAdvance(-1);
+    assert.ok(s3&&s3.label==='solo C','reverse nav: first step lands on the LAST match');
+    const s4=_sqAdvance(-1);
+    assert.ok(s4&&s4.label==='solo B','reverse nav: next step walks back one');
+    const s5=_sqAdvance(-1);
+    assert.ok(s5&&s5.label==='solo','reverse nav: third step reaches the first match');
+    const s6=_sqAdvance(-1);
+    assert.ok(s6&&s6.label==='solo C','reverse nav: wraps back to the last match');
+    _setSq('');
+    console.log('  ✓ ADR-0903: reverse search nav lands on the last match from a fresh query (5 asserts)');
+  }
+
   // ADR-0048: _sqMatches caches on {_gridVer,_sq} — stale results must not be served
   // after a commit or a query change, and _sqAdvance must see the same list.
   {
@@ -12428,6 +12454,34 @@ try {
     fakeDoc.getElementById=_origGet;fakeDoc.createElement=_origCE;
     state.shapes.length=0;state.selection.clear();_invalidateGrid();
     console.log('  ✓ DOM mirror: per-shape buttons, select+recentre, MIRROR_MAX cap + truncation, _gridVer gating');
+  }
+
+  { // ADR-0903: UI.toggleLang resyncs the DOM mirror — rows cache describeShape text
+    const fakeUl={children:[],firstChild:null,
+      appendChild(c){this.children.push(c);this.firstChild=this.children[0];},
+      removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);this.firstChild=this.children[0]||null;}};
+    const mk=tag=>({tagName:tag.toUpperCase(),children:[],textContent:'',onclick:null,type:'',style:{},
+      appendChild(c){this.children.push(c);}});
+    const peerStackStub={firstChild:null,removeChild(){},appendChild(el){this._appended=el;}};
+    const _origGet=fakeDoc.getElementById,_origCE=fakeDoc.createElement;
+    fakeDoc.getElementById=id=>id==='shapeMirrorList'?fakeUl:id==='peerStack'?peerStackStub:_origGet(id);
+    fakeDoc.createElement=mk;
+    state.shapes.length=0;state.selection.clear();
+    state.shapes.push(Shape.make('rect',{x:0,y:0,w:10,h:10}));
+    _invalidateGrid();
+    try{
+      _mirrorSync();
+      assert.ok(/Rectangle/.test(fakeUl.children[0].children[0].textContent),'mirror: label starts in English');
+      UI.toggleLang();
+      assert.ok(/矩形/.test(fakeUl.children[0].children[0].textContent),'mirror: toggleLang rebuilds labels in Japanese');
+      UI.toggleLang();
+      assert.ok(/Rectangle/.test(fakeUl.children[0].children[0].textContent),'mirror: round trip back to English');
+    }finally{
+      fakeDoc.getElementById=_origGet;fakeDoc.createElement=_origCE;
+      state.shapes.length=0;state.selection.clear();_invalidateGrid();
+      if(api._getLang()!=='en')api.UI.toggleLang();   // later tests assume en
+    }
+    console.log('  ✓ ADR-0903: toggleLang resyncs DOM mirror labels (3 asserts)');
   }
 
   // ---- ADR-0042: SVG import helpers (pure-math layer, no DOMParser needed) ----
