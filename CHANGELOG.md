@@ -1,3 +1,8 @@
+## [1.8.040] - 2026-10-01
+
+### Docs + Pin
+- **id 衝突×取込経路の冪等性監査が clean 完走** (ADR-1014): wire 'add'/'addMany'/pageAdd は `!byId && !_tmb` で dedup (held id 到着は born-stamp のみ併合 0926)、paste/dup/.board JSON は `_placeCopies` の idMap で全 id+group+binding 再採番、.excalidraw/drawio/SVG import は `Shape.make` が新規 uid (src id は binding 解決マップ専用)、全置換系は `_rs` の原子 swap。held id への remote add が重複・props clobber を起こさない実経路ピン + 「新規取込経路は remap/dedup/swap のいずれか」規則化
+
 ## [1.8.039] - 2026-10-01
 
 ### Docs + Pin
