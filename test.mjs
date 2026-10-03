@@ -10374,6 +10374,22 @@ try {
   }
   pass += 8; // ADR-1002 rAF-loop exception-safety pins
 
+  // ADR-1003: canvas backing-store × DPR lifecycle — any size/ratio change must
+  // reallocate BOTH layers, invalidate pixel-derived caches, and repaint, or the
+  // board blurs/stretches/smeared-blits a stale copy.
+  {
+    assert.ok(html.includes('canvas.width=_rnd(r.width*DPR)'),'scene buffer at device px');
+    assert.ok(html.includes('_wh(ocanvas,canvas.width,canvas.height)'),'overlay realloc in sync');
+    assert.ok(html.includes('_lastVp=null'),'pan-blit invalidated on realloc');
+    assert.ok(html.includes('_pinchSnap=null;_pinchVp=null'),'gesture preview snapshot cleared');
+    assert.ok(html.includes("_on(window,'resize',_resizeSoon)"),'debounced window resize');
+    assert.ok(html.includes("if(window.visualViewport)_on(visualViewport,'resize',_resizeSoon)"),'iOS visualViewport path');
+    assert.ok(html.includes('(resolution: ${_dpr()}dppx)'),'DPR change watcher');
+    assert.ok(html.includes("_on(ocanvas,'contextrestored',_ctxUp)"),'overlay context restore');
+    console.log('  \u2713 canvas backing-store/DPR lifecycle pins (ADR-1003, 8 asserts)');
+  }
+  pass += 8; // ADR-1003 backing-store/DPR lifecycle pins
+
   // ADR-0606: a viewport resize during presentation re-fits the current
   // frame — without it the zoom drifts off the frame after window resize /
   // mobile rotation (visualViewport resize routes through the same handler).
