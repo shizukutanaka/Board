@@ -2793,6 +2793,37 @@ try {
     console.log('  ✓ wholesale-swap × derived-state completeness (ADR-0996)');
   }
   pass += 6; // ADR-0996 swap×cache pins
+  // ADR-0997: live↔stored-op reference aliasing — no commit/apply path shares
+  // a mutable object between the live board and the stored op (history),
+  // or mutates it later. _apply clones on every push; producers capture
+  // literals or clone(); _attachShape is read-only on shared refs.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state._lastRep=null;state.editing=null;
+    try{
+      const P=Shape.make('rect',{x:10,y:10,w:20,h:20});P.id='al1';
+      Store.commit({op:'add',shape:P});
+      const live=byId('al1'),stored=state.history[state.histIdx].shape;
+      assert.notStrictEqual(live,P,'apply pushes clone(op.shape) — producer ref is not live');
+      assert.strictEqual(stored,P,'history retains the producer ref — safe only if producers never touch it post-commit');
+      P.x=9999;
+      assert.strictEqual(live.x,10,'mutating the producer object cannot corrupt the live shape');
+      const liveDel=byId('al1');
+      Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(liveDel))]});   // producers always clone — see 5614/5777/6097/6282
+      const delOp=state.history[state.histIdx];
+      assert.notStrictEqual(delOp.shapes[0],liveDel,'del snapshot is detached from the live object');
+      Store.undo();
+      const restored=byId('al1');
+      assert.notStrictEqual(restored,delOp.shapes[0],'undo restore pushes clone(op.shapes[i]) too');
+      restored.x=7777;
+      assert.strictEqual(delOp.shapes[0].x,10,'mutating the restored live shape cannot corrupt the stored snapshot');
+      const IM=Shape.make('img',{x:0,y:0,w:10,h:10,img:'imgk-not-present'});IM.id='al2';
+      const att=Net._attachShape(IM);
+      assert.strictEqual(att,IM)&&assert.strictEqual(IM.img,'imgk-not-present','_attachShape leaves an unresolved parked ref untouched');
+    }finally{}
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state._lastRep=null;state.editing=null;
+    console.log('  ✓ live↔stored-op aliasing completeness (ADR-0997)');
+  }
+  pass += 7; // ADR-0997 aliasing pins
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {

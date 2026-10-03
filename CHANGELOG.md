@@ -1,3 +1,8 @@
+## [1.8.023] - 2026-10-01
+
+### Docs + Test
+- **live↔stored-op 参照エイリアシング監査** (ADR-0997): op-log (`state.history`) の `before`/`after`/`shapes`/`shape` が live 図形と可変構造を共有しないか全 producer/apply 経路で検証 — 8系統全て clean (`_apply` は全 push で `clone()`、del/clear/align/_repC/style/gesture-capture は全 commit サイトで `clone()` またはリテラル生成、`way` 配列は両側 clone、`pts`/`way` の in-place 変異はコミット後に存在しない、`_attachShape` は共有参照に対し読み取り専用 — 解決時のみ新オブジェクト返却、`_undoWire` の before/after 参照共有は send 直列化のみで変異なし)。実害なし — 実経路ピン 7 assert (producer 変異→live 非伝播、live 変異→history 非伝播、del スナップ非 live 参照、undo 復元 clone、`_attachShape` 非破壊)
+
 ## [1.8.022] - 2026-10-01
 
 ### Docs + Test
