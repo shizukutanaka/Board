@@ -16208,6 +16208,22 @@ try {
     assert.strictEqual(state.shapes.length,1,'same-id remote add does not duplicate');
     assert.strictEqual(byId(DU1.id).x,0,'same-id remote add does not clobber live props');
     console.log('  ✓ same-id remote add is idempotent — live shape wins (ADR-1014)');
+    // ADR-1015: history cap — trim fires only at tip (mid-undo chop shrinks
+    // below MAX first), so histIdx stays len-1 pointing at the pushed op.
+    reset();
+    const TCA=Shape.make('rect',{x:0,y:0,w:5,h:5}),TCB=Shape.make('rect',{x:9,y:0,w:5,h:5});
+    Store.commit({op:'add',shape:TCA});Store.commit({op:'add',shape:TCB});
+    Store.undo();
+    Store.commit({op:'add',shape:Shape.make('rect',{x:99,y:0,w:5,h:5})});
+    assert.ok(!Store.redo(),'commit after undo chops the redo branch');
+    const TCA2=state.histIdx,TCB2=state.history.length;
+    for(let i=0;i<510;i++)Store.commit({op:'add',shape:Shape.make('rect',{x:i,y:99,w:1,h:1})});
+    assert.ok(state.history.length<=500,'history stays under MAX_HISTORY');
+    assert.strictEqual(state.histIdx,state.history.length-1,'histIdx tracks the pushed tip through trims');
+    const n0a=state.shapes.length;
+    Store.undo();
+    assert.strictEqual(state.shapes.length,n0a-1,'undo after trims walks the newest op');
+    console.log('  ✓ history trim fires only at tip — redo-branch chop + cap parity (ADR-1015)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
