@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.057';   // ADR-1031
+const V='1.8.058';   // ADR-1032
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8129,7 +8129,12 @@ const Net={
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
   },
   _pk(msg,viaRtc){   // ADR-0498: peer-key routing — RTC peers use
-    return viaRtc?this._rtcPeerId:msg.peer;
+    if(!viaRtc)return msg.peer;
+    // ADR-1032: a link partner who is also a room peer must not count twice —
+    // presence lands on their real row when one exists and the synthetic
+    // 'rtc:' row is folded away; pure-link partners keep the link row.
+    if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}
+    return this._rtcPeerId;
   },
   _bcast(msg){   // ADR-0401: dual-transport fold — BroadcastChannel + RTC DataChannel
     this._send(msg);

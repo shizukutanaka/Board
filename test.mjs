@@ -16513,6 +16513,21 @@ try {
       Net._bcast=_ob;Net._lastSelSent='';state.selection.delete('sel780');state.peers.delete('p780x');
       console.log('  ✓ presence-channel signature lifecycle (ADR-1031)');
     }
+    {
+      // ADR-1032: viaRtc presence merges onto the link partner's real row when
+      // one exists — a dual-connected peer must not count as two avatars.
+      assert.ok(html.includes("if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}"),'viaRtc presence folds the synthetic row into the real row');
+      Net.init('room781a');
+      Net._rtcPeerId='rtc:zz9';
+      state.peers.set('rtc:zz9',{color:'#000',lastSeen:_now()});
+      state.peers.set('p-real',{color:'#111',lastSeen:_now()});
+      assert.strictEqual(Net._pk({peer:'p-real'},true),'p-real','dual partner presence lands on the BC row');
+      assert.ok(!state.peers.has('rtc:zz9'),'synthetic link row folded away on merge');
+      assert.strictEqual(Net._pk({peer:'p-other'},true),'rtc:zz9','no matching row → pure-link presence stays on the link row');
+      assert.strictEqual(Net._pk({peer:'p-real'},false),'p-real','BC path unchanged');
+      Net._rtcPeerId=null;state.peers.clear();
+      console.log('  ✓ rtc×room presence merge (ADR-1032)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17456,6 +17471,7 @@ pass += 4; // ADR-1028 saveBackup failure-surfacing pins
 pass += 9; // ADR-1029 stamp×drop symmetry pins
 pass += 8; // ADR-1030 join×room-switch lifecycle pins
 pass += 7; // ADR-1031 presence-signature lifecycle pins
+pass += 6; // ADR-1032 rtc×room presence merge pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

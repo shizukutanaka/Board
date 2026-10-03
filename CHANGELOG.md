@@ -1,3 +1,13 @@
+## [1.8.058]
+- **Fix: dual-connected presence merge (ADR-1032)** — a link partner who is
+  also a room peer counted as two: `_pk` routed every viaRtc presence
+  message to the synthetic `rtc:` row, so the avatar stack, `peerCount`,
+  and the join/leave SR announces showed `P-` plus a phantom `RT` entry
+  forever, while their cursor/selection rendered under a second color.
+  `_pk` now lands viaRtc presence on the partner's real row whenever one
+  exists and folds the synthetic `rtc:` row away; pure-link partners keep
+  the link row exactly as before. 6 behavioural pins.
+
 ## [1.8.057]
 - **Docs+pin: presence-channel send-signature × lifecycle audit (clean)** —
   verified the presence dedup keys self-correct across a room switch:
