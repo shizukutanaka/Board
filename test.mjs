@@ -16224,6 +16224,14 @@ try {
     Store.undo();
     assert.strictEqual(state.shapes.length,n0a-1,'undo after trims walks the newest op');
     console.log('  ✓ history trim fires only at tip — redo-branch chop + cap parity (ADR-1015)');
+    // ADR-1016: wire-intake _attachOp runs before dedup/apply — an 'add'
+    // carrying a parked img ref lands the shape AND arms the imgq waitlist.
+    reset();
+    const PK1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));PK1.img='k_park_1016';
+    Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:PK1,clock:{peer:'p9',seq:1,ts:1}}},false);
+    assert.ok(byId(PK1.id),'the img-ref add landed through real intake');
+    assert.strictEqual(Net._imgPending.get(PK1.id)?.k,'k_park_1016','parked ref armed for imgq heal');
+    console.log('  ✓ wire-intake _attachOp parks img refs before _apply (ADR-1016)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
