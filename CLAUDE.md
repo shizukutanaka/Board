@@ -1079,6 +1079,7 @@ Board/
 │   └── ADR-1028-savebackup-failure-surfacing.md  # saveBackup の silent catch を `_saveErrMsg` 経路へ統一 — 全置換直前の退避書込が quota/abort で沈黙失敗していた非対称を閉塞
 │   └── ADR-1029-stamp-drop-coverage-symmetry.md  # per-prop LWW の stamp×drop 網羅対称性監査 (clean) — 契約: 新 LWW op は `_lwwOp` 加入+`_chg` ゲート刻印+`_undoWire` inverse 必須
 │   └── ADR-1030-join-room-switch-lifecycle.md  # join ハンドシェイク×ルーム切替 + restore 経路ライフサイクル監査 (clean) — 契約: room スコープ状態は Net.init でリセット、doc 採用は `_repC` 経由、op 送出は `Net.broadcast` 漏斗
+│   └── ADR-1031-presence-signature-lifecycle.md  # presence 送出署名×ライフサイクル監査 (clean) — 契約: 新 dedup キーは init リセットかピア集合変化での自己修復必須、ページ名前付き署名は curPg 同梱
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

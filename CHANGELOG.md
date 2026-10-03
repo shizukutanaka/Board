@@ -1,3 +1,14 @@
+## [1.8.057]
+- **Docs+pin: presence-channel send-signature × lifecycle audit (clean)** —
+  verified the presence dedup keys self-correct across a room switch:
+  `_lastSelSent` is force-nulled by `_touchPeer` the moment any peer in the
+  new room is first seen (empty rooms have no audience anyway), the
+  selection presence key carries `curPg` so a page switch always resends
+  (0680), `_lastCursorSend` throttles only a single window, `_pCt` is
+  rebased by `Net.init` (0467), and `_imgIn`/`_imgPending` correctly
+  survive as content-addressed doc-scoped state (1023). Contract + 4
+  behavioural pins (ADR-1031).
+
 ## [1.8.056]
 - **Docs+pin: join-handshake × room-switch + restore-path lifecycle audit
   (clean)** — verified `Net.init` resets every in-flight join artifact on a
