@@ -16261,6 +16261,15 @@ try {
     assert.ok(!Net._dcQ,'queue released after drain');
     Net.dc=_odc2;
     console.log('  ✓ _dcQ arms on send-throw, drains FIFO, drops oversized (ADR-1018)');
+    // ADR-1019: every live mutation reaches a repaint — _apply always
+    // ends _iv-or-_iD, both invalidators co-schedule the minimap, and
+    // draw() re-adds gesture-mutated targets over the stale grid.
+    assert.ok(html.includes('if(!_dmg){_iv();}'),'op tail falls back to full invalidate without damage');
+    assert.ok(html.includes('else _iD(_dmg);'),'op tail routes bounded damage through _iD');
+    assert.ok(/function invalidate\(\)\{_damage=null;needsRender=true;needOverlay=true;if\(!_rafId\)_rafId=_rAF\(frame\);_ms\(\)\}/.test(html),'invalidate co-schedules minimap');
+    assert.ok(/invalidateDamage\(r\)\{_damage=_dmgU\(_damage,r\);needsRender=true;needOverlay=true;if\(!_rafId\)_rafId=_rAF\(frame\);_ms\(\)\}/.test(html),'invalidateDamage co-schedules minimap');
+    assert.ok(html.includes('if(ptr.dragStartShapes)')&&html.includes('ptr.resizeOrig')&&html.includes('ptr.rotOrig'),'gesture-mutated targets re-added over the stale grid');
+    console.log('  ✓ every mutation path repaints + minimap co-schedule (ADR-1019)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');

@@ -1,3 +1,8 @@
+## [1.8.045] - 2026-10-01
+
+### Docs + Pin
+- **live 変異→再描画チェーン監査が clean 完走** (ADR-1019): `_apply` 末尾が `_iv`/`_iD` の全 op 網羅・両 invalidator が `_ms()` で minimap 同スケジュール・in-place ジェスチャ変異は draw() の `need` 再チェック (move/resize/rotate) + arm-in-view 不変条件 (connector drag) で stale grid 欠落を閉塞。ソースピン 5 assert
+
 ## [1.8.044] - 2026-10-01
 
 ### Docs + Pin
