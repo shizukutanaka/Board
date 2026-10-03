@@ -1,3 +1,12 @@
+## [1.8.054]
+- **Fix: silent backup-write loss** — `Persist.saveBackup` (the pre-swap
+  safety-net write behind clear/import/share swaps) swallowed
+  quota/tx-abort failures in a catch-all, so the destructive swap
+  proceeded with no recoverable `:prev` and no warning. The catch now
+  reuses `save()`'s `_saveErrMsg` surfacing (ADR-1028); restoreBackup
+  already surfaced via `backupRestoreFailed`. Behavioural pin: a
+  throwing transaction produces exactly one `err` toast.
+
 ## [1.8.053] - 2026-10-06
 
 ### Docs / Tests
