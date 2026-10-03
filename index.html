@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.046';   // ADR-1020
+const V='1.8.047';   // ADR-1021
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2169,6 +2169,7 @@ if(_fid)for(const c of tb.children||[])if(c._pgid===_fid){c.focus();break}
 const _onc=tb.querySelector&&tb.querySelector('.pg-t.on');if(_onc&&_onc.scrollIntoView)_onc.scrollIntoView({block:'nearest',inline:'nearest'})
 if(UI&&UI.refreshPeers)UI.refreshPeers()}   // ADR-0686: page renames/set changes update the avatar '· page' tooltip
 const _shV=()=>_sh().filter(s=>_sv(s)&&_pgOk(s));   // ADR-0494/0646: visible+current-page subset
+const _shWB=()=>_ln(_eraseBatch)?_sh().concat(_eraseBatch):_sh();   // ADR-1021: serialize sees live mid-erase members
 const _ulv=s=>!_lk(s)&&_sv(s)&&_pgOk(s);   // ADR-0496/0646
 const _ul=s=>!_lk(s);   // ADR-0506
 const _cpT=p=>p.then(ok=>_tst(t(ok?'copied':'copyFailed'),ok?'ok':'warn'));   // ADR-0507
@@ -6701,7 +6702,7 @@ function exportSVG(shapes=_shV()){   // ADR-0658
   _clk(a);_rO(url);
   _oT('exportedSVG');
 }
-function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
+function exportBoard(shapes=_shWB()){                       // ADR-0114
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
   const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),pages:_pgs(),curPg:state.curPg,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
@@ -7074,7 +7075,7 @@ function importDrawioFile(file,wp){
 function exportExc(){
   if(!_nS()){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=_oURL(new Blob([_JS(excScene(_shV()))],{type:'application/json'}));   // ADR-0658: single-scene exports scope to the viewed page
+  const _bu=_oURL(new Blob([_JS(excScene(_shWB().filter(s=>_sv(s)&&_pgOk(s))))],{type:'application/json'}));   // ADR-0658: single-scene exports scope to the viewed page
   a.href=_bu;a.download=(_dn()||'board')+'.excalidraw';
   _clk(a);_rO(_bu);
   _oT('exportedExc');
@@ -7187,7 +7188,7 @@ function boardToDrawio(shapes){
     :`<diagram name="${_dioEsc(_dn()||'Page-1')}">`+_dioModel(_dioCells(shapes))+`</diagram>`;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<mxfile compressed="false">${body}</mxfile>`;
 }
-function exportDrawio(shapes=_sh().filter(_sv)){   // ADR-0678
+function exportDrawio(shapes=_shWB().filter(_sv)){   // ADR-0678
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
   const _bu=_oURL(new Blob([boardToDrawio(shapes)],{type:'application/xml'}));
@@ -7548,7 +7549,7 @@ function importBoardText(txt,wp){
 // ADR-0115 (outbound half): whole board (or selection via exportSelection)
 // as .board JSON on the clipboard — moves content between boards/tabs without
 // a file round-trip.
-function copyBoardJSON(shapes=_sh()){
+function copyBoardJSON(shapes=_shWB()){
   if(!_ln(shapes)){_wT(_EM);return}
   _cpT(copyText(_JS({v:V,docName:_dn(),pages:_pgs(),curPg:state.curPg,shapes:roundShapesForExport(shapes)})));
 }
@@ -8245,9 +8246,8 @@ const Net={
   // entries stay distinct across reorders. `ops` is required: a non-empty
   // receiver already has shapes — omitting ops fails to sync.
   _snapshotMsg(){
-    // ADR-0058: `wc` ships each shape's per-prop write clock so a
-    // non-empty receiver can LWW-merge properties
-    const ops=_sh().map(s=>({
+    // ADR-0058: ship each shape's per-prop wc for non-empty LWW merge
+    const ops=_shWB().map(s=>({
       op:'add',shape:clone(s),wc:clone(_wc()[s.id]||{}),
       clock:{peer:_pi(),seq:'snap:'+s.id,ts:0,_snap:true}
     }));
@@ -8487,7 +8487,7 @@ const Share={
     return{ct:Share._b64uEnc(all),k:Share._b64uEnc(raw)};
   },
   async exportToUrl(enc){
-    const data={v:V,shapes:roundShapesForExport(_sh()),name:_dn(),pages:_pgs(),curPg:state.curPg,
+    const data={v:V,shapes:roundShapesForExport(_shWB()),name:_dn(),pages:_pgs(),curPg:state.curPg,
       viewport:_vpS()};   // ADR-0112: receiver opens at the sharer's view
     const json=_JS(data);
     // CompressionStream if available, else base64
@@ -8679,7 +8679,7 @@ const Persist={
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       // ADR-0031: strip image bytes from the doc record into content-hash
       // blobs — doc + :prev share one copy; autosave clones stay small.
-      const{slim,puts}=_imgSlim(_sh(),stored);
+      const{slim,puts}=_imgSlim(_shWB(),stored);
       for(const[k,d]of puts)imgs.put(d,k);
       // GC: drop blobs neither the live doc nor the pre-replace backup reference
       const prev=await reqDone(_oS(tx,DB_STORE).get(DOC_KEY+':prev'));
@@ -8734,8 +8734,7 @@ const Persist={
       _sz();
     }
   },
-  // ADR-0004 (self-overwrite): doClearAll/importBoard swap _sh() wholesale —
-  // without a pre-replace backup the old board is gone. Best-effort only.
+  // ADR-0004: pre-replace backup so doClearAll/importBoard swaps stay recoverable.
   async saveBackup(shapes,viewport,docName){
     if(!this.db||!shapes||!_ln(shapes))return;
     try{
@@ -8743,7 +8742,7 @@ const Persist={
       const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
-      const{slim,puts}=_imgSlim(shapes,stored);
+      const{slim,puts}=_imgSlim(shapes.concat(_eraseBatch),stored);
       for(const[k,d]of puts)imgs.put(d,k);
       _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,pages:_pgs(),curPg:state.curPg,savedAt:_now()},DOC_KEY+':prev');
       await txDone(tx);

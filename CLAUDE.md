@@ -1069,6 +1069,7 @@ Board/
 │   └── ADR-1018-dcq-lifecycle.md  # `_dcQ` 順序性監査 clean — FIFO・4096/32MiB キャップ・low-water drain・dead-link リセット
 │   └── ADR-1019-mutation-repaint-chain.md  # 変異→再描画チェーン監査 clean — `_apply` 末尾 `_iv`/`_iD` 全網羅・`_ms` 同調・ジェスチャ `need` 補償
 │   └── ADR-1020-viewport-persist.md  # viewport 変異の永続化 — pan/zoom/fit 全9経路が `_ps()` 到達・プレゼン `leave()` は復元後 vp を保存
+│   └── ADR-1021-erase-batch-serialization.md  # erase-batch シリアライズ — `_shWB()` union で save/snapshot/export 全経路が mid-erase メンバーを含む
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
