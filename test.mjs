@@ -277,7 +277,7 @@ const checks = [
   ["_slimOp strips undo-only fields from wire ops (ADR-0625)", html.includes("const{origSel:_o2,moved:_m2,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
-  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
+  ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
   ["contextlost purges GPU caches on restore (ADR-0627)", html.includes("_on(canvas,'contextlost',_pd)") && html.includes("_on(canvas,'contextrestored',_ctxUp)") && html.includes("_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache()")],
   ["img blob resolves evicted pending stragglers (ADR-0629)", html.includes("for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}")],
   ["resize handlers debounced (ADR-0631)", html.includes("_on(window,'resize',_resizeSoon)") && html.includes("_on(visualViewport,'resize',_resizeSoon)") && html.includes("_on(screen.orientation,_CH,_resizeSoon)")],
@@ -14789,6 +14789,31 @@ try {
     assert.strictEqual(byId(E10.id)?.stroke,'#123456','cancel restores the clone carrying the remote patch');
     assert.strictEqual(state.tool,'eraser','gesture state stays consistent through cancel');
     console.log('  ✓ erase-batch window: remote del survives cancel, remote patch lands on the clone (ADR-0952)');
+    // ADR-0953: wholesale mutations must see erase-window members like peers do —
+    // _unB returns them to the scene before the tomb-or-keep scan, and _rs
+    // wholesale adopts drop the pending batch with the old scene.
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';state._lastRep=null;
+    const E11=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E11});
+    fire('pointerdown',5,5);
+    Store.applyRemote({op:'replace',before:[],after:[],clock:{peer:'peer9',seq:3,ts:Date.now()+30}});
+    fireWin('blur');
+    assert.ok(!byId(E11.id),'remote replace swaps the batched id away — cancel resurrects nothing');
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E12=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E12});
+    fire('pointerdown',5,5);
+    Store.commit({op:'clear'});
+    fireWin('blur');
+    assert.ok(!byId(E12.id),'local clear during the window tombs the batched id — cancel resurrects nothing');
+    reset();state.viewport={x:0,y:0,zoom:1};state.tool='eraser';
+    const E13=Shape.make('rect',{x:0,y:0,w:10,h:10,fill:'#000'});
+    Store.commit({op:'add',shape:E13});
+    fire('pointerdown',5,5);
+    Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp'},false);
+    fireWin('blur');
+    assert.ok(!byId(E13.id),'snapshot wholesale adopt drops the pending erase batch');
+    console.log('  ✓ erase-batch window × wholesale ops: replace/clear/snapshot converge the batched member (ADR-0953)');
   }
 
     // ADR-0646: multi-page — wire-convergent page ops + per-page view filter
@@ -15547,6 +15572,7 @@ pass += 4; // ADR-0949 send-funnel exception-safety pins
 pass += 3; // ADR-0950 pointer bookkeeping leak pins
 pass += 4; // ADR-0951 lblpos cancel-restore pins
 pass += 4; // ADR-0952 erase-batch remote-op window pins
+pass += 3; // ADR-0953 erase-batch wholesale-op pins
 pass += 7; // ADR-0943 second-pointer abort pins
 pass += 8; // ADR-0945 mid-gesture overlay-open cancel pins
 pass += 8; // ADR-0948 mid-gesture button-path cancel pins
