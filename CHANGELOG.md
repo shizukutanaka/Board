@@ -1,3 +1,15 @@
+## [1.8.055]
+- **Docs+pin: stamp×drop coverage symmetry audit (clean)** — per-property
+  LWW arbitration audited end-to-end: `_lwwDrop` (drop stale writes) and
+  `_stampWrites` (record applied write clocks) share the `_lwwOp`/`_chg`
+  gates and cover the identical key space; structural keys
+  (pg/frac/groupId/`_`-prefixed/non-beautify `type`) stay outside per-prop
+  LWW, mirroring the intake-side strips (ADR-0912/0913). undo stamps the
+  inverse wire ops, redo stamps the restamped op, applyRemote stamps after
+  applying; connClears mutations are un-stamped but deterministic on both
+  sides (convergent). Contract rule + behavioural pins (remote upd stamps
+  wclock → stale upd dropped → newer upd restamps) (ADR-1029).
+
 ## [1.8.054]
 - **Fix: silent backup-write loss** — `Persist.saveBackup` (the pre-swap
   safety-net write behind clear/import/share swaps) swallowed
