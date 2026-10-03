@@ -1,3 +1,8 @@
+## [1.7.984] - 2026-10-01
+
+### Fixed
+- commit 時系列の不変条件を `_recordCommitted` へ内蔵 (ADR-0958): `_rcOp` を迂回する直接 `_recordCommitted` サイト (ungroup / unlockAll / beautify / `_repC` 系 import・clear) が pending ナッジセッションを flush せず、history/wire の順序が実時間順と反転し得た残穴を閉塞。`_nugEnd()` を `_recordCommitted` 先頭に移し「pending nudge は常に後続 commit より先に着地」を全経路で担保 — 再帰は `_nug=null` 先行で no-op、undo/redo/switchPage の明示 flush は維持 (非 commit 経路のため)
+
 ## [1.7.983] - 2026-10-01
 
 ### Fixed
