@@ -2614,6 +2614,32 @@ try {
     state.shapes.length=0;state.wclock={};_invalidateGrid();
     console.log('  ✓ finalize-bridge tomb parity (ADR-0991)');
   }
+  // ADR-0992: stale-reference × removal-path completeness — anything that
+  // outlives a shape either re-resolves by id (byId is a live linear scan) or
+  // is purged at the remove site (_psc/_pcC), and every _apply entry carries a
+  // fabricated (commit) or validated (applyRemote) clock.
+  {
+    state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;_invalidateGrid();
+    Store.applyRemote({op:'add',shape:{id:'nc1',type:'rect',x:0,y:0,w:10,h:10,z:1}});
+    assert.ok(!byId('nc1'),'a clock-less remote op is rejected at the gate');
+    const sA=Shape.make('rect',{x:0,y:0,w:10,h:10});sA.id='cm1';
+    const op={op:'add',shape:sA};
+    Store.commit(op);
+    assert.ok(op.clock&&op.clock.peer===state.peerId&&op.clock.seq>0&&op.clock.ts>0,'commit stamps a (peer,seq,ts) clock before apply');
+    _penCache.set('pc9',{cv:{},px:4});Net._imgPending.set('pc9',{k:'k',t0:nowTs()});
+    _psc('pc9');
+    assert.ok(!_penCache.has('pc9')&&!Net._imgPending.has('pc9'),'_psc clears the whole per-shape cache family for the id');
+    const pen=Shape.make('pen',{pts:[[0,0,0.5],[8,8,0.5]],stroke:'#000',size:4});pen.id='pe9';
+    state.shapes.push(pen);_invalidateGrid();
+    state.viewport={x:0,y:0,zoom:1};   // pickTop tolerance is zoom-dependent
+    _penCached(pen);
+    assert.ok(_penCache.has('pe9'),'precondition: the pen bitmap is cached');
+    eraseAt({x:1,y:1});
+    assert.ok(!state.shapes.some(s=>s.id==='pe9')&&!_penCache.has('pe9'),'eraseAt splices the shape and purges its cache entry');
+    flushErase();
+    state.shapes.length=0;state.wclock={};state.history=[];state.histIdx=-1;_invalidateGrid();
+    console.log('  ✓ stale-reference × removal completeness (ADR-0992)');
+  }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
@@ -16682,6 +16708,7 @@ pass += 6; // ADR-0942 mid-gesture tool-key pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
   pass += 5; // ADR-0991 finalize-bridge tomb parity pins
+  pass += 5; // ADR-0992 stale-reference × removal completeness pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

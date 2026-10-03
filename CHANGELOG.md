@@ -1,3 +1,8 @@
+## [1.8.018] - 2026-10-01
+
+### Docs + Test
+- stale 参照×除去経路の完備性監査の完走を文書化 (ADR-0992): 図形を「見続ける」全ての参照が (a) id で live 再解決するか (b) 除去サイトでパージされるかを8軸で走査 — 編集オーバーレイ (text/label/slider の `byId`/`_lk` ゲート)、presence 選択の dead-id 描画、タイマのクロージャ (全て live 再解決)、id 索引無効化 (`_apply` 先頭 `_iG` + `byId` 線形スキャンで腐りえない)、`_opIds` 収穫の全 op 網羅、`_apply` の時計保証 (commit `_fck` 製造 / applyRemote `validClock` 棄却)、dedup キー一意性 (起動毎 incarnation peer + 単調 seq)、`_psc`/`_pcC` の全除去経路カバー (del splice・eraser・`clear`/`replace`/`_rs`/`pageDel` 全掃除)。実害なし — 契約を5 assert でピン化 (clock ゲート実経路・commit 時計製造・`_psc` ファミリ purge・`eraseAt` の splice+purge)
+
 ## [1.8.017] - 2026-10-01
 
 ### Fixed
