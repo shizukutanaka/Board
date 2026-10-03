@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.961';   // ADR-0935
+const V='1.7.962';   // ADR-0936
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1181,7 +1181,7 @@ let DPR=_max(1,_min(3,_dpr()||1));
 const _penBboxCache=_mP();
 const G={
   w2s(p){const v=_vp();return{x:(p.x-v.x)*v.zoom,y:(p.y-v.y)*v.zoom}},
-  s2w(p){const v=_vp();return{x:_xC(p.x/v.zoom+v.x),y:_xC(p.y/v.zoom+v.y)}},   // ADR-0935
+  s2w(p){const v=_vp();return{x:_xC(p.x/v.zoom+v.x),y:_xC(p.y/v.zoom+v.y)}},
   bbox(s){
     if(_pn(s)){
       // Memoize the O(pts) envelope walk (per frame in inView() and once per
@@ -2037,11 +2037,11 @@ const Shape={
   translate(s,dx,dy){
     if(_pn(s)){for(const p of s.pts){p[0]=_xC(p[0]+dx);p[1]=_xC(p[1]+dy)}}
     else if(_conn(s.type)){
-      // ADR-0147: bend is world-coord — translate with the conn; trunk orientation survives translation so read it first.
+      // ADR-0147: bend is world-coord — read the trunk before translating.
       const tr=s.bend!=null?_elbowTrunk(s):null;
       s.x1=_xC(s.x1+dx);s.y1=_xC(s.y1+dy);s.x2=_xC(s.x2+dx);s.y2=_xC(s.y2+dy);const wa=_wayArr(s);if(_ln(wa)){for(const w of wa){w.x=_xC(w.x+dx);w.y=_xC(w.y+dy)}s.way=wa}   // ADR-0090/0935
       if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);s.bend=_xC(s.bend+(vert?dx:dy))}}
-    else{s.x=_xC(s.x+dx);s.y=_xC(s.y+dy)}  // rect, ellipse, text, image, sticky — all have x/y
+    else{s.x=_xC(s.x+dx);s.y=_xC(s.y+dy)}  // box types — all have x/y
   },
   make(type,extras){
     const base={id:uid(),type,z:nextZ(),
@@ -3680,14 +3680,13 @@ function resizeSnap(orig,handle,wp){
 // so no float error accumulates across the drag.
 function _mapToBox(sh,orig,ob,vb){
   const sx=vb.w/(ob.w||1),sy=vb.h/(ob.h||1);   // ADR-0888: zero-extent gBox → collapse, not NaN
-  const M=(px,py)=>({x:vb.x+(px-ob.x)*sx,y:vb.y+(py-ob.y)*sy});
+  const M=(px,py)=>({x:_xC(vb.x+(px-ob.x)*sx),y:_xC(vb.y+(py-ob.y)*sy)});   // ADR-0936
   if(orig.pts)sh.pts=orig.pts.map(p=>{const q=M(p[0],p[1]);return[q.x,q.y,p[2]]});
   else if(orig.x1!=null){const a=M(orig.x1,orig.y1),b=M(orig.x2,orig.y2);sh.x1=a.x;sh.y1=a.y;sh.x2=b.x;sh.y2=b.y;if(orig.way)sh.way=_wayArr(orig).map(p=>M(p.x,p.y));   // ADR-0090
     // ADR-0148: remap the trunk anchor so the elbow keeps its offset.
     if(orig.bend!=null){const tr=_elbowTrunk(orig);if(tr){const ta=M(tr[0].x,tr[0].y),tb=M(tr[1].x,tr[1].y);
       sh.bend=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y)?ta.x:ta.y}}
-    // ADR-0152: cbend is a signed PERPENDICULAR offset — the affine map
-    // scales it by chord/new-chord (clamped); a cross-handle flip flips chirality.
+    // ADR-0152: cbend is a perpendicular offset — scale by chord ratio; a cross-handle flip flips chirality.
     if(orig.cbend!=null){const sx=vb.w/ob.w||1,sy=vb.h/ob.h||1,ol=_hp(orig.x2-orig.x1,orig.y2-orig.y1)||1,nl=_hp(sh.x2-sh.x1,sh.y2-sh.y1)||1;
       sh.cbend=orig.cbend*sx*sy*ol/nl}}
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
@@ -3711,7 +3710,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
     const vorig={x:ob.x,y:ob.y,w:ob.w,h:ob.h,id:orig.id};
     applyResize(vbox,handle,vorig,wp,shift,alt);
     const sx=vbox.w/ob.w,sy=vbox.h/ob.h;
-    sh.pts=orig.pts.map(p=>[vbox.x+(p[0]-ob.x)*sx,vbox.y+(p[1]-ob.y)*sy,p[2]]);
+    sh.pts=orig.pts.map(p=>[_xC(vbox.x+(p[0]-ob.x)*sx),_xC(vbox.y+(p[1]-ob.y)*sy),p[2]]);
     const _rb=_bb(sh);state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${_rnd(_abs(_rb.w))} × ${_rnd(_abs(_rb.h))}`};
     return;
   }
@@ -3734,7 +3733,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
       const dx=sp.x-fx,dy=sp.y-fy,dd=_hp(dx,dy);
       if(dd){const q=_rnd(_at2(dy,dx)/(_PI/4))*(_PI/4);sp={x:fx+_cos(q)*dd,y:fy+_sin(q)*dd}}
     }
-    if(handle==='p1'){sh.x1=sp.x;sh.y1=sp.y}else{sh.x2=sp.x;sh.y2=sp.y}
+    if(handle==='p1'){sh.x1=_xC(sp.x);sh.y1=_xC(sp.y)}else{sh.x2=_xC(sp.x);sh.y2=_xC(sp.y)}
     const _bv=_bindAt(handle==='p1'?sh.x1:sh.x2,handle==='p1'?sh.y1:sh.y2);
     state.bindPreview=(_bv&&_bv!==sh.id&&_bv!==sh[bk==='a'?'b':'a'])?_bv:null;
     state.readout={x:(sh.x1+sh.x2)/2,y:_max(sh.y1,sh.y2),label:`↔ ${_rnd(_hp(sh.x2-sh.x1,sh.y2-sh.y1))}`};
@@ -3778,6 +3777,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
       sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;                            // translate to re-pin
     }
   }
+  for(const k of 'x,y,w,h'.split(','))sh[k]=_xC(sh[k]);   // ADR-0936
   const _rb=_bb(sh);
   state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${_rnd(_abs(_rb.w))} × ${_rnd(_abs(_rb.h))}`};
 }
@@ -6544,7 +6544,7 @@ function _rotBend(s,tr,rot){
   else s.bend=null;
 }
 function _rotPtsAbout(s,gx,gy,cs,sn){
-  const rot=(px,py)=>({x:gx+(px-gx)*cs-(py-gy)*sn,y:gy+(px-gx)*sn+(py-gy)*cs});
+  const rot=(px,py)=>({x:_xC(gx+(px-gx)*cs-(py-gy)*sn),y:_xC(gy+(px-gx)*sn+(py-gy)*cs)});   // ADR-0936
   if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
   else if(s.x1!=null){const tr=s.bend!=null?_elbowTrunk(s):null;const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}   // ADR-0090
     if(tr)_rotBend(s,tr,rot);}
