@@ -2640,6 +2640,44 @@ try {
     state.shapes.length=0;state.wclock={};state.history=[];state.histIdx=-1;_invalidateGrid();
     console.log('  ✓ stale-reference × removal completeness (ADR-0992)');
   }
+  // ADR-0993: undo × remote-removal arbitration symmetry — every backward gate
+  // mirrors the peers' forward gate on the emitted undo-wire ops: dead-shape
+  // no-ops, tomb parity, and per-key LWW restore drops.
+  {
+    state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.history=[];state.histIdx=-1;state.seenOps=new Set();_invalidateGrid();
+    const ob=Net.broadcast;let sent=[];
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10,c:'#111'});s1.id='u1';
+    Store.commit({op:'add',shape:s1});
+    Store.commit({op:'upd',id:'u1',before:{c:'#111'},after:{c:'#f00'}});
+    Store.applyRemote({op:'del',shapes:[{id:'u1',type:'rect',x:0,y:0,w:10,h:10,z:1}],clock:{peer:'rz',seq:1,ts:nowTs()+60000}});
+    assert.ok(!byId('u1'),'precondition: the remote del killed u1');
+    Net.broadcast=w=>{sent.push(w)};Store.undo();Net.broadcast=ob;
+    assert.ok(!byId('u1'),'undo of upd does not resurrect a remotely deleted shape');
+    for(const w of sent)Store.applyRemote(w);
+    assert.ok(!byId('u1'),'the undo-wire op is itself a dead-shape no-op on arrival');
+    sent=[];const s2=Shape.make('rect',{x:0,y:0,w:5,h:5});s2.id='u2';
+    Store.commit({op:'add',shape:s2});
+    Net.broadcast=w=>{sent.push(w)};Store.undo();Net.broadcast=ob;
+    assert.ok(!byId('u2')&&state.wclock['u2']._del&&sent.some(w=>w.op==='del'&&w.shapes[0].id==='u2'),'undo of add removes + writes a _del tomb, wire del mirrors it');
+    sent=[];const s3=Shape.make('rect',{x:0,y:0,w:5,h:5});s3.id='u3';
+    Store.commit({op:'add',shape:s3});
+    Store.commit({op:'del',shapes:[{...s3}]});
+    Store.applyRemote({op:'del',shapes:[{id:'u3',type:'rect',x:0,y:0,w:5,h:5,z:1}],clock:{peer:'rz',seq:2,ts:nowTs()+60000}});
+    Net.broadcast=w=>{sent.push(w)};Store.undo();Net.broadcast=ob;
+    assert.ok(byId('u3'),'undo of del resurrects — the fresh undo clock is a new write outranking the tomb');
+    for(const w of sent)Store.applyRemote(w);
+    assert.ok(byId('u3'),'the addMany undo-wire outranks the same tomb on peers — symmetric resurrection');
+    sent=[];const s4=Shape.make('rect',{x:0,y:0,w:5,h:5,c:'#111'});s4.id='u4';
+    Store.commit({op:'add',shape:s4});
+    Store.commit({op:'upd',id:'u4',before:{c:'#111'},after:{c:'#f00'}});
+    Store.applyRemote({op:'upd',id:'u4',before:{c:'#f00'},after:{c:'#0f0'},clock:{peer:'rz',seq:3,ts:nowTs()+60000}});
+    Net.broadcast=w=>{sent.push(w)};Store.undo();Net.broadcast=ob;
+    assert.strictEqual(byId('u4').c,'#111','undo restores the key — its fresh clock outranks the remote write');
+    for(const w of sent)Store.applyRemote(w);
+    assert.strictEqual(byId('u4').c,'#111','the undo-wire upd wins the same key on peers — symmetric per-key gate');
+    state.shapes.length=0;state.wclock={};state.history=[];state.histIdx=-1;_invalidateGrid();
+    console.log('  ✓ undo × remote-removal symmetry (ADR-0993)');
+  }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
