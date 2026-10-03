@@ -16244,6 +16244,23 @@ try {
     assert.strictEqual(bkn,1,'remote replace backs up the live board first');
     Persist.saveBackup=_sbk;
     console.log('  ✓ remote replace snapshots :prev before the swap (ADR-1017)');
+    // ADR-1018: _dcQ backpressure — a thrown send arms the FIFO queue,
+    // later sends queue behind it, bufferedamountlow drains in order,
+    // and >SCTP-max messages drop before they can poison the head.
+    reset();
+    const dcSents=[],dcf={readyState:'open',send(){throw new Error('full')},bufferedAmountLowThreshold:0};
+    const _odc2=Net.dc;Net.dc=dcf;
+    Net._sendDC('x'.repeat(262145));
+    assert.ok(!Net._dcQ,'oversized message dropped before arming the queue');
+    Net._sendDC('qa');Net._sendDC('qb');
+    assert.strictEqual(Net._dcQ.length,2,'failed send queues and later sends queue behind it');
+    assert.strictEqual(dcf.bufferedAmountLowThreshold,65536,'low-water threshold armed');
+    dcf.send=m=>dcSents.push(m);
+    dcf.onbufferedamountlow();
+    assert.deepStrictEqual(dcSents,['qa','qb'],'queue drains FIFO on bufferedamountlow');
+    assert.ok(!Net._dcQ,'queue released after drain');
+    Net.dc=_odc2;
+    console.log('  ✓ _dcQ arms on send-throw, drains FIFO, drops oversized (ADR-1018)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
