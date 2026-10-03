@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.020';   // ADR-0994
+const V='1.8.021';   // ADR-0995
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4549,7 +4549,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     // ADR-0556/0967: remote del or lock mid-edit folds with no phantom op
-    if(!byId(hit.id)||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}
+    if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}
     const lbl=_trm(inp.value);
     if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});_iv()}
     _lblTa=null;_rm(inp);
@@ -5545,7 +5545,7 @@ function beginText(wp){
 // editor opens (rapid note-taking like Post-it®/FigJam).
 function _stickyChain(s){
   // ADR-0556: orphaned source (remote del mid-
-  if(s.type!=='sticky'||_lk(s)||!byId(s.id))return;
+  if(!(s=byId(s.id))||s.type!=='sticky'||_lk(s))return;
   // ADR-0190: the chain inherits ALL typograph
   // reproduce the note's look, not just size/colour.
   const n=_smk('sticky',{x:s.x+s.w+16,y:s.y,w:s.w,h:s.h,color:_coo(s),fontSize:_fS(s),align:s.align,
@@ -5654,8 +5654,8 @@ function openTextEditor(s,isNew){
   _on(ta,'input',()=>{if(!_textComposing)auto();});
   _on(ta,'blur',()=>{
     const newText=ta.value;
-    // ADR-0556/0967: remote del or lock mid-edit folds with no phantom op
-    if(!byId(s.id)||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}
+    // ADR-0556/0967/0995: re-bind post-swap
+    if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}
     _sv2(ctx);
     resizeAfterTextEdit(s,newText,ctx);
     _rs2(ctx);
