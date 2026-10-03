@@ -987,6 +987,7 @@ Board/
 │   └── ADR-0936-absolute-writer-bound.md    # 絶対書込み系も ±1e7 へ (applyResize/_mapToBox/_rotPtsAbout、0935残留閉塞)
 │   └── ADR-0937-hot-path-work-bounds.md     # ホットパス仕事量監査完走 — memo/throttle/dedup/bound 網羅、実害なし
 │   └── ADR-0938-docname-writer-stamp.md    # docName 自側 writer 刻印 — 同 ts 改名の双方向採用発散を閉塞
+│   └── ADR-0939-hatch-segment-bound.md     # hatch gap 下限クランプ — 巨大 extent のセグメント爆発/描画凍結を閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

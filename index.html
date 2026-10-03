@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.964';   // ADR-0938
+const V='1.7.965';   // ADR-0939
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1937,11 +1937,12 @@ function _linePts(s){
 // ADR-0077: hatch segments over a bbox — 45° family, plus 135° when cross.
 function _hatchSegs(x,y,w,h,gap,cross){
   const out=[];
+  gap=_max(gap,(w+h)>>11);
   for(let d=-h;d<w;d+=gap)_pu(out,[x+d,y,x+d+h,y+h]);
   if(cross)for(let d=-h;d<w;d+=gap)_pu(out,[x+d+h,y,x+d,y+h]);
   return out;
 }
-// Canvas hatch: clip() reuses the current path (stroke doesn't consume it).
+// Canvas hatch: clip() reuses the current path.
 function _hatchCtx(c,s){
   const segs=_hatchSegs(s.x,s.y,s.w,s.h,_max(6,(_szz(s)||1)*4),_fs2(s)==='cross');
   _sv2(c);c.clip();_gaS(c,0.55);
