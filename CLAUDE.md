@@ -1060,6 +1060,7 @@ Board/
 │   └── ADR-1009-measure-swap-invalidation.md  # 全置換スワップで stale measure 幾何が残存 — _rs+_apply 3サイトでクリア (armed 状態監査完走)
 │   └── ADR-1010-snapshot-selection-drop.md  # Net._applySnapshot の _scl 欠落で旧盤面の選択 id 幽霊化 — _rs 直後に _scl ('replace' parity)
 │   └── ADR-1011-cache-invalidation-audit.md  # 派生キャッシュ監査 clean — キー完全性×有界性×purge サイト全網羅 (wrap キーの spacing 依存をピン化)
+│   └── ADR-1012-id-index-integrity.md  # byId 索引×変異監査 clean — 同件数入替パターン不存在・size 自己修復で構造的安全 (同件数 swap ピン)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
