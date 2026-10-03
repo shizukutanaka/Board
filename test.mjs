@@ -16151,6 +16151,15 @@ try {
     Store.commit({op:'clear'});
     assert.strictEqual(state.measure,null,'local clear drops stale measure guides');
     console.log('  ✓ wholesale swap clears stale measure chrome (ADR-1009)');
+    // ADR-1010: snapshot adopt is the same wholesale swap — selection parity
+    // with 'replace': ids of the swapped-out board must not linger.
+    reset();
+    const A9=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:A9});
+    state.selection=new Set([A9.id]);
+    Net._applySnapshot({shapes:[]});
+    assert.strictEqual(state.selection.size,0,'snapshot adopt drops stale selection ids');
+    console.log('  ✓ snapshot adopt drops stale selection (ADR-1010)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');

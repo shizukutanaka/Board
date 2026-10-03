@@ -1,3 +1,8 @@
+## [1.8.036] - 2026-10-01
+
+### Fix
+- **snapshot adopt が旧盤面の選択 id を幽霊保持する parity 穴を閉塞** (ADR-1010): 全置換スワップ全経路監査で `Net._applySnapshot` (join 採用 + sync-req 応答) だけが `_scl()` 欠落 — 'replace'/`'clear'`/import/share-link/IDB restore は全て選択破棄。mid-session 再同期が選択中に着くと swap 済み図形の死 id が `state.selection` に残り (byId-safe なので描画クラッシュはないが) status バー/SR アナウンスが幻影選択を報告、選択スコープ ops が空 op を量産。`_rs` 直後に `_scl()` 追加で 'replace' parity 完備。全置換 = transient chrome (1009) + selection の両リセット規則を確立
+
 ## [1.8.035] - 2026-10-01
 
 ### Fix
