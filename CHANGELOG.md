@@ -1,3 +1,8 @@
+## [1.8.020] - 2026-10-01
+
+### Docs + Test
+- undo-wire × ピア forward-apply 対称性監査の完走を文書化 (ADR-0994): `_undoWire` が全17種を網羅し wire op が無条件発行でも適用側ゲートが両側対称であることを検証 — locked 図形への prop-op 復元はローカル backward・ピア forward の双方で同一 `sh.locked` ゲートに落ち (0712/0716/0923 系)、pageAdd→pageDel `unpage` kill-set が両側同一 `op.shapes` でキャップ (0724)、del→addMany の `wc` 時計スナップと connClears 復元 upd が wire を正しく横断 (`_slimOp` は undo 専用フィールドのみ剥離、`_slimShapes`/`_imgSlim` は img 参照のみ縮退で validShape 通過)。実害なし — 実経路3シナリオ・10 assert でピン化 (locked 対称 no-op・wc+connClears carry・unpage kill-set parity)
+
 ## [1.8.019] - 2026-10-01
 
 ### Docs + Test
