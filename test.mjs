@@ -16596,6 +16596,33 @@ try {
       assert.strictEqual(Net._fragIn({seq:0,n:400,data:'X'},t,'rtc'),undefined,'n>384 rejected');
       console.log('  ✓ dc-queue × frag interleave bounds (ADR-1035)');
     }
+    {
+      // ADR-1036: snapshot-merge adopts existence clocks pairwise — max-merge
+      // keeps _born >= sender-born > sender-del for any live sender shape, so
+      // a snapshot can never tomb the receiver's live copy. A forged _del-only
+      // wc can install a tomb on a live shape (residual: _bN/_tmb gate real
+      // ops on the op's own clock, so convergence still applies).
+      assert.ok(html.includes("if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}"),'existence clocks merge pairwise');
+      assert.ok(html.includes("if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}"),'unknown ids adopt wc then re-run applyRemote');
+      assert.ok(html.includes("!(wd._born&&clockNewer(wd._born,wd._del))"),'a newer birth supersedes a tomb');
+      reset();
+      const mk=id=>({id,type:'rect',x:0,y:0,w:10,h:10,z:1}),clk=(seq,ts)=>({peer:'q',seq,ts});
+      state.shapes.push(mk('a1'));state.wclock['a1']={_born:clk(1,100),x:clk(2,200)};
+      Net._mergeSnapshotOp({op:'add',shape:mk('a1'),wc:{_born:clk(3,300),_del:clk(4,250),x:clk(5,400)},clock:clk(9,10)});
+      const wa=state.wclock['a1'];
+      assert.ok(wa._born.ts===300&&wa._del.ts===250,'born and del clocks both merge forward');
+      assert.ok(wa._born.ts>wa._del.ts,'sender-live shape keeps born>del — never self-tombs');
+      reset();state.shapes.push(mk('b1'));state.wclock['b1']={_born:clk(1,100)};
+      Net._mergeSnapshotOp({op:'add',shape:mk('b1'),wc:{_del:clk(2,500)},clock:clk(9,10)});
+      const wb=state.wclock['b1'];
+      assert.ok(wb._del&&wb._del.ts===500&&wb._del.ts>wb._born.ts,'forged del-only wc can install a tomb (residual)');
+      reset();
+      Net._mergeSnapshotOp({op:'add',shape:mk('c1'),wc:{_del:clk(4,500),_born:clk(3,300)},clock:clk(9,10)});
+      assert.strictEqual(state.shapes.length,0,'del>born wc keeps the tomb — no resurrection');
+      Net._mergeSnapshotOp({op:'add',shape:mk('d1'),wc:{_del:clk(4,300),_born:clk(5,400)},clock:clk(10,10)});
+      assert.strictEqual(state.shapes.length,1,'born>del wc resurrects the shape');
+      console.log('  ✓ existence-clock pairwise merge (ADR-1036)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17543,6 +17570,7 @@ pass += 6; // ADR-1032 rtc×room presence merge pins
 pass += 11; // ADR-1033 foreign img-ref marking pins
 pass += 12; // ADR-1034 wholesale intake bounds pins
 pass += 12; // ADR-1035 dc-queue frag interleave pins
+pass += 11; // ADR-1036 existence-clock merge pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

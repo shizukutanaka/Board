@@ -1,3 +1,13 @@
+## [1.8.062]
+- **Docs+pin: existence-clock pairwise merge audit (clean)** — `_mergeSnapshotOp`
+  merges `_born`/`_del` per-key via independent `clockNewer` adopts, so a
+  live sender shape (`born > del`) can never tomb the receiver's copy;
+  unknown ids adopt `wc` before `applyRemote`, making the `_tmb` verdict
+  match the sender (`del > born` keeps dead, `born > del` resurrects).
+  Accepted residual: a forged `_del`-only `wc` can install a tomb on a live
+  shape — bounded (`wcOk`/`validClock`), and real ops gate on their own
+  clock so convergence survives. Contract rule + 11 pins (ADR-1036).
+
 ## [1.8.061]
 - **Docs+pin: `_dcQ` × fragment-stream interleave audit (clean)** — frag
   streams are transport-bound (`viaRtc`-only `snap`/`opc` intake), queued
