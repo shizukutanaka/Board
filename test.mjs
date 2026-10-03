@@ -10406,6 +10406,18 @@ try {
   }
   pass += 8; // ADR-1004 SR-announce-channel pins
 
+  // ADR-1005: db absence makes save() a silent no-op — warn once, not per
+  // debounced save. The onblocked path already toasts saveBlocked.
+  {
+    assert.ok(html.includes('_dbWarn(){if(this._dbW)'),'warn-once gate exists');
+    assert.ok(html.includes('if(!this.db)return this._dbWarn()'),'save() covers db-loss paths');
+    assert.ok(html.includes('Persist._dbWarn()'),'boot surfaces open failure');
+    assert.ok(html.includes("noStore:'保存不可")&&html.includes("noStore:'No storage"),'noStore key both locales');
+    assert.ok(html.includes("r.onblocked=()=>{_oT('saveBlocked')"),'onblocked path unchanged');
+    console.log('  \u2713 no-store warn-once pins (ADR-1005, 5 asserts)');
+  }
+  pass += 5; // ADR-1005 no-store warning pins
+
   // ADR-0606: a viewport resize during presentation re-fits the current
   // frame — without it the zoom drifts off the frame after window resize /
   // mobile rotation (visualViewport resize routes through the same handler).
