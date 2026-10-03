@@ -1,3 +1,8 @@
+## [1.8.035] - 2026-10-01
+
+### Fix
+- **全置換スワップで stale measure ガイドが残存する実害を閉塞** (ADR-1009): `state.measure` は唯一「コピー幾何」を保持する transient chrome — `_drawMeasure` が `m.a`/`m.b` を id 解決なしで直接描画するため、remote 'replace'/'clear'・import/snapshot 取込・swap undo が採寸元図形を消しても Alt keyup まで幽霊ガイドが毎フレーム残った。`_rs` (import/snapshot funnel) + `_apply` 'clear'/'replace' 3サイトで `state.measure=null`。他 transient (hover/_ehov/bindPreview/_sbf) は id 解決で dead-safe、draft/lineClick は gesture/modal 所有で継続が設計意図と確認。実経路ピン (applyRemote replace + commit clear で measure 消滅)
+
 ## [1.8.034] - 2026-10-01
 
 ### Fix
