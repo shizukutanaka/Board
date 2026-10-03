@@ -1,3 +1,8 @@
+## [1.8.051] - 2026-10-06
+
+### Fixed
+- ADR-1025: the service worker never registered — `navigator.serviceWorker.register()` rejects `blob:`/`data:` script URLs by spec (scriptURL's scheme must be http/https), so the inline-blob worker introduced at v1.6.5 always rejected and the whole offline layer was dead code (the `.then()` swallowed the rejection silently). Replaced with a real `sw.js` (network-first navigations, stale-cache purge, ok-only caching) and a direct `register('sw.js')`; update-notification listener preserved. Also retargets the SW pins at `sw.js`. **Note:** this makes `sw.js` a required sibling file when hosting the app — single-file `file://` use is unaffected (SW registration just no-ops there).
+
 ## [1.8.050] - 2026-10-06
 
 ### Fixed
