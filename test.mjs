@@ -7557,6 +7557,21 @@ try {
     assert.strictEqual(cnA.y1,4,'un-skewed keys still restore');
     console.log('  ✓ ADR-0921: connClears backward LWW-gates per-key restores');
 
+    // ADR-0922: del/clear/pageDel/replace backward restores pushed shapes with
+    // only a !byId check — the wire-side gate (add/addMany tomb check,
+    // replace's wc0 tomb check) was absent, so under clock skew a remote del
+    // tomb outranking the undo clock kept the shape dead on every peer while
+    // the undoer resurrected it locally → existence split-brain.
+    reset(B);
+    B.state.pages=null;B.state.curPg=null;
+    B.state.wclock={gs1:{_del:{peer:'peerQ',seq:9,ts:Date.now()+999999}}};
+    B.Store._apply({op:'del',shapes:[cp(gsh1),{id:'gs2',type:'rect',x:1,y:1,w:5,h:5,z:2,frac:null}],
+      clock:{peer:'peerU',seq:3,ts:Date.now()}},false);
+    assert.ok(!B.state.shapes.find(s=>s.id==='gs1'),'newer remote tomb beats the undo restore — was resurrected pre-0922');
+    assert.ok(B.state.shapes.find(s=>s.id==='gs2'),'un-tombed sibling still restores');
+    assert.ok(B.state.wclock.gs1&&B.state.wclock.gs1._del,'the outranking tomb survives');
+    console.log('  ✓ ADR-0922: del backward tomb-gates shape restores');
+
     // ADR-0717 (round467): undo is itself a NEW competing write — the backward apply
     // must arbitrate under the SAME fresh clock the peers see on the undo-wire ops.
     // Feeding _lwwSkip the ORIGINAL commit clock while the wire carried a fresh _fck
@@ -15055,7 +15070,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1883; // prev 1880 + 3 ADR-0921 connClears backward LWW-gate pins
+  pass += 1886; // prev 1883 + 3 ADR-0922 backward tomb-gate pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

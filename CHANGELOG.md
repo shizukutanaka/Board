@@ -1,3 +1,8 @@
+## [1.7.948] - 2026-10-01
+
+### Fixed
+- `del`/`clear`/`pageDel`/`replace` 逆適用の shape 復元が `_del` 墓標を未検査だった非対称を閉塞 (ADR-0922): 逆適用は `!byId` のみで図形を復元していたが、対応する wire 側経路 (undo-wire の `addMany`、`replace` 前進適用の `wc0` 墓標チェック) は `clockNewer` で墓標ゲート済み — skew 下で undo クロックより ts が先のリモート削除墓標があると、ピアは墓標を維持して復元を棄却するのにローカルだけ図形を復活させ存在発散。`_tmb` helper で4サイトを wire parity の墓標ゲート化
+
 ## [1.7.947] - 2026-10-01
 
 ### Fixed
