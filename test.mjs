@@ -16573,6 +16573,29 @@ try {
       assert.ok(!('__proto__' in state.wclock['sC']),'proto keys never enter wclock');
       console.log('  ✓ wholesale intake bounds (ADR-1034)');
     }
+    {
+      // ADR-1035: DC-queue × fragment interleave — frag streams (snap/opc) ride
+      // the DC only, a queued non-frag message between chunks is inert, and a
+      // same-sender stream overlap restarts on seq0/n/src mismatch (a spliced
+      // join fails JSON.parse and the sync-req retry heals). img reassembly is
+      // content-addressed: chunks for one key are byte-identical regardless of
+      // source, and the join must hash-match the key.
+      assert.ok(html.includes("case 'snap':case 'opc':{")&&html.includes("if(!viaRtc)break;"),'frag streams are DC-only');
+      assert.ok(html.includes("if(!sn||sn.n!==n||sn.src!==src||seq===0){sn={p:new Array(n),g:0,n,src};this[key]=sn}"),'slot restarts on n/src/seq0');
+      assert.ok(html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m)"),'dcQ is count+byte capped');
+      assert.ok(html.includes("if(_imgHash(data)!==msg.key.replace(/:\\d+$/,''))break;"),'img join is hash-verified');
+      const t='_tF';
+      assert.strictEqual(Net._fragIn({seq:1,n:2,data:'B'},t,'rtc'),undefined,'mid-stream chunk buffers');
+      assert.strictEqual(Net._fragIn({seq:0,n:2,data:'A'},t,'rtc'),undefined,'seq0 restarts the slot');
+      assert.strictEqual(Net._fragIn({seq:1,n:2,data:'B'},t,'rtc'),'AB','complete stream joins');
+      assert.strictEqual(Net._fragIn({seq:1,n:2,data:'Z'},t,'bc'),undefined,'bc-sourced chunk opens its own slot');
+      assert.strictEqual(Net._fragIn({seq:1,n:2,data:'Q'},t,'rtc'),undefined,'src mismatch restarts, never splices');
+      assert.strictEqual(Net._fragIn({seq:1,n:5,data:'X'},t,'rtc'),undefined,'n mismatch restarts');
+      assert.strictEqual(Net._fragIn({seq:0,n:1,data:'x'.repeat(97*1024)},t,'rtc'),undefined,'>96KiB chunk rejected');
+      assert.strictEqual(Net._fragIn({seq:5,n:2,data:'X'},t,'rtc'),undefined,'seq>=n rejected');
+      assert.strictEqual(Net._fragIn({seq:0,n:400,data:'X'},t,'rtc'),undefined,'n>384 rejected');
+      console.log('  ✓ dc-queue × frag interleave bounds (ADR-1035)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17519,6 +17542,7 @@ pass += 7; // ADR-1031 presence-signature lifecycle pins
 pass += 6; // ADR-1032 rtc×room presence merge pins
 pass += 11; // ADR-1033 foreign img-ref marking pins
 pass += 12; // ADR-1034 wholesale intake bounds pins
+pass += 12; // ADR-1035 dc-queue frag interleave pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

@@ -1,3 +1,13 @@
+## [1.8.061]
+- **Docs+pin: `_dcQ` × fragment-stream interleave audit (clean)** — frag
+  streams are transport-bound (`viaRtc`-only `snap`/`opc` intake), queued
+  non-frag messages interleaved between chunks are inert, and same-sender
+  stream overlap restarts the reassembly slot on `seq0`/`n`/`src` mismatch
+  (a splice degrades to a dropped join + `sync-req` heal, never state
+  corruption). `img` chunks are content-addressed so same-key interleave is
+  byte-identical and the joined blob must hash-match the key. Contract rule
+  for new queued kinds + 12 pins (ADR-1035).
+
 ## [1.8.060]
 - **Docs+pin: wholesale intake bounds audit (clean)** — the snapshot family's
   aux-field surface is bounded end to end: `msg.shapes`/`msg.ops` are sliced
