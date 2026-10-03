@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.975';   // ADR-0949
+const V='1.7.976';   // ADR-0950
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -4837,10 +4837,10 @@ const _pointers=_mP();  // pointerId → {x,y}
 _on(canvas,_PD,e=>{
   _pointers.set(e.pointerId,_cPt(e));
 },{capture:true});
-_on(canvas,_PU,e=>{_pointers.delete(e.pointerId)},{capture:true});
-_on(canvas,_PC,e=>{_pointers.delete(e.pointerId)},{capture:true});
+_on(window,_PU,e=>{_pointers.delete(e.pointerId)},{capture:true});   // ADR-0950
+_on(window,_PC,e=>{_pointers.delete(e.pointerId)},{capture:true});
 _on(canvas,_PM,e=>{
-  if(_nP()<2){_pointers.set(e.pointerId,_cPt(e));return}
+  if(_nP()<2){if(e.buttons!==0)_pointers.set(e.pointerId,_cPt(e));return}   // ADR-0950
   const prev=_pointers.get(e.pointerId);
   if(!prev)return;
   _pointers.set(e.pointerId,_cPt(e));
@@ -4860,10 +4860,7 @@ let _pinchPrev=0;
 // Reset pinch state when fewer than 2 pointers
 const _resetPinch=()=>{if(_nP()<2){_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv();}}};
 
-// ADR-0517: Safari trackpad pinch — macOS/iPadOS Safari fire proprietary
-// GestureEvent (gesturestart/change/end, e.scale) instead of ctrl+wheel, so
-// trackpad pinch-zoom was silently unsupported there while Chrome/FF worked.
-// Unknown event names are inert elsewhere, so plain listeners are safe.
+// ADR-0517: Safari trackpad pinch — proprietary GestureEvent instead of ctrl+wheel; inert elsewhere.
 let _gScale=1;
 _on(canvas,'gesturestart',e=>{_pd(e);if(_pA())return;_pinchSnapNow();_gScale=e.scale},{passive:false});
 _on(canvas,'gesturechange',e=>{
@@ -4873,8 +4870,7 @@ _on(canvas,'gesturechange',e=>{
   _gScale=e.scale;
 },{passive:false});
 _on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
-_on(canvas,_PU,_resetPinch);
-_on(canvas,_PC,_resetPinch);
+_on(window,_PU,_resetPinch);_on(window,_PC,_resetPinch);   // ADR-0950
 // ADR-0534: blur can lose pointerup — re-base gesture/pointer state.
 function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}   // ADR-0608/0632: shared across blur / hidden / pagehide — stale pointer ids must not survive
 _on(window,'blur',()=>{
