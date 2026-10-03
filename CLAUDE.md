@@ -1059,6 +1059,7 @@ Board/
 │   └── ADR-1008-transient-input-state-blur.md  # transient 入力由来状態 (measure/hover/_ehov) の blur 喪失 — _clearTouchState 漏斗で閉塞
 │   └── ADR-1009-measure-swap-invalidation.md  # 全置換スワップで stale measure 幾何が残存 — _rs+_apply 3サイトでクリア (armed 状態監査完走)
 │   └── ADR-1010-snapshot-selection-drop.md  # Net._applySnapshot の _scl 欠落で旧盤面の選択 id 幽霊化 — _rs 直後に _scl ('replace' parity)
+│   └── ADR-1011-cache-invalidation-audit.md  # 派生キャッシュ監査 clean — キー完全性×有界性×purge サイト全網羅 (wrap キーの spacing 依存をピン化)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
