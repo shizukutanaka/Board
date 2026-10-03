@@ -10490,7 +10490,7 @@ try {
   {
     assert.ok(html.includes("_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden"),'hidden cancels gesture + clears touch state + hides cursor');
     assert.ok(html.includes("pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden')"),'pagehide commits the pending nudge + cancels gesture + clears touch state before flush (ADR-0959)');
-    assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}"),'shared touch-state cleanup (ADR-0608/0632)');
+    assert.ok(html.includes("function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav();state.measure=state.hover=state._ehov=null}"),'shared touch-state cleanup (ADR-0608/0632/1008)');
     console.log('  ✓ hidden/pagehide gesture cancel pinned (2 asserts)');
   }
 
@@ -16131,6 +16131,16 @@ try {
     fireKey('z',{metaKey:true,repeat:true});fireKey('z',{metaKey:true,repeat:true});   // undo stays allowed on repeat
     assert.strictEqual(state.shapes.length,0,'repeat ⌘Z still undoes');
     console.log('  ✓ repeat gate: parity toggles suppressed, continuous actions pass (ADR-1007)');
+    // ADR-1008: a window blur drops transient hover/measure chrome — the OS
+    // may swallow the Alt keyup / pointerleave that would normally clear them.
+    reset();
+    state.measure={a:{x:0,y:0,w:1,h:1},b:{x:2,y:2,w:1,h:1}};
+    state.hover='ghost';state._ehov='ghost';
+    fireWin('blur');
+    assert.strictEqual(state.measure,null,'blur drops the Alt-measure guides');
+    assert.strictEqual(state.hover,null,'blur drops the quick-conn hover id');
+    assert.strictEqual(state._ehov,null,'blur drops the eraser hover box');
+    console.log('  ✓ blur clears transient hover/measure chrome (ADR-1008)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');

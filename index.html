@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.033';   // ADR-1007
+const V='1.8.034';   // ADR-1008
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4844,12 +4844,13 @@ _on(canvas,'gesturechange',e=>{
 _on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
 _on(window,_PU,_resetPinch);_on(window,_PC,_resetPinch);   // ADR-0950
 // ADR-0534: blur can lose pointerup — re-base gesture/pointer state.
-function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}   // ADR-0608/0632: blur/hidden/pagehide — stale pointer ids must not survive
+function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav();state.measure=state.hover=state._ehov=null}   // ADR-0608/0632/1008
 _on(window,'blur',()=>{
   if(ptr.down)_cancelPointerGesture();
   _clearTouchState();
   Net.sendCursorHide();   // ADR-0611: blur doesn't fire pointerleave — hide our cursor on peers too
   if(window._prevTool){pickTool(window._prevTool);window._prevTool=null}   // space keyup lost to a blur
+  _ivO();   // ADR-1008: hover/measure chrome cleared — repaint the overlay
 });
 
 let _wheelZoomEnd=0;
@@ -9514,8 +9515,8 @@ function applyStyleToSelection(patch){
 // style op on change. Multiple input events during a drag never hit the undo stack.
 const _sbf={};
 function _sfbCapture(p){for(const id of _sl()){const s=byId(id);if(s&&!_lk(s)&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
-function _sfbBlur(p){const b=[],a=[];for(const k in _sbf)if(_ew(k,p)){const s=byId(k.slice(0,-p.length));if(s&&!_lk(s)&&_sbf[k]!==s[p])_pp(b,a,s.id,p,_sbf[k],s[p]);delete _sbf[k]}if(_ln(b))_styleOp(b,a)}   // ADR-0962: gesture boundary — commit preview drift as one op, then clear
-function _sfbFlush(p,v){const b=[],a=[],sel=_sT(_sl());for(const k in _sbf)if(_ew(k,p)&&!sel.has(k.slice(0,-p.length)))delete _sbf[k];for(const id of sel){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){_pu(b,{id,[p]:_sbf[k]});_pu(a,{id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}   // ADR-0962: prune keys whose id left the selection
+function _sfbBlur(p){const b=[],a=[];for(const k in _sbf)if(_ew(k,p)){const s=byId(k.slice(0,-p.length));if(s&&!_lk(s)&&_sbf[k]!==s[p])_pp(b,a,s.id,p,_sbf[k],s[p]);delete _sbf[k]}if(_ln(b))_styleOp(b,a)}   // ADR-0962
+function _sfbFlush(p,v){const b=[],a=[],sel=_sT(_sl());for(const k in _sbf)if(_ew(k,p)&&!sel.has(k.slice(0,-p.length)))delete _sbf[k];for(const id of sel){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){_pu(b,{id,[p]:_sbf[k]});_pu(a,{id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}   // ADR-0962
 
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){

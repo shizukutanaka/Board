@@ -1,3 +1,8 @@
+## [1.8.034] - 2026-10-01
+
+### Fix
+- **window blur で transient 視覚状態が凍結残存する実害を閉塞** (ADR-1008): blur/hidden/pagehide は Alt keyup や pointerleave を飲み込むため、⌥measure ギャップガイド (`state.measure`)・quick-conn ドットの hover id (`state.hover`)・消しゴム赤枠プレビュー (`state._ehov`) が入力の生じた瞬間のまま残り、復帰後も毎フレーム幽霊描画 (measure は次の Alt keydown まで永続)。pointer 系は 0604/0608/0611 で網羅済みだったが hover/修飾由来の3状態だけが未カバー — 全ライフサイクル経路から呼ばれる `_clearTouchState` に3クリアを畳み込み、blur で `_ivO()` 再描画。新規 transient 視覚状態は同漏斗または per-frame 再導出必須の規則化。実経路ピン (fireWin('blur') で3状態クリア)
+
 ## [1.8.033] - 2026-10-01
 
 ### Fix
