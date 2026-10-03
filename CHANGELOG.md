@@ -1,3 +1,9 @@
+## [1.7.930] - 2026-10-01
+
+### Fixed
+- `board.peer` の永続値が無検証で local peer id へ流入: 任意長/「rtc:」接頭辞が全 op のペイロードを膨張させ ADR-0827 の rtc:/BC 区別を攪乱し得た — `/^[a-z0-9-]{8,64}$/i` ゲートで再生成 (ADR-0904)
+- `board.theme` の永続値が無検証で `dataset.theme`/`_themeMode()` へ着地 — `'light'|'dark'` のみ受理、他は auto (ADR-0904)
+
 ## [1.7.929] - 2026-10-01
 
 ### Fixed
