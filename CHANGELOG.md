@@ -1,3 +1,8 @@
+## [1.8.011] - 2026-10-01
+
+### Fixed
+- 全置換パージ `_pcC()` の `Net._imgPending.clear()` が **生き残り図形の parked img 参照まで殺し** imgq 再送ループを断っていた実害を `_pcR()` 再 park で閉塞 (ADR-0985): 'replace' keep 存続・'clear' keep・pageDel 生存メンバー・`_rs` 取込 (ブート復元では `_attachShape` の park 直後に即 wipe!) — いずれも blob 応答喪失時に straggler 走査だけでは救えず永久 placeholder。存続図形の `img` 参照を swap 確定点で再 park して再送を維持 (ADR-0753 の「wipe 安全」契約を「解決は保持・再送も保持」へ拡張、既存ピンを新契約へ更新 + 新ピン5 assert)
+
 ## [1.8.010] - 2026-10-01
 
 ### Fixed

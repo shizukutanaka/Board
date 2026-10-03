@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.010';   // ADR-0984
+const V='1.8.011';   // ADR-0985
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1650,7 +1650,7 @@ const Store={
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
             _wc()[sh.id]=_wM({_del:op.clock});   // ADR-0734
-            _psc(sh.id);                     // ADR-0424/0427
+            _psc(sh.id);   // ADR-0424/0427
           }
           if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of _oe(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738
           // connector clears after shapes are gone
@@ -1699,7 +1699,7 @@ const Store={
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();}   // ADR-0626/0736/0926/0953
+        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}   // ADR-0626/0736/0926/0953/0985
         else{for(const s of op.shapes)if(!byId(s.id)&&!_tmb(s.id,op)){_sh().push(Net._attachShape(clone(s)));_bT(s.id,op.clock)}_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723/0922/0926
         break;}
       case 'replace':{
@@ -1712,7 +1712,7 @@ const Store={
         const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock));   // ADR-0736/0926
         _sh().length=0;_scl();state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646
         for(const s of _uniq(next)){const wd=wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790/0922
-        for(const s of keep)_sh().push(s);   // ADR-0926: a newer re-add outranks the swap's removal
+        for(const s of keep)_sh().push(s);_pcR();   // ADR-0926/0985: a newer re-add outranks the swap's removal
         _iG();   // ADR-0613
         _sz();
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
@@ -2095,9 +2095,9 @@ let _penCachePx=0;
 // ADR-0424: per-shape caches keyed by shape id die with the shape — purge on
 // wholesale `state.shapes=` replacement — dead entries would otherwise sit
 // until the global caps evict them.
-const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()}   // ADR-0445: wholesale swap also drops parked img refs
+const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins
-const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC()}   // ADR-0493/0790/0953: wholesale replace — dup ids; a live erase batch dies
+const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985: wholesale replace — dup ids; a live erase batch dies
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a heal misses them
@@ -2155,7 +2155,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the page's membe
   for(const s of _sh())if((s.pg||firstId)===op.id&&(s.locked||_bN(s.id,op.clock)))s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707: connectors on a removed member unbind — recorded for undo
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
-  state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();
+  state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();_pcR();   // ADR-0985
   const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725: land via switchPage — announced + cursor hidden
 }
 function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}

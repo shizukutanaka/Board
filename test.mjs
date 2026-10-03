@@ -2900,9 +2900,10 @@ try {
     assert.strictEqual(byId(im2.id).img,undefined,'resolved ref dropped');
     console.log('  ✓ pageAdd member attach pins img parking + resolution (ADR-0752)');
   }
-  // ADR-0753: a remote pageDel's _pcC wipes parked img refs WHOLESALE — including a
-  // SURVIVING page's member. The straggler img-scan (ADR-0629) is the safety net:
-  // the blob still resolves the parked shape when it arrives.
+  // ADR-0753/0985: a remote pageDel's _pcC purges parked img refs wholesale — but
+  // ADR-0985 re-parks SURVIVING shapes so their imgq retry loop stays alive (a lost
+  // blob answer would otherwise leave a permanent placeholder). The straggler
+  // img-scan (ADR-0629) still resolves the parked shape when the blob arrives.
   {
     state.pages=null;state.curPg=null;state.shapes.length=0;_invalidateGrid();
     Net._imgPending.clear();Net._imgIn.clear();
@@ -2913,7 +2914,7 @@ try {
     im.pg='pA';state.shapes.push(im);_invalidateGrid();Net._imgPending.set(im.id,{k:kP,t0:nowTs()});
     Store.applyRemote({op:'pageDel',id:'pB',firstId:'pA',clock:{peer:'zz',seq:52,ts:9}});
     assert.ok(byId(im.id),'member of the surviving page stays');
-    assert.strictEqual(Net._imgPending.has(im.id),false,'pageDel _pcC wipes parked refs wholesale');
+    assert.strictEqual(Net._imgPending.get(im.id)?.k,kP,'ADR-0985: surviving member keeps its imgq retry loop');
     Net._onRecv({k:'img',key:kP,seq:0,n:1,data:'data:image/png;base64,DD',peer:'peerZ'},false);
     assert.strictEqual(byId(im.id).dataUrl,'data:image/png;base64,DD','straggler resolves after the wipe');
     assert.strictEqual(byId(im.id).img,undefined,'ref dropped on resolution');
@@ -10466,6 +10467,28 @@ try {
     assert.strictEqual(byId(keepObj.id).x,0,'ADR-0984: cancel restores the arm-time value on a keep survivor');
     assert.strictEqual(byId(swObj.id).x,777,'ADR-0984: swapped-in id keeps the incoming value');
     console.log('  ✓ ADR-0984: reborn marks fire only on applied born stamps — keep survivors restore');
+    pass += 5;
+  }
+  // ADR-0985: wholesale _pcC purges _imgPending — surviving shapes must be
+  // re-parked or their imgq retry loop dies: a lost blob answer then leaves a
+  // permanent placeholder (the straggler scan only heals blobs that DO arrive).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;
+    Net._imgPending.clear();Net._imgIn.clear();
+    const k9=_imgHash('data:image/png;base64,EE');
+    const kp=Shape.make('image',{x:0,y:0,w:10,h:10,img:k9}),dd=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:kp});Store.commit({op:'add',shape:dd});
+    const kpObj=byId(kp.id);
+    Net._imgPending.set(kpObj.id,{k:k9,t0:nowTs()});   // parked, blob in flight
+    state.wclock[dd.id]={_born:{peer:'p0',seq:1,ts:1}};   // stale born → replaced
+    Store.applyRemote({op:'replace',after:[{...JSON.parse(JSON.stringify(dd)),x:5}],clock:{peer:'peer-r2',seq:2,ts:2}});
+    assert.ok(byId(kpObj.id),'ADR-0985: keep survivor stays');
+    assert.strictEqual(Net._imgPending.get(kpObj.id)?.k,k9,'ADR-0985: keep survivor re-parked — retry loop survives the wipe');
+    assert.strictEqual(byId(kpObj.id).img,k9,'ADR-0985: ref still parked (no blob yet)');
+    Net._onRecv({k:'img',key:k9,seq:0,n:1,data:'data:image/png;base64,EE',peer:'peerZ'},false);
+    assert.strictEqual(byId(kpObj.id).dataUrl,'data:image/png;base64,EE','ADR-0985: pending entry resolves on arrival');
+    assert.strictEqual(Net._imgPending.has(kpObj.id),false,'ADR-0985: pending drained on resolve');
+    console.log('  ✓ ADR-0985: wholesale purge re-parks surviving img refs — retry loop survives');
     pass += 5;
   }
 
