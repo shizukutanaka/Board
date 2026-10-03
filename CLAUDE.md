@@ -1075,6 +1075,7 @@ Board/
 │   └── ADR-1024-docname-empty-write.md  # docName 空書込の収束 — `_setDocName` 単一サイトで `n\|\|_UT` 正規化、'' の wire 送出/ピア空白表示/等時計永久発散を閉塞
 │   └── ADR-1025-real-service-worker.md  # SW blob-URL 登録は spec 上 reject (scriptURL は http/https 必須) — v1.6.5 以来オフライン層は dead code。実ファイル sw.js + `register('sw.js')` で修理
 │   └── ADR-1026-apply-failure-dedup-evict.md  # applyRemote は適用前に dedup 刻印 → 途中例外で op 永久 wedge。失敗時 `_sO().delete(k)` で heal 再適用化 + BC onmessage ガード (DC parity)
+│   └── ADR-1027-wire-mutation-invalidation-lifecycle.md  # `_oa`×`_iG` 到達性・boot 順序・broadcast 時計・presence 寿命の監査完走 (clean)。契約: live 図形への `_oa` 変異は同一ターン内の `_iG()` 前提
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
