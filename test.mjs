@@ -10443,6 +10443,32 @@ try {
   }
   pass += 3; // ADR-0983 stale/superseded wake-lock pins
 
+  // ADR-0984: ptr.reborn marks must fire only when the born stamp was APPLIED — a
+  // remote 'replace' keep-survivor (born newer than the swap clock → the same live
+  // object survives untouched) is not reborn, or _gRst skips its orig-restore and
+  // the in-flight drag position lingers locally while every peer keeps arm-time.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;
+    const keep=Shape.make('rect',{x:0,y:0,w:20,h:20}),sw0=Shape.make('rect',{x:0,y:0,w:20,h:20});
+    Store.commit({op:'add',shape:keep});
+    Store.commit({op:'add',shape:sw0});
+    const keepObj=byId(keep.id),swObj=byId(sw0.id);
+    state.wclock[sw0.id]={_born:{peer:'p0',seq:1,ts:1}};   // stale born → the swap replaces it
+    ptr.down=true;ptr.dragKind='move';
+    ptr.dragStartShapes=new Map([[keepObj.id,JSON.parse(JSON.stringify(keepObj))],[swObj.id,JSON.parse(JSON.stringify(swObj))]]);
+    keepObj.x=50;   // live drag mutation
+    const incoming={...JSON.parse(JSON.stringify(swObj)),x:777};
+    Store.applyRemote({op:'replace',after:[incoming],clock:{peer:'peer-rep',seq:2,ts:2}});
+    assert.strictEqual(byId(keepObj.id),keepObj,'ADR-0984: keep survivor preserves the live object');
+    assert.strictEqual(ptr.reborn==null||!ptr.reborn.has(keepObj.id),true,'ADR-0984: keep survivor is not marked reborn');
+    assert.strictEqual(ptr.reborn!=null&&ptr.reborn.has(swObj.id),true,'ADR-0984: swapped-in id is marked reborn');
+    abortGesture();
+    assert.strictEqual(byId(keepObj.id).x,0,'ADR-0984: cancel restores the arm-time value on a keep survivor');
+    assert.strictEqual(byId(swObj.id).x,777,'ADR-0984: swapped-in id keeps the incoming value');
+    console.log('  ✓ ADR-0984: reborn marks fire only on applied born stamps — keep survivors restore');
+    pass += 5;
+  }
+
   // v1.6.92: PWA install button (beforeinstallprompt) — progressive enhancement,
   // only shows when the browser fires the event. Tests: prompt() called on click,
   // button hidden after install, no-op when prompt is null.
