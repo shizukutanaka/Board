@@ -851,13 +851,13 @@ const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h)
 const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788
-const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wR=(id,w)=>_wc()[id]=_wM(clone(w)),_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789
+const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wK=k=>k!=='id'&&k!=='type'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&k[0]!=='_',_wR=(id,w)=>{const n=_wM();if(_iO(w)&&_ln(_ok(w))<=64)for(const k of _ok(w))if((_wK(k)||k==='_born'||k==='_del')&&validClock(w[k]))n[k]=clone(w[k]);_wc()[id]=n},_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789/1039
 const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born)){w._born=c;if(c.peer!==_pi()){if(ptr.down)(ptr.reborn||(ptr.reborn=new Set())).add(id);if(_nug)(_nug.reborn||(_nug.reborn=new Set())).add(id)}}},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926/0970/0984
-const _wAdopt=(id,rw)=>{   // ADR-0927: adopt a snapshot-carried wclock — the sender's real clocks
+const _wAdopt=(id,rw)=>{   // ADR-0927
   if(!rw||!_iO(rw))return;
   const ks=_ok(rw);if(_ln(ks)>64)return;
   const w=_wc()[id]||(_wc()[id]=_wM());
-  for(const k of ks){if(k==='id'||k==='type'||k==='pg'||k==='frac'||k==='groupId'||k==='__proto__'||k==='constructor'||k==='prototype'||(k[0]==='_'&&k!=='_born'&&k!=='_del'))continue;
+  for(const k of ks){if(!_wK(k)&&k!=='_born'&&k!=='_del')continue;
     const rc=rw[k];if(!validClock(rc))continue;if(!w[k]||clockNewer(rc,w[k]))w[k]=clone(rc)}
 };
 const _tAlive=(id,rw)=>{const w=_wc()[id];return!!(w&&w._del&&!(w._born&&clockNewer(w._born,w._del))&&!(rw&&rw._born&&validClock(rw._born)&&clockNewer(rw._born,w._del)))};   // ADR-0927
@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.064';   // ADR-1038
+const V='1.8.065';   // ADR-1039
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1498,9 +1498,7 @@ const Store={
       _rdb();
     }catch(_){_sO().delete(k)}
   },
-  // Per-property write clocks live in _wc() (side-channel, not in clones). LWW
-  // stamps only changed keys — snapshots can't clobber a concurrent write;
-  // group/ungroup LWW only 'groupId'.
+  // Per-property write clocks in _wc() (side-channel); group LWW only 'groupId'.
   _lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'},   // ADR-0729/0730
   // A patch key counts for LWW only if its value differs (pts/way compared via JSON)
   _chg(before,after,key){return _JS(before?before[key]:undefined)!==_JS(after[key])},
@@ -1719,8 +1717,8 @@ const Store={
         for(const s of keep)_sh().push(s);_pcR();   // ADR-0926/0985: a newer re-add outranks the swap's removal
         _iG();   // ADR-0613
         _sz();
-        if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
-        if(!forward&&op.wc)state.wclock=_wM(clone(op.wc));
+        if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);   // ADR-1039: filtered adopt — junk/structural keys can't stamp veto clocks
+        if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
         if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN)}   // ADR-0736/0926
         for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928: stamp U as _born — peers' forward apply does it
         if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
@@ -8029,7 +8027,7 @@ const Net={
     if((op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='beautify')&&op.dir!=='lock'){   // ADR-0717/0730
       const _sl=a=>_iA(a)?a.map(p=>{const{locked:_l0,...r}=p;return r}):a;
       return{...rest,before:_sl(rest.before),after:_sl(rest.after)};}
-    return rest;   // ADR-0625: wc/origSel/moved are undo-domain — peers' _apply rebuilds them
+    return rest;   // ADR-0625: undo-domain fields never ride the wire
   },
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
     const n=_ceil(_ln(buf)/65536);   // ADR-0603
@@ -8043,8 +8041,7 @@ const Net={
     const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
     if(seq>=n)return;
     let sn=this[key];
-    // ADR-0448/0469/0563: n/src mismatch or seq=
-    // re-sent after a partial abort must not splice old+new fragments.
+    // ADR-0448/0469/0563: n/src mismatch or seq 0 restarts (no old+new splice).
     if(!sn||sn.n!==n||sn.src!==src||seq===0){sn={p:new Array(n),g:0,n,src};this[key]=sn}
     if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data);sn.t=_now()}
     if(sn.b>24_000_000){this[key]=null;return}   // ADR-0782

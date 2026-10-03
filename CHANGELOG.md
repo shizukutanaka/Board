@@ -1,3 +1,12 @@
+## [1.8.065]
+- **Fix: wclock restore paths sanitize prop keys** — `op.wc`/`afterWc`
+  restores (`_wR` loops + `clone(afterWc)`/`clone(op.wc)` on 'replace')
+  accepted any key, so a forged snapshot could stamp `frac`/`groupId`/`pg`
+  clocks that veto legitimate zorder/group ops via `_lwwSkip` (silent
+  divergence until heal). All restore sites now funnel through a shared
+  `_wK` prop-key filter + `validClock` inside `_wR`; `_wAdopt` reuses the
+  same filter (ADR-1039).
+
 ## [1.8.064]
 - **Fix: img reassembly slots are per (key, sender)** — `imgq` is answered by
   every peer holding the blob; two answerers splice-mixed chunks into a
