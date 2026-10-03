@@ -1,3 +1,8 @@
+## [1.8.019] - 2026-10-01
+
+### Docs + Test
+- undo × remote 除去の仲裁対称性監査の完走を文書化 (ADR-0993): 全 backward `_apply` ゲートがピアの forward ゲートと等効 (`_lwwSkip`↔`_lwwDrop` 逐キー、`_tmb`/`_bN` tomb parity、locked、dead-shape no-op、`op.wc` `_wR`、`_ccRest`、`_pgDel2`、pageName `bts`/`nts` carry)。undo 時計は HLC で観測済み remote 時計を必ず上回るため「remote tomb/書込を超えた undo」は**両側対称に復活/復元**する (undo=因果的に新しい書込) — 一方向発散経路は存在しない。`_tmb`/`_lwwSkip` が効くのは stale 時計 op 限定。実害なし — 実経路4シナリオでピン化 (dead-shape no-op・add→del tomb 複製・tomb 越え対称復活・remote 書込越え対称 before 復元)
+
 ## [1.8.018] - 2026-10-01
 
 ### Docs + Test
