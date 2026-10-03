@@ -2462,15 +2462,26 @@ try {
     state.peers.delete(newPid);Net._rtcPeerId=null;Net.dc=null;
     console.log('  ✓ superseded dc purges own row, preserves live link (ADR-0822)');
   }
-  // ADR-0825: _pk routes viaRtc presence msgs onto the synthetic rtc: row and
-  // 'bye' clears _rtcPeerId — a stale link must not keep shadowing.
+  // ADR-0825: _pk routes viaRtc presence msgs onto the synthetic rtc: row.
+  // ADR-0986: 'bye' viaRtc drops the row but keeps _rtcPeerId (onclose owns
+  // the clear) — and BC-only kinds (hello/ping/sync-req) are rejected on the
+  // DC so a forged ping can't spoof arbitrary presence rows.
   {
     Net._rtcPeerId='rtc:test';
     assert.strictEqual(Net._pk({peer:'q'},true),'rtc:test','viaRtc routes to the synthetic row');
     assert.strictEqual(Net._pk({peer:'q'},false),'q','BC keeps the sender id');
     Net._onRecv({k:'bye',peer:'zzz'},true);
-    assert.strictEqual(Net._rtcPeerId,null,'rtc bye clears the live peer id');
-    console.log('  ✓ _pk viaRtc routing + rtc bye peer-id clear (ADR-0825)');
+    assert.strictEqual(Net._rtcPeerId,'rtc:test','rtc bye keeps the routing id — onclose owns the clear (ADR-0986)');
+    Net._onRecv({k:'cursor',x:3,y:4},true);
+    assert.ok(state.peers.get('rtc:test')&&state.peers.get('rtc:test').cursor,'live link presence resurrects on the next msg (ADR-0986)');
+    Net._onRecv({k:'ping',peer:'victim'},true);
+    Net._onRecv({k:'hello',peer:'ghost'},true);
+    Net._onRecv({k:'sync-req',peer:'sponge'},true);
+    assert.ok(!state.peers.has('victim')&&!state.peers.has('ghost')&&!state.peers.has('sponge'),'forged BC-only kinds rejected on the DC (ADR-0986)');
+    Net._onRecv({k:'ping',peer:'ok2'},false);
+    assert.ok(state.peers.has('ok2'),'BC ping still installs its row');
+    state.peers.delete('rtc:test');state.peers.delete('ok2');Net._rtcPeerId=null;
+    console.log('  ✓ _pk viaRtc routing + DC kind gate + presence resurrection (ADR-0825/0986)');
   }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.

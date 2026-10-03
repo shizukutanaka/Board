@@ -1,3 +1,8 @@
+## [1.8.012] - 2026-10-01
+
+### Fixed
+- RTC intake の未検証残穴を閉塞 (ADR-0986): ①DataChannel 経由の偽造 `hello`/`ping`/`sync-req` が `_touchPeer(msg.peer)` を叩き**任意 id の偽 presence 行を生成** (他者 id 詐称・`_loResp` 選出攪乱) — BC-only 種を viaRtc 早期棄却。②`bye` viaRtc が `_rtcPeerId=null` 化し link が生き続ける場合 (bfcache 復帰・race) に以後の cursor/selection が `peerKey=null` で永久棄却 — null 化を削除 (onclose が所有者としてクリア)。③'bye' で消えた presence 行が DC では復帰不能 — viaRtc cursor/selection 到着時に `_touchPeer` で蘇生 (「実際にメッセージを送るピアは present」が不変条件、BC は enrich-only を維持)。0825 ピンを新契約へ更新 + 偽造棄却/蘇生ピン追加
+
 ## [1.8.011] - 2026-10-01
 
 ### Fixed

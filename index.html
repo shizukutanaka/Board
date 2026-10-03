@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.011';   // ADR-0985
+const V='1.8.012';   // ADR-0986
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8133,9 +8133,9 @@ const Net={
   },
   _onRecv(msg,viaRtc){
     if(!msg||!_iO(msg)||msg.peer===_pi())return;
-    // Defensive intake: the peer id feeds _touchPeer/_pr() directly; WebRTC is
-    // unfiltered — hello/ping never ride the DataChannel.
+    // Defensive intake: peer id feeds _touchPeer/_pr() directly.
     if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN||(!viaRtc&&_sw(msg.peer,'rtc:'))))return;   // ADR-0827
+    if(viaRtc&&(msg.k==='hello'||msg.k==='ping'||msg.k==='sync-req'))return;   // ADR-0986: BC-only kinds never legitimately ride the DC — a forged ping spoofed arbitrary presence rows under any peer id
     switch(msg.k){
       case 'img':{
         // ADR-0069: blob chunks → _imgIn, then drain parked shape refs.
@@ -8218,31 +8218,25 @@ const Net={
       case 'name':   // ADR-0402/0581: rename is LWW — a stale slower rename can't clobber a newer one
         if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)&&_tsOK(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}   // ADR-0701/0791
         break;
-      case 'bye':{   // ADR-0456: peer left — drop presence now, don't wait for the 15s reap
+      case 'bye':{   // ADR-0456/0986: peer left — drop presence now. viaRtc keeps _rtcPeerId: onclose clears it; the peer's own next msg resurrects the row
         const pk=this._pk(msg,viaRtc);
         if(pk&&_pr().delete(pk)){_ivO();if(this._onConnChange)this._onConnChange()}
-        if(viaRtc)this._rtcPeerId=null;
         break;}
       case 'ping':
         this._touchPeer(msg.peer);
         break;
       case 'cursor':{
-        // ADR-0010: hello/sync-req/ping never ride the DC (they're sent
-        // via _send(), BroadcastChannel-only), so a
-        // locally-generated synthetic id (_rtcPeerId) is the key — when
-        // looking this up by msg.peer over that transport
-        // create a duplicate/phantom peer entry).
-        if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;
+        if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;   // ADR-0010/0986
         const peerKey=this._pk(msg,viaRtc);
+        if(viaRtc&&peerKey&&!_pr().has(peerKey))this._touchPeer(peerKey);   // ADR-0986: live-link presence resurrect (bye-then-active, bfcache); BC stays enrich-only
         const p=peerKey&&_pr().get(peerKey);
         if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.cursor=msg.h===1?null:{x:msg.x,y:msg.y};p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0611/0647/0769: pg change repaints the '· page' tooltip
         break;}
-      case 'selection':{
-        // ADR-0011: same _rtcPeerId routing as 'curs'/'sel' (RTC peers live
-        // under synthetic rtc: ids); string ids only, capped at 64.
+      case 'selection':{   // ADR-0011
         if(!_iA(msg.ids))break;
-        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485: same ≤64 cap as every other wire id field
+        const ids=_s0(msg.ids,MAX_OP_SHAPES).filter(_idOK);   // ADR-0485
         const peerKey=this._pk(msg,viaRtc);
+        if(viaRtc&&peerKey&&!_pr().has(peerKey))this._touchPeer(peerKey);   // ADR-0986
         const p=peerKey&&_pr().get(peerKey);
         if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.sel=ids;p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0647/0769
         break;}
