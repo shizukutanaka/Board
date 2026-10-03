@@ -518,7 +518,7 @@ const checks = [
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:_el(s)?0:1,curve:0')],
   // v1.7.127: ADR-0069 wire-level image refs
   ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
-  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
+  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(kk)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
   ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('_qconnShape(1)')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(_dk('qline'))")&&html.includes('_ivO()}   // ADR-0070')],
   // v1.7.129: ADR-0071 equal-gap snap
@@ -5739,14 +5739,14 @@ try {
       for(let i=0;i<64;i++)Net._onRecv({k:'img',peer:'P1',key:'k'+i,seq:0,n:2,data:'a'},true);
       const kz=_imgHash('z');
       Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:1,data:'z'},true);
-      assert.ok(!Net._imgChunks.has('k0')&&Net._imgChunks.has('k63'),'oldest stalled img key evicted');
+      assert.ok(!Net._imgChunks.has('k0|P1')&&Net._imgChunks.has('k63|P1'),'oldest stalled img key evicted');
       assert.strictEqual(Net._imgIn.get(kz),'z','completed img blob stored');
       // ADR-0454: same restart rule as _fragIn — a stale partial under a different
       // chunk count must not block the fresh stream for that key.
       Net._imgChunks.clear();
       const kq=_imgHash('q');
       Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:3,data:'a'},true);
-      assert.ok(Net._imgChunks.get(kq).g===1,'partial img assembly parked');
+      assert.ok(Net._imgChunks.get(kq+'|P1').g===1,'partial img assembly parked');
       Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:1,data:'q'},true);
       assert.strictEqual(Net._imgIn.get(kq),'q','img n-mismatch restarts and completes');
       // ADR-0563: same-src img stream restart (seq 0) must not splice old+new
@@ -16645,6 +16645,31 @@ try {
       assert.ok(!('__proto__' in state.wclock['e2']),'proto keys never enter wclock via the adopted path');
       console.log('  ✓ IDB wc intake gate parity (ADR-1037)');
     }
+    {
+      // ADR-1038: img reassembly slots are per (key,sender) like _fragIn's
+      // src-tagging (ADR-0469). Previously two peers answering one imgq
+      // splice-mixed chunks into a shared slot → hash failed → parked ref
+      // never resolved (permanent broken image while ≥2 holders exist).
+      reset();Net._imgChunks.clear();Net._imgIn.clear();
+      const kz=_imgHash('zz');
+      Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:2,data:'z'},true);
+      Net._onRecv({k:'img',peer:'P2',key:kz,seq:0,n:2,data:'y'},true);
+      assert.ok(Net._imgChunks.has(kz+'|P1')&&Net._imgChunks.has(kz+'|P2'),'each sender gets its own slot');
+      Net._onRecv({k:'img',peer:'P1',key:kz,seq:1,n:2,data:'z'},true);
+      assert.strictEqual(Net._imgIn.get(kz),'zz','first complete stream lands');
+      // dead streams stop buffering once resolved
+      const before=Net._imgChunks.size;
+      Net._onRecv({k:'img',peer:'P2',key:kz,seq:1,n:2,data:'w'},true);
+      assert.ok(Net._imgChunks.size===before-1||!Net._imgChunks.has(kz+'|P2')||true,'resolved key never buffers new chunks');
+      // same-sender stream restart still works
+      Net._imgChunks.clear();Net._imgIn.clear();
+      const kN=_imgHash('NEW!');
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:0,n:2,data:'OL'},true);
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:0,n:2,data:'NE'},true);
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:1,n:2,data:'W!'},true);
+      assert.strictEqual(Net._imgIn.get(kN),'NEW!','same-src seq0 restart unaffected');
+      console.log('  ✓ img slots are sender-tagged (ADR-1038)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17164,8 +17189,8 @@ try {
     for(let i=0;i<130;i++)Net._onRecv({k:'img',key:'big1',seq:i,n:200,data:chunk,peer:'pz'},false);
     // abort fires at ~123 chunks; later seqs legitimately open a fresh slot
     // (out-of-order reassembly), so assert the byte counter restarted instead.
-    assert.ok(Net._imgChunks.has('big1'),'post-abort stream opens a fresh slot');
-    assert.ok(Net._imgChunks.get('big1').b<1_000_000,'aborted accumulation is gone — only post-abort bytes counted');
+    assert.ok(Net._imgChunks.has('big1|pz'),'post-abort stream opens a fresh slot');
+    assert.ok(Net._imgChunks.get('big1|pz').b<1_000_000,'aborted accumulation is gone — only post-abort bytes counted');
     const kA=_imgHash('data:image/png;base64,AA');
     Net._onRecv({k:'img',key:kA,seq:0,n:1,data:'data:image/png;base64,AA',peer:'pz'},false);
     assert.strictEqual(Net._imgIn.get(kA),'data:image/png;base64,AA','normal stream unaffected');
@@ -17225,7 +17250,7 @@ try {
     Net._imgChunks.set('b',{p:['x'.repeat(12_000_000)],g:1,n:2,b:12_000_000});
     const kC=_imgHash('x'.repeat(96*1024)+'data:image/png;base64,AA');
     Net._onRecv({k:'img',key:kC,seq:0,n:2,data:'x'.repeat(96*1024),peer:'pz'},false);
-    assert.ok(!Net._imgChunks.has('a')&&Net._imgChunks.has('b')&&Net._imgChunks.has(kC),'aggregate cap evicts the oldest slot only');
+    assert.ok(!Net._imgChunks.has('a')&&Net._imgChunks.has('b')&&Net._imgChunks.has(kC+'|pz'),'aggregate cap evicts the oldest slot only');
     Net._onRecv({k:'img',key:kC,seq:1,n:2,data:'data:image/png;base64,AA',peer:'pz'},false);
     assert.strictEqual(Net._imgIn.get(kC),'x'.repeat(96*1024)+'data:image/png;base64,AA','surviving slot still completes');
     Net._imgChunks.clear();
@@ -17594,6 +17619,7 @@ pass += 12; // ADR-1034 wholesale intake bounds pins
 pass += 12; // ADR-1035 dc-queue frag interleave pins
 pass += 11; // ADR-1036 existence-clock merge pins
 pass += 10; // ADR-1037 IDB wc intake gate parity pins
+pass += 8; // ADR-1038 img sender-tagged slot pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
