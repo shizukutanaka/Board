@@ -1276,7 +1276,7 @@ const checks = [
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
-  ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("validClock(m[p]))(state.wclock[k]")],
+  ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("if(_idOK(k))_wAdopt(k,d.wc[k])")],
   ['peer join/leave is SR-announced via _pCt delta (ADR-0463)', html.includes('Net._pCt') && html.includes("'peerJoined'") && html.includes("'peerLeft'")],
   ['room switch resets img transfer state (ADR-0464)', html.includes('this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0')],
   ['snapshot responder = lowest non-asker peer (ADR-0465)', html.includes('this._loResp(msg.peer)') && html.includes('k!==pk&&k<_pi()')],
@@ -16623,6 +16623,28 @@ try {
       assert.strictEqual(state.shapes.length,1,'born>del wc resurrects the shape');
       console.log('  ✓ existence-clock pairwise merge (ADR-1036)');
     }
+    {
+      // ADR-1037: IDB doc wc intake funnels the same gate as the wire path —
+      // _wAdopt caps keys, requires validClock, and skips structural
+      // (pg/frac/groupId/id/type), proto, and non-existence _-prefixed keys.
+      // A stamped 'frac'/'groupId' clock from a stale or tampered record
+      // would veto legitimate zorder/group ops via _lwwSkip — a silent
+      // divergence surviving until snapshot heal.
+      assert.ok(html.includes("if(d.wc&&_iO(d.wc))for(const k in d.wc)if(_idOK(k))_wAdopt(k,d.wc[k])"),'IDB wc intake funnels _wAdopt + _idOK');
+      reset();
+      const clk2=(seq,ts)=>({peer:'q',seq,ts});
+      const wc2={x:clk2(1,100),frac:clk2(2,200),groupId:clk2(3,300),pg:clk2(4,400),id:clk2(5,500),_junk:clk2(6,600),_born:clk2(7,700)};
+      Net._applySnapshot({shapes:[{id:'e1',type:'rect',x:0,y:0,w:10,h:10,z:1}],ops:[{shape:{id:'e1'},wc:wc2}]});
+      const we=state.wclock['e1'];
+      assert.ok(we&&we.x&&we.x.ts===100,'legit prop clock is adopted');
+      assert.ok(we._born&&we._born.ts===700,'existence clock is adopted');
+      assert.ok(!('frac' in we)&&!('groupId' in we)&&!('pg' in we)&&!('id' in we),'structural keys are skipped');
+      assert.ok(!('_junk' in we),'non-existence _-prefixed keys are skipped');
+      const rwP=JSON.parse('{"__proto__":{"peer":"q","seq":1,"ts":1},"x":{"peer":"q","seq":1,"ts":1}}');
+      Net._applySnapshot({shapes:[{id:'e2',type:'rect',x:0,y:0,w:5,h:5,z:2}],ops:[{shape:{id:'e2'},wc:rwP}]});
+      assert.ok(!('__proto__' in state.wclock['e2']),'proto keys never enter wclock via the adopted path');
+      console.log('  ✓ IDB wc intake gate parity (ADR-1037)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17571,6 +17593,7 @@ pass += 11; // ADR-1033 foreign img-ref marking pins
 pass += 12; // ADR-1034 wholesale intake bounds pins
 pass += 12; // ADR-1035 dc-queue frag interleave pins
 pass += 11; // ADR-1036 existence-clock merge pins
+pass += 10; // ADR-1037 IDB wc intake gate parity pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
