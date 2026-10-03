@@ -1,3 +1,28 @@
+## [1.8.009] - 2026-10-01
+
+### Fixed
+- Screen Wake Lock の sentinel リークを閉塞 (ADR-0983): `wakeLock.request` が後続ターンで resolve する際 ①pending 中の `leave()` で `_releaseWakeLock` が null を見て解放を逃し resolve 後の sentinel が永続保持 (タブ非表示まで画面点灯)、②保持中の2回目 acquire で旧 sentinel ハンドルが孤立 — の2経路。格納を `_active` ゲート化し、非アクティブ resolve・旧保持 sentinel の双方を `release()` で解放。同監査で `Persist.save` の put 時点 live 読み・WebRTC offer/answer の torn-read throw 表面化・import cascade の commit 時点 `pg` 刻印を確認。behavioural ピン3 assert + 既存ピンの非 vacuous 化
+
+## [1.8.008] - 2026-10-01
+
+### Fixed
+- モーダル/プレゼン中にフォーカス復帰先要素が remote op で再構築され detached 化した際、`focus()` の silent no-op で body へ脱力する実害を `isConnected===false` → canvas フォールバックで閉塞 (ADR-0982)。適用範囲は dialog `_restoreFocus` と presentation `leave()` の2経路。同監査で blob-URL revoke 網羅 (`_rO`/settle 全8サイト)、`innerHTML=`/`insertAdjacentHTML` ゼロ、`_focusables(_dlg)` の query-per-Tab 動的安全を検証。behavioural ピン4 assert + ソースピン2件
+
+## [1.8.007] - 2026-10-01
+
+### Docs / Test
+- リスナ登録ライフサイクル監査が clean 完走 (ADR-0981): `_on` 全サイトは init/wire 一回または要素と同一生存期 (エディタ生成要素) のいずれか、`_oC(_g(id))` は id 毎に唯一、`_watchDPR` は `{once:true}` + 再アーム、`Net.init` は旧チャネル close + bye + presence timer clear を確認。重複登録・累積ハンドラなし。behavioural ピン4 assert + ソースピン4件
+
+## [1.8.006] - 2026-10-01
+
+### Fixed
+- ctx メニュー外クリックリスナの `e.target.closest()` を `?.` 化 (ADR-0980): 非 Element ターゲット (Document ノード — ドキュメント枠クリック・AT 合成イベント) で TypeError が document mousedown リスナを貫通し得た 0909 同型の残穴を閉塞。`e.target`/`currentTarget` 全サイトの raw アクセス走査で確認した唯一の未ガードサイト
+
+## [1.8.005] - 2026-10-01
+
+### Docs / Test
+- LWW 仲裁比較子の統一性監査が clean 完走 (ADR-0979): prop wclock・`_born`/`_del`・`_lastRep` は全て `clockNewer` の (ts,peer,seq) 全順序、docName (`_nameWin`) と page 名 (`nts`/`ntp`) は両側 seq:0 の同一序 — 生 ts 比較の残存なし、`_tsOK` の wall+5min bound が全ドメインに先行。behavioural ピン9 assert (clockNewer 順序4件 + pageName op 仲裁 + snapshot union-heal 仲裁、実経路)
+
 ## [1.8.004] - 2026-10-01
 
 ### Docs / Test

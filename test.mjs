@@ -96,6 +96,14 @@ const checks = [
   ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
   // ADR-0909: non-Element event targets can't TypeError the paste/keydown gates
   ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
+  // ADR-0980: same for the document-level ctx-menu outside-click guard
+  ['mousedown target guard uses optional closest', html.includes("e.target.closest?.('.ctx-menu')")],
+  // ADR-0981: every queried element's onclick is bound exactly once (repeat
+  // registration on one element would silently replace or duplicate handlers)
+  ['each _oC(_g(id)) binds its element exactly once', (()=>{const ids=[...html.matchAll(/_oC\(_g\('([a-zA-Z]+)'/g)].map(m=>m[1]);return new Set(ids).size===ids.length})()],
+  ['window-level keydown listener registered once', (html.match(/_on\(window,_KD/g)||[]).length===1],
+  ['document-level mousedown listener registered once', (html.match(/_on\(document,'mousedown'/g)||[]).length===1],
+  ['dpr watcher re-arms with once:true', html.includes('_on(mq,_CH,onChange,{once:true})')],
   // ADR-0912/0913/0916: pg + frac + groupId are structural — patches can't exile
   // shapes, scramble z-order, or forge group membership (halo/selection clobber)
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
@@ -640,7 +648,8 @@ const checks = [
     return bad.length===0;
   })()],
   ['.onclick= assignments folded to _oC helper (ADR-0539)', html.includes("_oC=(e,f)=>e.onclick=f")&&html.split('.onclick=').length-1===1],
-  ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger?.focus();_focusTrigger=null;')],
+  ['presentation leave() tolerates null focus trigger (ADR-0539)', html.includes('_focusTrigger&&_fc(_focusTrigger.isConnected===false?canvas:_focusTrigger);_focusTrigger=null;')],
+  ['dialog focus restore falls back for detached targets (ADR-0982)', html.includes('p.isConnected===false?canvas:p')],
   ['global input Escape respects IME composition (ADR-0540)', html.includes("e.key==='Escape'&&!e.isComposing")],
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
@@ -2236,6 +2245,97 @@ try {
     console.log('  ✓ sortZ total order — frac then id, deterministic across input orders (ADR-0978)');
   }
   pass += 4; // ADR-0978 sortZ total-order pins
+  // ADR-0979: every LWW arbitration domain shares clockNewer's (ts,peer,seq)
+  // total order — prop wclock, _born/_del, _lastRep, docName (_nameWin), page
+  // names (nts/ntp). The name domains use seq:0 clocks on BOTH sides of each
+  // comparison, so the order stays consistent.
+  {
+    const c=(ts,peer,seq)=>({ts,peer,seq});
+    assert.ok(clockNewer(c(2,'a',0),c(1,'z',9)),'ts dominates the order');
+    assert.ok(clockNewer(c(1,'b',0),c(1,'a',9))&&!clockNewer(c(1,'a',9),c(1,'b',0)),'equal ts falls to peer');
+    assert.ok(clockNewer(c(1,'a',2),c(1,'a',1)),'equal (ts,peer) falls to seq');
+    assert.ok(!clockNewer(null,c(1,'a',1))&&clockNewer(c(1,'a',1),null),'null bounds the order');
+    // (the 'name' intake path mutates module-level _nameTs/_namePeer and is
+    // already pinned live by the ADR-0618 snapshot-name test below)
+    const T0=nowTs();
+    // pageName op: incoming rename compares {ts,peer} vs stored {nts,ntp}.
+    state.pages=[{id:'pg1',name:'keep',nts:T0,ntp:'z'}];state.curPg='pg1';
+    const s9=Shape.make('rect',{id:'s9',x:0,y:0,w:5,h:5});state.shapes=[s9];state.seenOps=new Set();
+    Net._onRecv({k:'op',peer:'p9',op:{op:'pageName',id:'pg1',after:'steal',clock:{peer:'p9',seq:1,ts:T0}}},false);
+    assert.strictEqual(state.pages[0].name,'keep','equal-ts pageName by a lower writer loses');
+    Net._onRecv({k:'op',peer:'zz',op:{op:'pageName',id:'pg1',after:'steal',clock:{peer:'zz',seq:1,ts:T0}}},false);
+    assert.strictEqual(state.pages[0].name,'steal','equal-ts pageName by a higher writer wins');
+    // snapshot union-heal merges page names via the same (ts,ntp) order.
+    state.pages=[{id:'pg1',name:'keep2',nts:T0,ntp:'z'}];
+    Net._onRecv({k:'snapshot',peer:'p9',ops:[],pages:[{id:'pg1',name:'steal',nts:T0,ntp:'a'}]},false);
+    assert.strictEqual(state.pages[0].name,'keep2','equal-nts snapshot page rename by a lower peer loses');
+    Net._onRecv({k:'snapshot',peer:'p9',ops:[],pages:[{id:'pg1',name:'won',nts:T0,ntp:'zz'}]},false);
+    assert.strictEqual(state.pages[0].name,'won','equal-nts snapshot page rename by a higher peer wins');
+    state.shapes.length=0;state.pages=null;state.curPg=null;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+    console.log('  ✓ every LWW arbitration domain shares clockNewer\'s total order (ADR-0979)');
+  }
+  pass += 9; // ADR-0979 arbitration comparator uniformity pins
+  // ADR-0980: a document-level mousedown whose target is a non-Element (the
+  // Document node itself, e.g. clicks on document chrome or synthetic events)
+  // must not TypeError the ctx-menu outside-click guard.
+  {
+    const ctx=(_els.ctx||={dataset:{}});ctx.dataset.open='true';
+    let threw=false;
+    for(const f of fakeDoc._L['mousedown']||[]){try{f({target:{}})}catch(e){threw=true}}
+    assert.ok(!threw,'non-Element mousedown target does not throw');
+    assert.strictEqual(ctx.dataset.open,'false','outside mousedown still closes the ctx menu');
+    ctx.dataset.open='true';
+    for(const f of fakeDoc._L['mousedown']||[])f({target:{closest:s=>s==='.ctx-menu'?{}:null}});
+    assert.strictEqual(ctx.dataset.open,'true','mousedown inside the ctx menu does not close it');
+    ctx.dataset.open='false';
+    console.log('  ✓ non-Element mousedown target survives the ctx guard (ADR-0980)');
+  }
+  pass += 3; // ADR-0980 mousedown target guard pins
+  // ADR-0981: listener-registration lifecycle — no repeat-path duplicates.
+  // Net.init re-init: prior channel closed + bye sent + presence timer
+  // cleared; app-level _on sites are all init/wire-time (editors bind to
+  // per-session elements that die with them).
+  {
+    let byes=0;
+    const _osend=Net._send;
+    Net._send=m=>{if(m&&m.k==='bye')byes++;return _osend.call(Net,m)};
+    Net.init('roomA');
+    const bc1=Net.bc;
+    let closed=false;
+    if(bc1){const oc=bc1.close;bc1.close=function(){closed=true;return oc.apply(bc1,arguments)}}
+    const t1=Net._presenceTimer;
+    Net.init('roomB');
+    Net._send=_osend;
+    assert.ok(closed,'re-init closes the previous BroadcastChannel');
+    assert.ok(Net.bc&&Net.bc!==bc1,'a fresh channel is created per room');
+    assert.ok(byes>=1,'re-init sends bye to the old room');
+    assert.ok(!t1||t1._destroyed,'re-init clears the prior presence timer');
+    if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}Net.bc=null;
+    console.log('  ✓ Net.init re-init releases the prior channel/timer (ADR-0981)');
+  }
+  pass += 4; // ADR-0981 listener lifecycle pins
+  // ADR-0982: focus-restore targets detached mid-modal/mid-presentation (a
+  // page-tab chip rebuilt by a remote op) — focus() on a detached node is a
+  // silent no-op leaving focus on <body>; the restore must fall back to canvas.
+  {
+    const _of=canvas.focus;let cvF=0;canvas.focus=()=>{cvF++};
+    const det={focus(){det.f=true},isConnected:false};
+    UI._prevFocus=det;
+    UI._restoreFocus();
+    assert.strictEqual(cvF,1,'dialog restore: detached target → canvas');
+    assert.ok(!det.f,'dialog restore: detached target is not focused');
+    const con={focus(){con.f=true},isConnected:true};
+    UI._prevFocus=con;
+    UI._restoreFocus();
+    assert.ok(con.f,'dialog restore: connected target refocused');
+    cvF=0;
+    Presentation._setTestState(true,{focus(){},isConnected:false});
+    Presentation.leave();
+    assert.strictEqual(cvF,1,'presentation leave: detached trigger → canvas');
+    canvas.focus=_of;
+    console.log('  ✓ detached focus-restore targets fall back to canvas (ADR-0982)');
+  }
+  pass += 4; // ADR-0982 detached focus restore pins
   // ADR-0617: a snapshot whose sender predates our newest swap must not merge
   // pre-swap shapes back in; a snapshot reflecting a newer swap adopts its marker.
   {
@@ -9858,7 +9958,7 @@ try {
   {
     assert.ok(html.includes("UI._ctxEat=_now()"),'long-press stamps the eat window');
     assert.ok(html.includes("if(_now()-(UI._ctxEat||0)<400){UI._ctxEat=0;return}fn();this.closeCtxMenu()"),'item clicks swallowed inside the window');
-    assert.ok(html.includes("!e.target.closest('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400"),'outside-close deferred past the window');
+    assert.ok(html.includes("!e.target.closest?.('.ctx-menu')&&_now()-(UI._ctxEat||0)>=400"),'outside-close deferred past the window');
     console.log('  ✓ long-press ghost-click guard pinned (3 asserts)');
   }
 
@@ -10303,17 +10403,45 @@ try {
     let requested=null;
     const sentinel={released:false,release:async()=>{sentinel.released=true;}};
     fakeWin.navigator.wakeLock={request:async(type)=>{requested=type;return sentinel;}};
+    Presentation._setTestState(true,null);   // ADR-0983: lock only stores while active
     await Presentation._acquireWakeLock();
     assert.strictEqual(requested,'screen','_acquireWakeLock requests "screen" lock');
+    assert.strictEqual(sentinel.released,false,'active acquire holds the sentinel (non-vacuous)');
     Presentation._releaseWakeLock();
     await Promise.resolve();  // allow the sentinel.release() micro-task to settle
     assert.strictEqual(sentinel.released,true,'_releaseWakeLock calls sentinel.release()');
+    Presentation._setTestState(false,null);
     // graceful no-op when wakeLock is unsupported
     fakeWin.navigator.wakeLock=undefined;
     assert.doesNotThrow(()=>Presentation._acquireWakeLock(),'_acquireWakeLock: safe no-op when navigator.wakeLock absent');
     fakeWin.navigator.wakeLock=undefined;
     console.log('  ✓ Presentation._acquireWakeLock/release: screen stays on during slides (Screen Wake Lock API)');
+    pass += 1; // ADR-0983 non-vacuous hold assert
   }
+
+  // ADR-0983: a wake-lock request resolving after leave() must not leak — the
+  // browser keeps the screen on for a sentinel nobody can release; and a second
+  // acquire must not orphan the first sentinel's handle.
+  {
+    let rel=0;const s1={release:async()=>{rel++}};
+    fakeWin.navigator.wakeLock={request:async()=>s1};
+    Presentation._setTestState(false,null);      // leave() already ran
+    await Presentation._acquireWakeLock();
+    assert.strictEqual(rel,1,'stale acquire: sentinel released when presentation already left');
+    let rel2=0;const s2={release:async()=>{rel2++}},s3={release:async()=>{rel2++}};
+    const ss=[s2,s3];let i=0;
+    fakeWin.navigator.wakeLock={request:async()=>ss[i++]};
+    Presentation._setTestState(true,null);
+    await Presentation._acquireWakeLock();       // stores s2
+    await Presentation._acquireWakeLock();       // stores s3, releases s2
+    assert.strictEqual(rel2,1,'superseded sentinel released exactly once (s2)');
+    Presentation._releaseWakeLock();
+    assert.strictEqual(rel2,2,'held sentinel released on leave (s3)');
+    Presentation._setTestState(false,null);
+    fakeWin.navigator.wakeLock=undefined;
+    console.log('  ✓ wake-lock: stale/superseded sentinels released, never orphaned (ADR-0983)');
+  }
+  pass += 3; // ADR-0983 stale/superseded wake-lock pins
 
   // v1.6.92: PWA install button (beforeinstallprompt) — progressive enhancement,
   // only shows when the browser fires the event. Tests: prompt() called on click,
