@@ -1071,6 +1071,7 @@ Board/
 │   └── ADR-1020-viewport-persist.md  # viewport 変異の永続化 — pan/zoom/fit 全9経路が `_ps()` 到達・プレゼン `leave()` は復元後 vp を保存
 │   └── ADR-1021-erase-batch-serialization.md  # erase-batch シリアライズ — `_shWB()` union で save/snapshot/export 全経路が mid-erase メンバーを含む
 │   └── ADR-1022-editor-fold-flush.md  # ライフサイクル flush のエディタ畳み込み — hidden/pagehide/beforeunload が `_cxO()` で blur commit を先に走らせ未コミット編集の喪失を閉塞
+│   └── ADR-1023-wire-buffer-lifecycle.md  # wire バッファの room-vs-doc ライフサイクル完備性監査 — room-scoped は init で reset、doc/content-scoped は survive (clean 完走)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

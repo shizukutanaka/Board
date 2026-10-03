@@ -16330,6 +16330,33 @@ try {
       state.editing=null;
       console.log('  ✓ lifecycle flushes fold open editors (ADR-1022)');
     }
+    // ADR-1023: wire-buffer lifecycle completeness on Net.init — every
+    // room-scoped buffer resets on re-init, every doc-scoped buffer survives.
+    // seenOps (dedup), blob accounting (_imgSent/_imgChunks/_imgOuts) and the
+    // reassembly slots (_snapIn/_opcIn) must not leak across rooms; seq/wclock/
+    // _imgPending belong to the doc or are content-addressed — clearing them
+    // would break the live doc or the parked-blob heal.
+    {
+      state.roomId='roomW';
+      state.seenOps.add('p:1');
+      Net._imgSent.set('k',['d']);Net._imgChunks.set('k',{});
+      Net._imgOuts.push(['k','d']);Net._snapIn={a:1};Net._opcIn={b:2};
+      Net._imgPending.set('ghost',{k:'bk',t0:nowTs()});
+      state.seq=41;state.wclock.keep={x:{peer:'p',seq:1,ts:1}};
+      Net.init('roomZ');
+      assert.strictEqual(state.seenOps.size,0,'seenOps dedup cleared per room');
+      assert.strictEqual(Net._imgSent.size+Net._imgChunks.size+Net._imgOuts.length,0,'blob accounting cleared per room');
+      assert.ok(Net._snapIn===null&&Net._opcIn===null,'reassembly slots cleared per room');
+      assert.ok(Net._imgPending.has('ghost'),'parked blob refs survive init — content-addressed, byId-gated heal');
+      assert.strictEqual(state.seq,41,'op counter is boot-scoped, not room-scoped');
+      assert.ok(state.wclock.keep,'wclock is doc-domain — untouched by init');
+      assert.ok(html.includes("_sO().clear();_cT(this._snapT)"),'init clears dedup + deferred snapshot resend');
+      assert.ok(html.includes("this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null"),'init clears blob accounting + frag slots');
+      state.wclock={};state.roomId=null;state.seq=0;Net._imgPending.clear();
+      clearInterval(Net._presenceTimer);
+      if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
+      console.log('  ✓ wire-buffer lifecycle is room-vs-doc complete (ADR-1023)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17264,6 +17291,7 @@ pass += 4; // ADR-0936 absolute-writer pins
   pass += 6; // ADR-1020 viewport-persist pins
 pass += 7; // ADR-1021 erase-batch serialization pins
 pass += 5; // ADR-1022 editor-fold flush pins
+pass += 8; // ADR-1023 wire-buffer lifecycle pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

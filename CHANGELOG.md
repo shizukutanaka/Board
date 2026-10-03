@@ -1,3 +1,8 @@
+## [1.8.049] - 2026-10-06
+
+### Docs + Tests
+- ADR-1023 wire-buffer lifecycle audit clean: every room-scoped Net buffer (seenOps, img sent/chunk/out queues, imgq throttle, frag slots, presence rows+timer, causal markers, RTC link) resets on `Net.init`; doc-scoped state (seq, wclock, content-addressed `_imgPending`) correctly survives. Pins cover the reset/survive split.
+
 ## [1.8.048] - 2026-10-01
 
 ### Fixed
