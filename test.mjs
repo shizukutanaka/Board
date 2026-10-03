@@ -2759,6 +2759,40 @@ try {
     console.log('  ✓ wholesale-swap editor closures re-bind to live (ADR-0995)');
   }
   pass += 7; // ADR-0995 stale-swap editor-closure pins
+  // ADR-0996: wholesale-swap × derived-state — every shape-derived cache is
+  // _gridVer-keyed (_idIndex/_grpMap/halo/search/minimap), ref-signature
+  // verified (pen bitmap/bbox via e.pts===p), WeakMap-keyed (wrapTextCached),
+  // content-keyed (img), live-resolved per frame (_teFollow/_lblFollow/hover),
+  // or re-parked (imgq survivors). No cache can return a stale hit post-swap.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state._lastRep=null;state.editing=null;
+    try{
+      const P=Shape.make('pen',{pts:[[0,0],[10,0],[10,10]],size:4,stroke:'#000'});P.id='c1';
+      const A=Shape.make('rect',{x:0,y:0,w:10,h:10});A.id='c2';A.groupId='gg';
+      const B=Shape.make('rect',{x:20,y:0,w:10,h:10});B.id='c3';B.groupId='gg';
+      const T=Shape.make('text',{x:0,y:0,w:40,h:20,text:'aa bb cc'});T.id='c4';
+      state.shapes.push(P,A,B,T);_invalidateGrid();
+      const preObj=byId('c1'),b0=G.bbox(preObj);   // warm the pen bbox cache
+      _penCached(preObj);                          // warm the pen bitmap cache (miss→entry with old pts ref)
+      _grpMapGet();                                // warm the group map
+      const m=s=>s.length*7;
+      wrapTextCached(T,'aa bb cc',40,12,m);        // warm the WeakMap wrap cache
+      Store.applyRemote({op:'replace',after:[{...P,pts:[[100,100],[200,100],[200,200]]},{...A,x:50},{...B,x:70},{...T,text:'zz yy xx'}],clock:{peer:'rz',seq:1,ts:nowTs()+10}});
+      assert.notStrictEqual(byId('c1'),preObj,'same-count swap still rebuilds _idIndex (via _apply _iG)');
+      const b1=G.bbox(byId('c1'));
+      assert.notStrictEqual(b1.x,b0.x,'pen bbox cache misses on the swapped pts array');
+      assert.strictEqual(b1.x,98,'bbox is the NEW envelope, not a stale hit');
+      _penCached(byId('c1'));
+      assert.strictEqual(_penCache.get('c1').pts,byId('c1').pts,'pen bitmap cache re-binds to the new pts ref');
+      const g1=_grpMapGet().get('gg');
+      assert.strictEqual(g1[0],byId('c2'),'grpMap members resolve to the swapped objects');
+      const wr=wrapTextCached(byId('c4'),'zz yy xx',40,12,m);
+      assert.strictEqual(wr.length,2,'WeakMap wrap cache recomputes for the swapped object');
+    }finally{}
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state._lastRep=null;state.editing=null;
+    console.log('  ✓ wholesale-swap × derived-state completeness (ADR-0996)');
+  }
+  pass += 6; // ADR-0996 swap×cache pins
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
