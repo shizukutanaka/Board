@@ -1056,6 +1056,7 @@ Board/
 │   └── ADR-1005-no-store-warning.md  # Persist db 喪失 (open hard-error/versionchange) で save() が沈黙 no-op — warn-once noStore toast で閉塞
 │   └── ADR-1006-timer-lifecycle-audit.md  # 遅延コールバック (setTimeout/interval/Promise) 全サイト監査 clean — fire 時 self-guard または cancel 漏斗網羅を規則化
 │   └── ADR-1007-key-repeat-gate.md  # e.repeat ゲート — discrete (トグル/エクスポート/スタンプ) 遮断、continuous (undo/nudge/zoom/rotate/cascade) 通過
+│   └── ADR-1008-transient-input-state-blur.md  # transient 入力由来状態 (measure/hover/_ehov) の blur 喪失 — _clearTouchState 漏斗で閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
