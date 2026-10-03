@@ -1037,6 +1037,7 @@ Board/
 │   └── ADR-0986-rtc-intake-kind-gate.md  # RTC intake の BC-only 種棄却 + presence 蘇生 — 偽造 hello/ping/sync-req の任意 id 行生成を棄却、bye viaRtc の _rtcPeerId null 化削除、cursor/selection で行蘇生 (BC enrich-only 維持)。0825 ピン更新
 │   └── ADR-0987-frag-stream-dc-gate.md  # frag ストリームの DC 限定化 — 単一 reassembly slot を BC 偽造断片が実 RTC ストリームと相互奪い合う wedge DoS を閉塞 (src→'rtc' 定数化、0987 ピン + frag 系ピンを viaRtc 形式へ)
 │   └── ADR-0988-kind-transport-matrix.md  # kind×transport 行列監査完走 — 全 kind の正当トランスポートを列挙 (BC-only/DC-only/dual-legit/等価許容)、受理側契約をピン化
+│   └── ADR-0989-kind-coverage-symmetry.md  # kind-coverage 対称監査完走 — op 語彙17種が validRemotePayload/_apply/_undoWire/REMOTE_OPS で一致、undo-wire 出力の remote-legality を56 assert でピン化
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

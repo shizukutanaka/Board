@@ -1,3 +1,8 @@
+## [1.8.015] - 2026-10-01
+
+### Docs + Test
+- kind-coverage 対称性監査の完走を文書化 (ADR-0989): op 語彙17種が `validRemotePayload`/`_apply`/`_undoWire`/`REMOTE_OPS` の4リストで一致することを確認 — undo-only フィールド (origSel/moved/orig) は `_slimOp` で全剥離、`pages`/`curPg` 系は `_vPages`/`_pgById` で下流検証済み。`_undoWire` 出力 ⊆ REMOTE_OPS ∩ validRemotePayload (undo が実際にピアへ届く) を17種×56 assert でピン化
+
 ## [1.8.014] - 2026-10-01
 
 ### Docs + Test
