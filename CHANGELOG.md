@@ -1,3 +1,12 @@
+## [1.8.067]
+- **Fix: import swaps park image refs for imgq heal** — `importBoard` and
+  `importFromHash` swapped `state.shapes` via bare `_rs(...map(clone))`,
+  so a shape carrying a parked `img:'k:N'` ref landed as a dead prop:
+  never attached, never parked, never healed — a permanent placeholder.
+  Both now ride `Net._attachShape` like the snapshot/load/restore paths:
+  resolves instantly when the blob is already received, else parks and
+  the 60s imgq retry loop heals it whenever a peer holds it (ADR-1041).
+
 ## [1.8.066]
 - **Fix: image-cache fingerprint hits verify byte identity** — `_imgKey`
   is an O(1) fingerprint (prefix/length/first+mid+last samples); two
