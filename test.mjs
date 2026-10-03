@@ -10418,6 +10418,20 @@ try {
   }
   pass += 5; // ADR-1005 no-store warning pins
 
+  // ADR-1006: deferred callbacks must be self-guarding at fire time or funnel
+  // through a lifecycle clear — every _stO/_stI site audited clean.
+  {
+    assert.ok(html.includes('_cancelPointerGesture(){\n  _clearLongPress()'),'long-press cleared on every cancel path');
+    assert.ok(html.includes("if(!ptr.down||_dk('resize')"),'long-press self-guards at fire');
+    assert.ok(html.includes('this._snapT=_stO(()=>{this._snapT=0'),'deferred snapshot resend');
+    assert.ok(html.includes("if(!d||d.readyState!=='open')return"),'post-close send drops');
+    assert.ok(html.includes('clearInterval(this._presenceTimer)'),'heartbeat cleared on re-init');
+    assert.ok(html.includes('_nug.t=_stO(_nugEnd'),'nudge flush timer armed');
+    assert.ok(html.includes('_cT(_rszT);_rszT=_stO(resize'),'resize debounce clear+rearm');
+    console.log('  ✓ timer lifecycle pins (ADR-1006, 7 asserts)');
+  }
+  pass += 7; // ADR-1006 timer/deferred-callback pins
+
   // ADR-0606: a viewport resize during presentation re-fits the current
   // frame — without it the zoom drifts off the frame after window resize /
   // mobile rotation (visualViewport resize routes through the same handler).
