@@ -1,3 +1,14 @@
+## [1.7.984] - 2026-10-01
+
+### Fixed
+- commit 時系列の不変条件を `_recordCommitted` へ内蔵 (ADR-0958): `_rcOp` を迂回する直接 `_recordCommitted` サイト (ungroup / unlockAll / beautify / `_repC` 系 import・clear) が pending ナッジセッションを flush せず、history/wire の順序が実時間順と反転し得た残穴を閉塞。`_nugEnd()` を `_recordCommitted` 先頭に移し「pending nudge は常に後続 commit より先に着地」を全経路で担保 — 再帰は `_nug=null` 先行で no-op、undo/redo/switchPage の明示 flush は維持 (非 commit 経路のため)
+
+## [1.7.983] - 2026-10-01
+
+### Fixed
+- 長押し矢印キーのナッジ共合体 (ADR-0957): `nudgeSelection` / ⌥arrow リサイズがキーリピート (~30/s) 毎に `move`/`resize` op を commit し、400 ops/13s で履歴を溢流 (実エントリの圧出・⌘Z が 1px 単位・wire フラッド) していた実害を閉塞。`_nugPush`/`_nugEnd` の trailing-edge セッション (400ms、キー=op 種+id 集合) でランを単一 op へ共合 — v1.6.29 `_sfbFlush` スライダー共合体のキー側 parity。flush 点は timer + `_rcOp` (次の真 commit) + undo/redo + `switchPage`。delta `move`/`resize` は arbitration 上等価 (収束は x/y の prop LWW、刻印回数が減るだけ)。remote 側はラン中 ~30Hz の live delta を失う代わりに、終了時に累積 delta を一度だけ受信 — 最終 state は同一に収束
+- origSel はセッション開始時に捕捉 (v1.7.42a parity: undo はナッジ前の選択へ復帰)
+
 ## [1.7.982] - 2026-10-01
 
 ### Fixed
