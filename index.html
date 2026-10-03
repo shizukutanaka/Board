@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.047';   // ADR-1021
+const V='1.8.048';   // ADR-1022
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8839,14 +8839,14 @@ function _imgAttach(shapes,imgs){
 }
 function reqDone(rq){return new Promise((r,j)=>{rq.onsuccess=()=>r(rq.result);rq.onerror=()=>j(rq.error)})}
 _on(window,'beforeunload',e=>{
-  _nugEnd();   // ADR-0959: commit a pending nudge so the dirty check sees it
+  _nugEnd();_cxO();   // ADR-0959/1022: commit a pending nudge + fold open editors so the dirty check sees them
   if(_dt()){Persist.save();_pd(e);e.returnValue=''}
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
-_on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)});   // ADR-0604/0608/0611/0959
+_on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)});   // ADR-0604/0608/0611/0959
 // pagehide is iOS Safari's last reliable signal …
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
-_on(window,'pagehide',()=>{_nugEnd();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604/0608/0959
+_on(window,'pagehide',()=>{_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604/0608/0959
 
 // ====================== UI ======================
 const UI={

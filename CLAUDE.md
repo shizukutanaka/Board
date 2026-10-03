@@ -1070,6 +1070,7 @@ Board/
 │   └── ADR-1019-mutation-repaint-chain.md  # 変異→再描画チェーン監査 clean — `_apply` 末尾 `_iv`/`_iD` 全網羅・`_ms` 同調・ジェスチャ `need` 補償
 │   └── ADR-1020-viewport-persist.md  # viewport 変異の永続化 — pan/zoom/fit 全9経路が `_ps()` 到達・プレゼン `leave()` は復元後 vp を保存
 │   └── ADR-1021-erase-batch-serialization.md  # erase-batch シリアライズ — `_shWB()` union で save/snapshot/export 全経路が mid-erase メンバーを含む
+│   └── ADR-1022-editor-fold-flush.md  # ライフサイクル flush のエディタ畳み込み — hidden/pagehide/beforeunload が `_cxO()` で blur commit を先に走らせ未コミット編集の喪失を閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
