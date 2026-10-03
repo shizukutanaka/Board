@@ -1,3 +1,8 @@
+## [1.8.030] - 2026-10-01
+
+### Docs + Test
+- **SR アナウンスチャネル監査 — clean 完走** (ADR-1004): `_ann` → `UI.announce` が唯一の SR ナレーション経路 (`#sr` aria-live=polite)。`el.textContent===msg?msg+' ':msg` の末尾スペーストグルで同一文連続通知も発火、`_ann` 呼出は全てイベント起点 (per-frame ループ内になし) で burst 時の coalesce は spec 準拠、`_announceSel` は `_tst` (cap4+dedup の第2ライブリージョン) 経由、`t()` は `T[k]||en[k]||k` で `undefined` 不達 + ja/en キー対称 (ADR-0335 ガード存続)、`T.k[tool]` フォールバック・接続状態 `#sConn` 別リージョンも確認。契約を8 assert でピン化
+
 ## [1.8.029] - 2026-10-01
 
 ### Docs + Test
