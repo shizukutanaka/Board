@@ -1,3 +1,8 @@
+## [1.8.038] - 2026-10-01
+
+### Docs + Pin
+- **id 索引×shape-set 変異の整合性監査が clean 完走** (ADR-1012): `byId` lazy index は size drift で自己修復するため、唯一の穴パターンは「同件数でのオブジェクト入替」(splice-with-insert/`[i]=`) — 全21変異サイト走査で同パターン不存在を確認 (全サイトが件数変化か `_iG` 同行)。`_eraseBatch` もストローク生涯に限定 (commit/cancel/swap 全出口で `=[]`)。同件数 swap で byId が新 id 解決・旧 id 消滅する実経路ピン + 「`_sh()[i]=` 禁止・同件数置換は `_iG` 必須」規則化
+
 ## [1.8.037] - 2026-10-01
 
 ### Docs + Pin
