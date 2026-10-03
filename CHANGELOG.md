@@ -1,3 +1,18 @@
+## [1.7.954] - 2026-10-01
+
+### Fixed
+- 'replace' backward (全置換の undo) が `_bT` を刻まない実害を閉塞 (ADR-0928): ローカル復元図形の `_born` が pre-swap 時計 B0 のまま残る一方、undo-wire 'replace' を forward-apply するピアは undo 時計 U を刻印 — `B0 < D < U` に落ちる第三者の del が undo 側だけ図形を殺す一方向発散。`_bT` の刻印を forward ブロックから両方向へ移し、undo 側も U を刻印。behavioural ピン +3 (`pass += 1906`)
+
+## [1.7.953] - 2026-10-01
+
+### Fixed
+- born parity: (再)導入経路3系統が有効な `_born` を刻まない実害を閉塞 (ADR-0927)。①空盤 snapshot 採用は `msg.ops[].wc` を無視し `_born` 皆無 → stale del が joiner だけを削る、②merge の未知図形は sender の時計でなく snap 自身の `ts:0` を刻印 → 真の墓標に勝てない `_born`、③ローカル全置換 (`_recordCommitted` 'replace'、.board/リンク/バックアップ import) は wclock を吹き飛ばすのに `_born` 未刻印 → swap 時計より古い del が importer 側だけ図形を殺す。`_wAdopt` で snapshot 持込 wclock を keep-newer 採用 (`_born`/`_del` 含む ≤64鍵+構造鍵除去)、`_tAlive`/`_tmb` に「新しい `_born` が `_del` を上回れば墓標失効」の上書き規則を追加 (tomb+birth 同居の解消)、merge は `_born`/`_del` をプロパティ時計と同じ LWW で併合、ローカル swap はワイヤ側と同じ `_bT` を `op.after` へ刻印。behavioural ピン +8 (`pass += 1903`)、コメント刈りで raw 帳尻
+
+## [1.7.952] - 2026-10-01
+
+### Fixed
+- 存在レベルの LWW 非対称を閉塞 (ADR-0926): kill 経路 (`del`/`clear`/`replace`/`pageDel`) は `{_del}` 墓標を無条件で刻み効果を適用していたため、因果順序に負けた del が「新しい再導入の後」に到着すると受信側だけ図形が消え送信側と発散 — 到着順が存在を決めていた。全導入サイトが `wclock[id]._born` を同一 `clockNewer` 全順序で刻印するようにし、kill 経路は `_bN` で born>kill を検査 — 負けた del は墓標も刻まず削除もしない (OR-set add-wins)。`nowTs` は `max(wall,_lastTs+1)` の strict HLC 化 — 観測したリモート書込みの後に発行したローカル op は必ずそれを上回る (equal-ts peer tiebreak で因果逆転していた ⌘⌥G 二重フレームの根因も解消)。two-world テストに teardown を追加 (world B の deferred `_snapT`/残存 `_send` wire が単一世界テストの `await` 中に snapshot を流し込む flake を解消)。`pass += 1895` (+7)
+
 ## [1.7.951] - 2026-10-01
 
 ### Docs
