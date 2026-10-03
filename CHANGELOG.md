@@ -1,3 +1,8 @@
+## [1.8.032] - 2026-10-01
+
+### Docs + Test
+- **タイマー/遅延コールバック ライフサイクル監査が clean 完走** (ADR-1006): 全 `_stO`/`_stI`/Promise 継続サイトを「発火時に何を触るか」で監査 — `_longPressTimer` は fire 時 self-guard + `_cancelPointerGesture`→`_clearLongPress` 漏斗で全 cancel 経路網羅、`_snapT` 遅延 resend は close 後 readyState ゲートで drop、presence heartbeat は init 先頭 `clearInterval`、Promise/onbufferedamountlow は fire 時 `this.dc` 再解決。実害なし、契約をピン7 assert で固定 (新規 timer は self-guard or 漏斗 `_cT` 必須)
+
 ## [1.8.031] - 2026-10-01
 
 ### Fix
