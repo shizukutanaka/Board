@@ -1077,6 +1077,7 @@ Board/
 │   └── ADR-1026-apply-failure-dedup-evict.md  # applyRemote は適用前に dedup 刻印 → 途中例外で op 永久 wedge。失敗時 `_sO().delete(k)` で heal 再適用化 + BC onmessage ガード (DC parity)
 │   └── ADR-1027-wire-mutation-invalidation-lifecycle.md  # `_oa`×`_iG` 到達性・boot 順序・broadcast 時計・presence 寿命の監査完走 (clean)。契約: live 図形への `_oa` 変異は同一ターン内の `_iG()` 前提
 │   └── ADR-1028-savebackup-failure-surfacing.md  # saveBackup の silent catch を `_saveErrMsg` 経路へ統一 — 全置換直前の退避書込が quota/abort で沈黙失敗していた非対称を閉塞
+│   └── ADR-1029-stamp-drop-coverage-symmetry.md  # per-prop LWW の stamp×drop 網羅対称性監査 (clean) — 契約: 新 LWW op は `_lwwOp` 加入+`_chg` ゲート刻印+`_undoWire` inverse 必須
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

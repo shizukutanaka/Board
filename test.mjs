@@ -16454,6 +16454,27 @@ try {
       }finally{Persist.db=_odb;UI.toast=_ot}
       console.log('  ✓ backup-write failure surfaces an error toast (ADR-1028)');
     }
+    {
+      // ADR-1029: stamp×drop coverage symmetry — every LWW-arbitrated write
+      // stamps the same key space _lwwDrop arbitrates (shared _lwwOp/_chg
+      // gates); structural keys live outside per-prop LWW; undo/redo/remote
+      // all stamp the clocks they applied.
+      assert.ok(html.includes("_lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'}"),'single _lwwOp gate shared by drop+stamp');
+      assert.ok(html.includes("key==='pg'||key==='frac'||key==='groupId'||key[0]==='_'"),'structural keys stay outside per-prop LWW stamping');
+      assert.ok(html.includes("this._stampWrites(w);Net.broadcast(w)"),'undo stamps the inverse wire ops');
+      assert.ok(html.includes("this._stampWrites(op);Net.broadcast(op)"),'redo stamps the restamped op');
+      state.shapes.length=0;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+      const r29=Shape.make('rect',{x:0,y:0,w:10,h:10});state.shapes=[r29];
+      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:5},before:{x:0},clock:{peer:'p9',seq:1,ts:100}}},false);
+      assert.strictEqual(r29.x,5,'remote upd applied');
+      assert.ok(state.wclock[r29.id]&&state.wclock[r29.id].x,'applied write stamped wclock[id].x');
+      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:1},before:{x:5},clock:{peer:'p9',seq:2,ts:50}}},false);
+      assert.strictEqual(r29.x,5,'stale-clock upd dropped by _lwwDrop');
+      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:9},before:{x:5},clock:{peer:'p9',seq:3,ts:200}}},false);
+      assert.strictEqual(r29.x,9,'newer-clock upd applied + restamped');
+      state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+      console.log('  ✓ stamp/drop coverage symmetry holds (ADR-1029)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17394,6 +17415,7 @@ pass += 6; // ADR-1025 real sw.js registration pins
 pass += 5; // ADR-1026 apply-failure dedup-evict pins
 pass += 10; // ADR-1027 wire-mutation×invalidation + presence lifecycle pins
 pass += 4; // ADR-1028 saveBackup failure-surfacing pins
+pass += 9; // ADR-1029 stamp×drop symmetry pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
