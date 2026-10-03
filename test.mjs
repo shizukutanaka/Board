@@ -10357,6 +10357,23 @@ try {
     console.log('  \u2713 draw(): ADR-1001 ctx-state restore pinned (4 asserts)');
   }
 
+  // ADR-1002: render-loop exception safety — a throw anywhere in the frame
+  // pipeline must degrade to at most a one-frame hole and self-heal via the
+  // next invalidate, never wedge the loop. Every rAF slot clears its id
+  // BEFORE doing work so a throw leaves the slot re-armable.
+  {
+    assert.ok(html.includes('function frame(){\n  _rafId=0'),'frame clears _rafId before work');
+    assert.ok(html.includes('try{if(needsRender)draw();if(needOverlay)drawOverlay()}catch(_){}'),'draw+overlay under try');
+    assert.ok(html.includes('if(needsRender||needOverlay)_rafId=_rAF(frame)'),'frame re-arms on surviving invalidates');
+    assert.ok(html.includes('if(!_rafId)_rafId=_rAF(frame)'),'invalidate dedup re-arms a dead loop');
+    assert.ok(html.includes('function _edgePanTick(){\n  _edgeRaf=0'),'edge-pan clears slot before work');
+    assert.ok(html.includes('function draw(){\n    _raf=0'),'minimap draw clears slot before work');
+    assert.ok(html.includes('}}catch(_){}\n      if(_mr)_rs2(sx)'),'minimap rot restore sits outside the per-shape try');
+    assert.ok(html.includes('_rafId=_rAF(frame)'),'boot arming exists');
+    console.log('  \u2713 frame()/rAF loop exception-safety pins (ADR-1002, 8 asserts)');
+  }
+  pass += 8; // ADR-1002 rAF-loop exception-safety pins
+
   // ADR-0606: a viewport resize during presentation re-fits the current
   // frame — without it the zoom drifts off the frame after window resize /
   // mobile rotation (visualViewport resize routes through the same handler).
