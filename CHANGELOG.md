@@ -1,3 +1,11 @@
+## [1.8.066]
+- **Fix: image-cache fingerprint hits verify byte identity** — `_imgKey`
+  is an O(1) fingerprint (prefix/length/first+mid+last samples); two
+  different dataUrls sharing all sampled parts collided and silently drew
+  the wrong image. `getImg` now verifies `img._ik===dataUrl` on a hit
+  (reference-equality fast path) and recaches to the true owner on
+  mismatch — thrash only while a real collision exists (ADR-1040).
+
 ## [1.8.065]
 - **Fix: wclock restore paths sanitize prop keys** — `op.wc`/`afterWc`
   restores (`_wR` loops + `clone(afterWc)`/`clone(op.wc)` on 'replace')

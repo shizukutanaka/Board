@@ -16696,6 +16696,26 @@ try {
       assert.ok(!('frac' in wd),'backward wc drops structural keys');
       console.log('  ✓ wclock restore paths sanitized (ADR-1039)');
     }
+    {
+      // ADR-1040: _imgKey is an O(1) fingerprint (prefix/len/first+mid+last
+      // samples) — two different dataUrls can share it. A fingerprint hit
+      // must verify byte identity via _ik or a colliding image renders the
+      // wrong pixels. On mismatch the slot recaches to the true owner.
+      assert.ok(html.includes('if(img){_imgCache.delete(k);if(img._ik===dataUrl){_imgCache.set(k,img);return img}}'),'getImg verifies _ik on fingerprint hit');
+      reset();
+      const base='data:'+'a'.repeat(494),alt=base.slice(0,100)+'b'+base.slice(101);
+      assert.strictEqual(_imgKey(base),_imgKey(alt),'crafted pair shares the fingerprint');
+      const _IM=globalThis.Image;
+      globalThis.Image=class{set src(v){this._src=v}};
+      try{
+        const i1=getImg(base),i2=getImg(alt);
+        assert.notStrictEqual(i1,i2,'colliding dataUrl gets its own Image');
+        assert.strictEqual(i2._ik,alt,'cache slot recached to the true owner');
+        assert.strictEqual(getImg(alt)._ik,alt,'repeat hit stays on the true owner');
+        assert.strictEqual(getImg(base)._ik,base,'former owner recaches on next hit (thrash-on-collision only)');
+      }finally{globalThis.Image=_IM}
+      console.log('  ✓ img fingerprint collision verified (ADR-1040)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17647,6 +17667,7 @@ pass += 11; // ADR-1036 existence-clock merge pins
 pass += 10; // ADR-1037 IDB wc intake gate parity pins
 pass += 8; // ADR-1038 img sender-tagged slot pins
 pass += 10; // ADR-1039 wclock-restore sanitize pins
+pass += 7; // ADR-1040 img fingerprint collision pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
