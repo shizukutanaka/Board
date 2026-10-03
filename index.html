@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.7.953';   // ADR-0927
+const V='1.7.954';   // ADR-0928
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc for v1.0 (+ DOC_KEY+':prev' backup slot, ADR-0004)
 const SAVE_DEBOUNCE=500;
@@ -1720,7 +1720,8 @@ const Store={
         _sz();
         if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));
         if(!forward&&op.wc)state.wclock=_wM(clone(op.wc));
-        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN);for(const s of _sh())_bT(s.id,op.clock)}   // ADR-0736/0926
+        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN)}   // ADR-0736/0926
+        for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928: the undo-wire lands on peers as a forward apply that stamps U — stamp it here too or restored borns stay pre-swap and a mid-window del kills locally only
         if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
         if(!forward)_selR(op);
         break;}
@@ -2153,10 +2154,8 @@ function _pgDup(){   // ADR-0651: duplicate the current page — pageAdd+shapes 
 function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646: remove the deleted page's members + land the view on a live page
-  // ADR-0707: 'del' parity — locked members SURVIVE and rehome to firstId (null
-  // = single-page → _pgHealS scrubs it). ADR-0724: `only` caps the kill set to
-  // op-carried members (unpage). ADR-0725: `viewId` = local view landing;
-  // member rehome follows the wire's sender choice, the view the local first.
+  // ADR-0707: 'del' parity — locked members survive + rehome to firstId. ADR-0724:
+  // `only` caps the kill set (unpage). ADR-0725: members rehome to the wire's choice.
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722e 'del' forward — undo must restore them or resurrected shapes arbitrate against nothing
   for(const id of dead)_wc()[id]=_wM({_del:op.clock});   // ADR-0679/0734: tombstone — a stale add/snapshot must lose to this delete

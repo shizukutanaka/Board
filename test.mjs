@@ -7318,6 +7318,22 @@ try {
     state._lastTs=0;B.state._lastTs=0;state._lastRep=null;
     console.log('  ✓ ADR-0927: born parity on snapshot adopt/merge + local wholesale swaps');
 
+    // ADR-0928: 'replace' backward restored the pre-swap wclock map but never
+    // stamped _born — while peers apply the undo-wire 'replace' FORWARD and
+    // stamp the undo clock U. Restored borns stayed pre-swap locally: a del
+    // with clock between the old born and U killed the undoer's shape and was
+    // skipped on peers (born=U outranks it) → one-peer-dead divergence.
+    state.wclock={};state.shapes=[];_invalidateGrid();
+    const ru={id:'ru1',type:'rect',x:0,y:0,w:10,h:10,z:1};
+    state.wclock.ru1={_del:{peer:'f',seq:1,ts:5}};
+    Store._apply({op:'replace',before:[cp(ru)],after:[],wc:{ru1:{_born:{peer:'b',seq:1,ts:1}}},clock:{peer:'u',seq:1,ts:100}},false);
+    assert.ok(!!byId('ru1'),'ADR-0928: backward replace restores the pre-swap shape');
+    assert.ok(state.wclock.ru1&&state.wclock.ru1._born&&state.wclock.ru1._born.ts===100,"ADR-0928: restored born stamps the undo clock like peers' forward apply (was: pre-swap B0)");
+    Store.applyRemote({op:'del',shapes:[cp(ru)],clock:{peer:'peerX',seq:9,ts:50}});
+    assert.ok(!!byId('ru1'),'ADR-0928: a del between old-born and undo clock loses everywhere (was: killed the undoer only)');
+    state._lastTs=0;state._lastRep=null;
+    console.log('  ✓ ADR-0928: backward replace stamps the undo clock as _born');
+
     // ADR-0736: clear/'replace' wiped wclock WHOLESALE — including tombstones —
     // so a stale in-flight 'add' could resurrect a shape the swap just removed,
     // and a receiver tomb newer than the swap clock was lost entirely.
@@ -15144,7 +15160,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1903; // prev 1895 + 8 ADR-0927 born-parity pins (snapshot adopt/merge + local swap + tomb supersession)
+  pass += 1906; // prev 1903 + 3 ADR-0928 backward-replace born-stamp pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
