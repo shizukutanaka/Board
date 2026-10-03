@@ -1,3 +1,8 @@
+## [1.8.043] - 2026-10-01
+
+### Docs + Pin
+- **`saveBackup`/`:prev` ライフサイクル監査が clean 完走** (ADR-1017): 全 wholesale overwrite 経路 (local clear/import × 4・remote 'replace' forward) がスワップ前に `:prev` へ退避 — ピアの一括取込でも作業を黙殺しない。blob GC は live doc/`:prev` 両方の参照を保持、`restoreBackup` は `_repC` 可逆スワップで wire 伝播。remote 'replace' が先にバックアップを保存する実 intake ピン
+
 ## [1.8.042] - 2026-10-01
 
 ### Docs + Pin
