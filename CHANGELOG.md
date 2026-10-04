@@ -1,3 +1,11 @@
+## [1.8.071]
+- **Fix: snapshot img puts join the answer store** — `_snapshotMsg` passed a
+  throwaway dedup map to `_slimShapes`, so snapshot-carried `img:` keys never
+  reached `_imgSent` and were permanently unanswerable via imgq (sender still
+  holds the blob). A receiver-side `_imgIn` eviction turned that into a
+  permanent placeholder. Snapshot puts now register into the shared
+  byte-bound answer store (ADR-1045).
+
 ## [1.8.070]
 - **Audit: pending-nudge × cross-path lifecycle** — the `_nug` coalescer's
   flush coverage is complete: every local mutation funnels through
