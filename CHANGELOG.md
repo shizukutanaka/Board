@@ -1,3 +1,8 @@
+## [1.8.046] - 2026-10-01
+
+### Fixed
+- Pan/zoom/viewport-fit changes now schedule persistence — previously only ops, docName and page switches did, so a view-only session lost the last viewport on reload or tab-hide (ADR-1020).
+
 ## [1.8.045] - 2026-10-01
 
 ### Docs + Pin

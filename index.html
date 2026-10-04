@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.045';   // ADR-1019
+const V='1.8.046';   // ADR-1020
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2502,6 +2502,7 @@ function centerOn(sh){
   const b=_bb(sh),v=_vp();
   v.x=_xC(b.x+b.w/2-(canvas.width/(v.zoom*DPR))/2);
   v.y=_xC(b.y+b.h/2-(canvas.height/(v.zoom*DPR))/2);
+  _ps();
 }
 function describeShape(s){
   const b=_bb(s);
@@ -4242,7 +4243,7 @@ _on(canvas,_PM,e=>{
   if(ptr.panning){
     _vp().x=_xC(_vp().x-(sp.x-ptr.x)/_vp().zoom);
     _vp().y=_xC(_vp().y-(sp.y-ptr.y)/_vp().zoom);
-    ptr.x=sp.x;ptr.y=sp.y;_iv();return;
+    ptr.x=sp.x;ptr.y=sp.y;_iv();_ps();return;
   }
   switch(_tl()){
     case 'select':
@@ -4333,7 +4334,7 @@ function _edgePanTick(){
   const vx=ptr.x<M?-S*(M-ptr.x)/M:ptr.x>rw?S*(ptr.x-rw)/M:0;
   const vy=ptr.y<M?-S*(M-ptr.y)/M:ptr.y>rh?S*(ptr.y-rh)/M:0;
   if(!vx&&!vy)return;
-  const v=_vp();v.x=_xC(v.x+vx/v.zoom);v.y=_xC(v.y+vy/v.zoom);_iv();
+  const v=_vp();v.x=_xC(v.x+vx/v.zoom);v.y=_xC(v.y+vy/v.zoom);_iv();_ps();
   _edgeRaf=_rAF(_edgePanTick);
 }
 function _edgePanKick(){
@@ -4788,9 +4789,8 @@ _on(canvas,'wheel',e=>{
   if(_pA())return;   // ADR-0640: pan/zoom behind the overlay would unfocus the fitted frame
   const d=wheelPx(e);
   if(_mod(e)){
-    // ADR-0033: ctrl+wheel (trackpad pinch on desktop)
-    // snapshot-preview as touch pinch — zoom the
-    // stream in, settle to a crisp repaint ~180ms after the last.
+    // ADR-0033: ctrl+wheel (trackpad pinch) gets the pinch
+    // snapshot preview — crisp repaint ~180ms after the last.
     _pinchSnapNow();
     _cT(_wheelZoomEnd);
     _wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180);
@@ -4801,7 +4801,7 @@ _on(canvas,'wheel',e=>{
     const dx=_sK(e)&&!d.x?d.y:d.x,dy=_sK(e)&&!d.x?0:d.y;
     _vp().x=_xC(_vp().x+dx/_vp().zoom);
     _vp().y=_xC(_vp().y+dy/_vp().zoom);
-    _iv();
+    _iv();_ps();
   }
 },{passive:false});
 
@@ -4885,7 +4885,7 @@ function zoomAt(sp,delta){
   v.y=_xC(wp.y-sp.y/nz);
   v.zoom=nz;
   _rZ();
-  _iv();
+  _iv();_ps();
 }
 function zoomBy(f){
   const r=_cbr();
@@ -4894,7 +4894,7 @@ function zoomBy(f){
 }
 function zoomReset(){
   _vp().zoom=1;
-  _rZ();_iv();
+  _rZ();_iv();_ps();
   _ann('100%');
 }
 // ADR-0049: shared viewport-fit math — was duplicated in fitToContent/_mirrorGo.
@@ -4905,7 +4905,7 @@ function _fitViewport(b,pad,cap){
   _vp().zoom=z;
   _vp().x=_xC(b.x+b.w/2-r.width/(2*z));
   _vp().y=_xC(b.y+b.h/2-r.height/(2*z));
-  _rZ();_iv();
+  _rZ();_iv();_ps();
   return z;
 }
 function fitToContent(){
@@ -5914,7 +5914,7 @@ _on(window,_KD,e=>{
       const step=(_sK(e)?200:40)/_vp().zoom;
       _vp().x=_xC(_vp().x+(k===_AL2?-step:k===_AR2?step:0));
       _vp().y=_xC(_vp().y+(k===_AU?-step:k===_AD?step:0));
-      _iv();
+      _iv();_ps();
     }
   }
   else if(k===_ES){
@@ -10143,10 +10143,9 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'');
     _dsp(_qs(document,'.statusbar'),'');
     _qs(document,'.minimap-wrap')?.style.removeProperty('display');
-    // Mirror enter(): the canvas CSS box just shrunk without a
-    // native resize event — re-sync the backing buffer
+    // Mirror enter(): box shrank without a native resize event
     resize();
-    if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ()}
+    if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ();_ps()}
     _iv();
     _ann(t('presExit'));   // ADR-0639
     _focusTrigger&&_fc(_focusTrigger.isConnected===false?canvas:_focusTrigger);_focusTrigger=null;   // ADR-0982
@@ -10242,7 +10241,7 @@ const Minimap=(()=>{
     const _r=_cbr();
     _vp().x=wx-_r.width/_vp().zoom/2;
     _vp().y=wy-_r.height/_vp().zoom/2;
-    _iv();
+    _iv();_ps();
   };
   _on(mc,_PD,e=>{if(e.button>1)return;_mmNav=true;try{mc.setPointerCapture(e.pointerId)}catch(_){}_mmGo(e)});   // ADR-0898: side/barrel buttons arm no scrub (0896 parity)
   _on(mc,_PM,e=>{if(_mmNav)_mmGo(e)});
