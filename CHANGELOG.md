@@ -1,3 +1,12 @@
+## [1.8.068]
+- **Fix: exports ride a parked img ref through** — `roundShapesForExport`
+  unconditionally deleted `o.img`, so a shape whose blob was never
+  received exported as a contentless image (no `dataUrl`, no ref): a
+  permanent unhealable placeholder. The ref now rides the export — the
+  ADR-1041 import gate parks it for imgq heal whenever a peer holding the
+  blob shares the room — and is dropped only when `dataUrl` supersedes
+  it (ADR-1042).
+
 ## [1.8.067]
 - **Fix: import swaps park image refs for imgq heal** — `importBoard` and
   `importFromHash` swapped `state.shapes` via bare `_rs(...map(clone))`,
