@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.035';   // ADR-1009
+const V='1.8.036';   // ADR-1010
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8316,7 +8316,7 @@ const Net={
     if(_iA(msg.ops))for(const o of _s0(msg.ops,SHARE_MAX_SHAPES))if(o&&o.shape&&_iS(o.shape.id))wm.set(o.shape.id,o.wc);
     const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(s=>validShape(s)&&!_tAlive(s.id,wm.get(s.id)));   // ADR-0474/0735/0927
     _rs(clone(valid));   // ADR-0009
-    _sz();
+    _scl();_sz();   // ADR-1010
     for(const s of valid)_wAdopt(s.id,wm.get(s.id));   // ADR-0927
     _pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a local view filter — a re-sync must not yank the view
     if(_iS(msg.name)&&(_iN(msg.nameTs)?_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_tsOK(msg.nameTs))_nameTs=msg.nameTs;if(_idOK(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name));}   // ADR-0618/0699/0780/0791
