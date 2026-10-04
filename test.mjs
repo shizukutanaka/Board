@@ -16198,6 +16198,16 @@ try {
     assert.strictEqual(state.histIdx,hx1+1,'only the real commit enters history — the stale pending op is discarded');
     assert.strictEqual(state.history[state.histIdx].op,'add','the stale pending move produced no history entry');
     console.log('  ✓ armed pending op strips dead ids at flush — no phantom commit (ADR-1013)');
+    // ADR-1014: a remote 'add' for a held id is idempotent — no dup object,
+    // no prop clobber; the arrival only merges the born stamp (0926).
+    reset();
+    const DU1=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:DU1});
+    const DU2=JSON.parse(JSON.stringify(DU1));DU2.x=999;DU2.w=99;DU2.stroke='#f00';
+    Store.applyRemote({op:'add',shape:DU2,clock:{peer:'p9',seq:1,ts:Date.now()+1}});
+    assert.strictEqual(state.shapes.length,1,'same-id remote add does not duplicate');
+    assert.strictEqual(byId(DU1.id).x,0,'same-id remote add does not clobber live props');
+    console.log('  ✓ same-id remote add is idempotent — live shape wins (ADR-1014)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
