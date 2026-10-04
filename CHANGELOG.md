@@ -1,3 +1,8 @@
+## [1.8.041] - 2026-10-01
+
+### Docs + Pin
+- **history 有界性×トリム境界監査が clean 完走** (ADR-1015): `_recordCommitted` の chop→push→shift/inc で trim は tip (histIdx=len-1) のみ発火 — mid-undo では先に redo 枝が切除され shift 経路に到達しないため `histIdx` は常に len-1 を維持 (数値調整不要の構造的不変条件)。undo+commit の redo 枝破壊・>MAX 投入後の histIdx tip 追従・trim 後 undo が最新 op を辿る実経路ピン + 「新規履歴書込は chop→push 順序保持」規則化
+
 ## [1.8.040] - 2026-10-01
 
 ### Docs + Pin
