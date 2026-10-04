@@ -768,9 +768,9 @@ const checks = [
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
   ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
-  ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967)', html.includes("if(!byId(s.id)||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
-  ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967)', html.includes("if(!byId(hit.id)||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
-  ['sticky chain guards remote-deleted source (ADR-0558)', html.includes("_lk(s)||!byId(s.id))return")],
+  ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967/0995)', html.includes("if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
+  ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967/0995)', html.includes("if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
+  ['sticky chain guards remote-deleted source (ADR-0558/0995)', html.includes("s.type!=='sticky'||_lk(s))return")],
   ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
   ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
@@ -2719,6 +2719,46 @@ try {
     console.log('  ✓ undo-wire × peer-apply symmetry (ADR-0994)');
   }
   pass += 10; // ADR-0994 undo-wire × peer-apply pins
+  // ADR-0995: a wholesale swap (remote 'replace'/snapshot/import) swaps the live
+  // object out from under an open editor's closure — s/hit stay bound to the dead
+  // object while byId resolves the replacement, so blur commits must re-bind to
+  // live. Without it the typed text lands on a dead object while the wire upd
+  // still reaches peers = one-way divergence (peers texted, locally blank).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
+    const kids=[];const _ceA=fakeDoc.createElement;
+    fakeDoc.createElement=tag=>{const el=_ceA(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.blur=()=>{(el._L.blur||[]).forEach(f=>f())};return el};
+    const _abA=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids.push(el)};
+    const ob=Net.broadcast;let sent=[];
+    try{
+      const TE=Shape.make('text',{x:0,y:0,w:50,h:20,text:''});TE.id='e1';
+      Store.commit({op:'add',shape:TE});
+      openTextEditor(byId('e1'),false);
+      const preObj=byId('e1'),ta=kids[kids.length-1];ta.value='hello';
+      Store.applyRemote({op:'replace',after:[{...preObj,text:''}],clock:{peer:'rz',seq:1,ts:nowTs()+1}});   // swap the object out from under the editor
+      assert.notStrictEqual(byId('e1'),preObj,'the swap detaches the open-time object');
+      assert.strictEqual(byId('e1').text,'','precondition: the replacement copy has remote content');
+      Net.broadcast=w=>{sent.push(w)};ta.blur();Net.broadcast=ob;
+      assert.strictEqual(byId('e1').text,'hello','post-swap text blur commits onto the live copy');
+      assert.ok(sent.some(w=>w.op==='upd'&&w.id==='e1'&&w.after&&w.after.text==='hello'),'post-swap text finalize reaches peers');
+      const LB=Shape.make('rect',{x:0,y:60,w:50,h:40,label:'l0'});LB.id='e2';
+      Store.commit({op:'add',shape:LB});
+      state.selection=new Set([LB.id]);
+      editSelectedShapeKbd();
+      const inp=kids[kids.length-1];inp.value='l1';
+      Store.applyRemote({op:'replace',after:[{...byId('e1'),text:'hello'},{...byId('e2'),label:'l0'}],clock:{peer:'rz',seq:2,ts:nowTs()+2}});
+      inp.blur();
+      assert.strictEqual(byId('e2').label,'l1','post-swap label commit lands on the live copy');
+      const ST=Shape.make('sticky',{x:0,y:0,w:160,h:160,text:'t'});ST.id='e3';
+      Store.commit({op:'add',shape:ST});
+      byId('e3').x=500;   // live moved since the closure captured it
+      _stickyChain({...byId('e3'),x:0});
+      assert.strictEqual(state.shapes[state.shapes.length-1].x,676,'sticky chain chains off the live object, not the stale closure');
+    }finally{fakeDoc.createElement=_ceA;fakeDoc.body.appendChild=_abA;Net.broadcast=ob;}
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state.editing=null;
+    console.log('  ✓ wholesale-swap editor closures re-bind to live (ADR-0995)');
+  }
+  pass += 7; // ADR-0995 stale-swap editor-closure pins
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
