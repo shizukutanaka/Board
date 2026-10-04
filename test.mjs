@@ -16232,6 +16232,18 @@ try {
     assert.ok(byId(PK1.id),'the img-ref add landed through real intake');
     assert.strictEqual(Net._imgPending.get(PK1.id)?.k,'k_park_1016','parked ref armed for imgq heal');
     console.log('  ✓ wire-intake _attachOp parks img refs before _apply (ADR-1016)');
+    // ADR-1017: a remote 'replace' snapshots the live board into :prev
+    // before the swap — a peer's wholesale import cannot silently
+    // destroy local work (ADR-0004 semantics on the wire path).
+    reset();
+    state._lastRep=null;   // reset() keeps the causal marker — clear it so the op isn't rejected as a stale swap
+    const RPA=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:RPA});
+    let bkn=0;const _sbk=Persist.saveBackup;Persist.saveBackup=()=>{bkn++;return Promise.resolve()};
+    Net._onRecv({k:'op',peer:'p9',op:{op:'replace',before:[],after:[],clock:{peer:'p9',seq:1,ts:Date.now()+1}}},false);
+    assert.strictEqual(bkn,1,'remote replace backs up the live board first');
+    Persist.saveBackup=_sbk;
+    console.log('  ✓ remote replace snapshots :prev before the swap (ADR-1017)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
