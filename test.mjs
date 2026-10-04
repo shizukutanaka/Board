@@ -700,9 +700,9 @@ const checks = [
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
     html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  _cmt({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
-    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      _rs(shapes.map(clone));")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      _rs(shapes.map(s=>Net._attachShape(clone(s))));")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
-    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      _rs(valid.map(clone));")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      _rs(valid.map(s=>Net._attachShape(clone(s))));")],
   ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes("_ew(f.name,'.board')")],
@@ -1233,8 +1233,8 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /dcRef\.onclose=\(\)=>\{[\s\S]*?this\._dcQ=null/.test(html)],
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      _pgAdopt(d.pages,d.curPg);") && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))));") && /_rs\(valid\.map\(s=>Net\._attachShape\(clone\(s\)\)\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
@@ -15889,10 +15889,13 @@ try {
     };
     try{
       reset();
-      const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}')};
+      const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0,"pg":"import2"}],"pages":[{"id":"import1","name":"First"},{"id":"import2","name":"Second"}],"curPg":"import2"}')};
       for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length===1&&state.shapes[0].id==='fb9','a dropped .board file atomically replaces the board via FileReader');
+      assert.deepStrictEqual(state.pages.map(p=>p.id),['import1','import2'],'file import adopts all page metadata');
+      assert.strictEqual(state.curPg,'import2','file import restores the active page');
+      assert.strictEqual(state.shapes[0].pg,'import2','file import preserves shape page membership');
       reset();
       const efile={name:'e.excalidraw',type:'',size:200,text:()=>Promise.resolve('{"type":"excalidraw","elements":[{"id":"ex9","type":"rectangle","x":5,"y":5,"width":40,"height":30}]}')};
       for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
@@ -16715,6 +16718,20 @@ try {
         assert.strictEqual(getImg(base)._ik,base,'former owner recaches on next hit (thrash-on-collision only)');
       }finally{globalThis.Image=_IM}
       console.log('  ✓ img fingerprint collision verified (ADR-1040)');
+    }
+    {
+      // ADR-1041: importBoard/importFromHash swap via _rs without
+      // _attachShape — parked img refs stayed dead forever (no park → no
+      // imgq heal). Both now ride _attachShape like the snapshot path.
+      assert.ok(html.includes("_rs(shapes.map(s=>Net._attachShape(clone(s))))"),'importBoard attaches');
+      assert.ok(html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))))"),'importFromHash attaches');
+      reset();
+      Net._imgIn.set('kH','data:image/png;base64,AAAA');
+      const att=Net._attachShape({id:'ii',type:'image',img:'kH'});
+      assert.strictEqual(att.dataUrl,'data:image/png;base64,AAAA','known blob resolves on attach');
+      const par=Net._attachShape({id:'ij',type:'image',img:'kZ:2'});
+      assert.ok(Net._imgPending.has('ij'),'unknown ref parks for imgq heal');
+      console.log('  ✓ import swap img-attach parity (ADR-1041)');
     }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
@@ -17668,6 +17685,7 @@ pass += 10; // ADR-1037 IDB wc intake gate parity pins
 pass += 8; // ADR-1038 img sender-tagged slot pins
 pass += 10; // ADR-1039 wclock-restore sanitize pins
 pass += 7; // ADR-1040 img fingerprint collision pins
+pass += 5; // ADR-1041 import swap img-attach pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

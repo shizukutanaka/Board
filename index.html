@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.066';   // ADR-1040
+const V='1.8.067';   // ADR-1041
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -7582,8 +7582,8 @@ function importBoard(file){
       const origSel=_selIds();
       const _bpg=clone(_pgs()),_bcp=state.curPg;   // ADR-0646
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
-      _rs(shapes.map(clone));   // ADR-0009
-      _pgAdopt(d.pages,d.curPg);   // ADR-0646: adopt the file's page set
+      _rs(shapes.map(s=>Net._attachShape(clone(s))));   // ADR-0009/1041: parked img refs park for imgq heal like the snapshot path
+      _pgAdopt(d.pages,d.curPg);
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out.
       // Keeping them can let a re-imported shape (same id) inherit a stale LWW clock.
@@ -8589,7 +8589,8 @@ const Share={
       const _bpg=clone(_pgs()),_bcp=state.curPg;   // ADR-0646
       // ADR-0004: survives reload/closed-tab too, not just session undo.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
+      _rs(valid.map(s=>Net._attachShape(clone(s))));   // ADR-1041: parked refs park for imgq heal
+      _pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out
       if(_vpOK(data.viewport)){
