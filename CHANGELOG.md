@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ## [1.8.022] - 2026-10-01
 
 ### Docs + Test
@@ -9,14 +8,6 @@
 ### Fixed
 - **全置換スワップ後の stale editor クロージャを live 再束縛** (ADR-0995): text/label エディタの blur commit と `_stickyChain` が open 時に捕獲した shape 参照へ書き込むため、remote 'replace'/'clear'/snapshot adopt/import が盤面オブジェクトを差し替えると `byId` 判定は live なのに書込は死んだ旧オブジェクトへ向かう実害 — blur commit は wire `upd` が peers へ届くのにローカル live は remote 側の `text:''` のまま残る**一方向発散**、`_stickyChain` は stale 座標から連鎖先を計算しローカルのみ誤位置。3サイトを `!(s=byId(s.id))`/`!(hit=byId(hit.id))` 再束縛へ変更 (0992 確立規則の未適用残穴)。7 assert 実経路ピン追加
 
-||||||| 0ade80d
-=======
-## [1.8.021] - 2026-10-01
-
-### Fixed
-- **全置換スワップ後の stale editor クロージャを live 再束縛** (ADR-0995): text/label エディタの blur commit と `_stickyChain` が open 時に捕獲した shape 参照へ書き込むため、remote 'replace'/'clear'/snapshot adopt/import が盤面オブジェクトを差し替えると `byId` 判定は live なのに書込は死んだ旧オブジェクトへ向かう実害 — blur commit は wire `upd` が peers へ届くのにローカル live は remote 側の `text:''` のまま残る**一方向発散**、`_stickyChain` は stale 座標から連鎖先を計算しローカルのみ誤位置。3サイトを `!(s=byId(s.id))`/`!(hit=byId(hit.id))` 再束縛へ変更 (0992 確立規則の未適用残穴)。7 assert 実経路ピン追加
-
->>>>>>> origin/devin/1791052338-round743
 ## [1.8.020] - 2026-10-01
 
 ### Docs + Test
