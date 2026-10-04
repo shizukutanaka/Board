@@ -2824,6 +2824,30 @@ try {
     console.log('  ✓ live↔stored-op aliasing completeness (ADR-0997)');
   }
   pass += 7; // ADR-0997 aliasing pins
+  // ADR-0998: peer-clock uniqueness — (peer,seq) dedup keys can never collide:
+  // peerId carries a per-boot incarnation suffix so a seq restart can't reuse
+  // a key a peer already dedup'd; every wire op stamps ++state.seq; seq:0
+  // literals are arbitration-only compare objects, never emitted as op clocks.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state._lastRep=null;state.editing=null;
+    try{
+      assert.ok(/\..{6}$/.test(state.peerId),'peerId carries the per-boot incarnation suffix');
+      const s0=state.seq,A=Shape.make('rect',{x:0,y:0,w:5,h:5});A.id='u1';
+      const B=Shape.make('rect',{x:10,y:0,w:5,h:5});B.id='u2';
+      Store.commit({op:'add',shape:A});
+      Store.commit({op:'add',shape:B});
+      assert.strictEqual(state.seq,s0+2,'every commit consumes a fresh ++state.seq');
+      const keys=[...state.seenOps];
+      assert.strictEqual(keys.length,2,'both ops entered seenOps — no dedup collision');
+      assert.ok(keys.every(k=>k.startsWith(state.peerId+':')),'dedup key binds the full incarnation id');
+      assert.notStrictEqual(keys[0],keys[1],'distinct seqs — distinct keys');
+      Store.undo();
+      assert.ok(state.seq>s0+2,'undo (+its wire ops) stamps fresh seqs too');
+    }finally{}
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state._lastRep=null;state.editing=null;
+    console.log('  ✓ peer-clock uniqueness × seenOps dedup (ADR-0998)');
+  }
+  pass += 6; // ADR-0998 clock pins
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
