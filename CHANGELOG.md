@@ -1,3 +1,12 @@
+## [1.8.064]
+- **Fix: img reassembly slots are per (key, sender)** — `imgq` is answered by
+  every peer holding the blob; two answerers splice-mixed chunks into a
+  single `msg.key` slot, failed `_imgHash`, and left the parked ref
+  permanently unresolved in ≥3-peer rooms. Slots are now keyed
+  `key+'|'+peer` (mirroring `_fragIn`'s ADR-0469 src-tagging) plus an
+  `_imgIn.has` early break so dead streams stop buffering once the blob
+  resolves (ADR-1038).
+
 ## [1.8.063]
 - **Fix: IDB doc `wc` intake shares the `_wAdopt` gate** — `load()` used to
   stamp every key of `d.wc[id]` after a bare `validClock`, so a stale or
