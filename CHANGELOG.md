@@ -1,3 +1,8 @@
+## [1.8.037] - 2026-10-01
+
+### Docs + Pin
+- **派生キャッシュ不変条件監査が clean 完走** (ADR-1011): 全キャッシュ (wrap/pen bitmap/pen bbox/CSS/ハロー/検索/ミニマップ/conn ラベル/img pending/ジェスチャスナップ/スナップ索引/img byte バジェット/スライダ buffer) のキー完全性×有界性×ライフタイムを走査 — WeakMap (shape obj キー) は GC で swap 安全、id キーは全て `_psc`/`_pcC`/`_tTk` サイトで網羅。webfont 不使用 (system stack) のため font-load stale 経路は不存在。`_wrapCache` キーに spacing/font が含まれる契約を memo-hit/remeasure の実経路ピンで固定
+
 ## [1.8.036] - 2026-10-01
 
 ### Fix
