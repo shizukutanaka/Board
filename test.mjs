@@ -1773,7 +1773,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, importSvgText, importExcText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, _mkSnapIdx, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
+             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection, _setDocName,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -16357,6 +16357,25 @@ try {
       if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
       console.log('  ✓ wire-buffer lifecycle is room-vs-doc complete (ADR-1023)');
     }
+    {
+      // ADR-1024: an empty docName write must never reach state — '' was
+      // broadcastable (input funnel commits the cleared field) while the
+      // 'change' handler normalized locally only → local _UT vs peers ''
+      // at an equal (ts,peer) clock → neither side ever adopted the other.
+      const prevN=state.docName;
+      Net._onRecv({k:'name',peer:'p9',name:'',ts:_now()},false);
+      assert.strictEqual(state.docName,'Untitled','empty docName on the wire normalizes to Untitled');
+      Net._onRecv({k:'name',peer:'p9',name:'Stale',ts:1},false);
+      assert.strictEqual(state.docName,'Untitled','the adopted write keeps its LWW clock — older renames lose');
+      api._setDocName('');
+      assert.strictEqual(state.docName,'Untitled','the shared funnel normalizes empty → Untitled for every producer');
+      api._setDocName('Named Doc');
+      assert.strictEqual(state.docName,'Named Doc','non-empty names pass through');
+      assert.ok(html.includes("state.docName=n||_UT"),'the funnel normalizes at the single write site');
+      assert.ok(html.includes("name:state.docName"),'the broadcast emits the normalized stored name');
+      state.docName=prevN;
+      console.log('  ✓ docName empty-write convergence (ADR-1024)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17292,6 +17311,7 @@ pass += 4; // ADR-0936 absolute-writer pins
 pass += 7; // ADR-1021 erase-batch serialization pins
 pass += 5; // ADR-1022 editor-fold flush pins
 pass += 8; // ADR-1023 wire-buffer lifecycle pins
+pass += 6; // ADR-1024 docName empty-write pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
