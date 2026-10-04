@@ -1,3 +1,8 @@
+## [1.8.052] - 2026-10-06
+
+### Fixed
+- ADR-1026: `applyRemote` stamped the dedup key before applying, so a throw anywhere between the stamp and a finished apply (`_lwwDrop`, saveBackup, `_apply`, connFix, `_stampWrites`) left the op permanently recorded-but-never-run — never re-delivered, never retried by snapshot heal, a silent one-way divergence. The post-stamp body now runs in `try{...}` and a failure evicts the key (`_sO().delete(k)`) so the next heal re-enters the apply; `bc.onmessage` gains the same `try/catch` guard the DC path has had since ADR-0010.
+
 ## [1.8.051] - 2026-10-06
 
 ### Fixed
