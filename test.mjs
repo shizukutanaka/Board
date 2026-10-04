@@ -16174,6 +16174,7 @@ try {
     console.log('  ✓ wrap memo key covers spacing — stale-hit poison blocked (ADR-1011)');
     // ADR-1012: byId must not serve a stale entry across a same-count
     // wholesale swap — size-equal replacement only heals via _iG.
+    {
     reset();
     const A1=Shape.make('rect',{x:0,y:0,w:10,h:10}),A2=Shape.make('rect',{x:20,y:0,w:10,h:10});
     Store.commit({op:'add',shape:A1});Store.commit({op:'add',shape:A2});
@@ -16183,6 +16184,7 @@ try {
     assert.strictEqual(byId(B1.id),state.shapes[0],'byId resolves a same-count-swapped id');
     assert.ok(!byId(A1.id),'byId no longer resolves the swapped-out id');
     console.log('  ✓ byId survives a same-count wholesale swap (ADR-1012)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
