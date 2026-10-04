@@ -1081,6 +1081,7 @@ Board/
 │   └── ADR-1030-join-room-switch-lifecycle.md  # join ハンドシェイク×ルーム切替 + restore 経路ライフサイクル監査 (clean) — 契約: room スコープ状態は Net.init でリセット、doc 採用は `_repC` 経由、op 送出は `Net.broadcast` 漏斗
 │   └── ADR-1031-presence-signature-lifecycle.md  # presence 送出署名×ライフサイクル監査 (clean) — 契約: 新 dedup キーは init リセットかピア集合変化での自己修復必須、ページ名前付き署名は curPg 同梱
 │   └── ADR-1032-rtc-room-presence-merge.md  # リンクパートナー×ルームピアの presence 二重計上を `_pk` 集約で解消 — viaRtc presence は実在行に着地し合成 rtc: 行を畳む
+│   └── ADR-1033-foreign-img-ref-marking.md  # `:`-連鎖 img キーはストア相対序数 — 外来 parked 参照を persist 時 '@' マークし _imgAttach はローカル解決せず imgq 修復のみへ
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
