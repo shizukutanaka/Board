@@ -7583,6 +7583,7 @@ function importBoard(file){
       const _bpg=clone(_pgs()),_bcp=state.curPg;   // ADR-0646
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
       _rs(shapes.map(s=>Net._attachShape(clone(s))));   // ADR-0009/1041: parked img refs park for imgq heal like the snapshot path
+      _pgAdopt(d.pages,d.curPg);
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out.
       // Keeping them can let a re-imported shape (same id) inherit a stale LWW clock.

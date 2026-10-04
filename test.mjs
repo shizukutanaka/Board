@@ -1233,7 +1233,7 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /dcRef\.onclose=\(\)=>\{[\s\S]*?this\._dcQ=null/.test(html)],
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      _pgAdopt(d.pages,d.curPg);") && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
+  ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))));") && /_rs\(valid\.map\(s=>Net\._attachShape\(clone\(s\)\)\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
@@ -15889,10 +15889,13 @@ try {
     };
     try{
       reset();
-      const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}')};
+      const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0,"pg":"import2"}],"pages":[{"id":"import1","name":"First"},{"id":"import2","name":"Second"}],"curPg":"import2"}')};
       for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length===1&&state.shapes[0].id==='fb9','a dropped .board file atomically replaces the board via FileReader');
+      assert.deepStrictEqual(state.pages.map(p=>p.id),['import1','import2'],'file import adopts all page metadata');
+      assert.strictEqual(state.curPg,'import2','file import restores the active page');
+      assert.strictEqual(state.shapes[0].pg,'import2','file import preserves shape page membership');
       reset();
       const efile={name:'e.excalidraw',type:'',size:200,text:()=>Promise.resolve('{"type":"excalidraw","elements":[{"id":"ex9","type":"rectangle","x":5,"y":5,"width":40,"height":30}]}')};
       for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
