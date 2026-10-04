@@ -10518,7 +10518,6 @@ try {
     pass += 5;
   }
 
-||||||| 39991ea
   // v1.6.92: PWA install button (beforeinstallprompt) — progressive enhancement,
   // only shows when the browser fires the event. Tests: prompt() called on click,
   // button hidden after install, no-op when prompt is null.
