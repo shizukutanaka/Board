@@ -16174,6 +16174,7 @@ try {
     console.log('  ✓ wrap memo key covers spacing — stale-hit poison blocked (ADR-1011)');
     // ADR-1012: byId must not serve a stale entry across a same-count
     // wholesale swap — size-equal replacement only heals via _iG.
+    {
     reset();
     const SWA=Shape.make('rect',{x:0,y:0,w:10,h:10}),SWB=Shape.make('rect',{x:20,y:0,w:10,h:10});
     Store.commit({op:'add',shape:SWA});Store.commit({op:'add',shape:SWB});
