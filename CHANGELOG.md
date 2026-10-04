@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## [1.8.049] - 2026-10-06
 
 ### Docs + Tests
@@ -8,6 +9,14 @@
 ### Fixed
 - Lifecycle flushes now fold open editors before the dirty save: the text and label editors commit only on blur, so a visibilitychange→hidden / pagehide / beforeunload while editing persisted the doc without the in-flight text — silent one-way loss (peers kept the blank add; isNew shapes stayed blank) (ADR-1022).
 
+||||||| 12befe0
+=======
+## [1.8.048] - 2026-10-01
+
+### Fixed
+- Lifecycle flushes now fold open editors before the dirty save: the text and label editors commit only on blur, so a visibilitychange→hidden / pagehide / beforeunload while editing persisted the doc without the in-flight text — silent one-way loss (peers kept the blank add; isNew shapes stayed blank) (ADR-1022).
+
+>>>>>>> origin/devin/1791059640-round770
 ## [1.8.047] - 2026-10-01
 
 ### Fixed
