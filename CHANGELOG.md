@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ## [1.8.018] - 2026-10-01
 
 ### Docs + Test
@@ -9,14 +8,6 @@
 ### Fixed
 - **finalize ブリッジの del tomb を broadcast 時計へ再刻印** (ADR-0991): `_syncTextFinalize` の del 分岐 (空テキスト図形の除去をピアへ同期する broadcast-only op) は `_stampWrites` を呼ばず、ローカル tomb は undo backward が刻んだ **undo-clock**、ピア tomb は del-apply が刻む **broadcast-clock** で非対称だった。`undo-clock < c < broadcast-clock` を持つ shape-carrying op (snapshot add / replace-born) がローカルでは採用・ピアでは tomb-drop される一方向復活の窓を、`_bN` ゲート付き `_wD(s.id,op.clock)` (ピアの del-apply と同一書込・同一 gate) で閉塞。`upd` 分岐の `_stampWrites` は不変、5 assert ピン追加
 
-||||||| 55b72af
-=======
-## [1.8.017] - 2026-10-01
-
-### Fixed
-- **finalize ブリッジの del tomb を broadcast 時計へ再刻印** (ADR-0991): `_syncTextFinalize` の del 分岐 (空テキスト図形の除去をピアへ同期する broadcast-only op) は `_stampWrites` を呼ばず、ローカル tomb は undo backward が刻んだ **undo-clock**、ピア tomb は del-apply が刻む **broadcast-clock** で非対称だった。`undo-clock < c < broadcast-clock` を持つ shape-carrying op (snapshot add / replace-born) がローカルでは採用・ピアでは tomb-drop される一方向復活の窓を、`_bN` ゲート付き `_wD(s.id,op.clock)` (ピアの del-apply と同一書込・同一 gate) で閉塞。`upd` 分岐の `_stampWrites` は不変、5 assert ピン追加
-
->>>>>>> origin/devin/1791062200-round739
 ## [1.8.016] - 2026-10-01
 
 ### Fixed

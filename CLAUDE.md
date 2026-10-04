@@ -1039,13 +1039,8 @@ Board/
 │   └── ADR-0988-kind-transport-matrix.md  # kind×transport 行列監査完走 — 全 kind の正当トランスポートを列挙 (BC-only/DC-only/dual-legit/等価許容)、受理側契約をピン化
 │   └── ADR-0989-kind-coverage-symmetry.md  # kind-coverage 対称監査完走 — op 語彙17種が validRemotePayload/_apply/_undoWire/REMOTE_OPS で一致、undo-wire 出力の remote-legality を56 assert でピン化
 │   └── ADR-0990-type-conversions-wire.md  # 型変換のワイヤ収束 — _typOK ゲートで「適用キー==刻印キー」を担保 (style 系の type を _apply/stamp/snapshot-merge で採用、upd strip 維持、偽造 pen/未知型拒否)
-<<<<<<< HEAD
 │   └── ADR-0991-finalize-bridge-tomb.md  # finalize ブリッジ tomb parity — broadcast-only del がローカル tomb を broadcast 時計へ再刻印 (undo-clock vs broadcast-clock の非対称解消、_bN ゲートで reborn 存続)
 │   └── ADR-0992-stale-reference-removal-audit.md  # stale 参照×除去経路監査 — 図形を見続ける参照は全て id live 再解決か除去サイト purge (_psc/_pcC) で完備、_apply 時計保証も全入口 gated (8軸 clean)
-||||||| 55b72af
-=======
-│   └── ADR-0991-finalize-bridge-tomb.md  # finalize ブリッジ tomb parity — broadcast-only del がローカル tomb を broadcast 時計へ再刻印 (undo-clock vs broadcast-clock の非対称解消、_bN ゲートで reborn 存続)
->>>>>>> origin/devin/1791062200-round739
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
