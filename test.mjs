@@ -16749,6 +16749,28 @@ try {
       assert.strictEqual('img' in ex4[0],false,'non-image untouched');
       console.log('  ✓ export parked-ref ride-through (ADR-1042)');
     }
+    {
+      // ADR-1043: the local add/addMany forward push bypassed _attachShape —
+      // a copied ref-only image was never parked under its new id, so the
+      // imgq heal loop never fired for the copy (peers heal it via _attachOp).
+      Net._imgPending.clear();Net._imgIn.clear();
+      Store.commit({op:'addMany',shapes:[Shape.make('image',{x:0,y:0,w:10,h:10,img:'kL:1'})]});
+      const la1=state.shapes[state.shapes.length-1];
+      assert.strictEqual(Net._imgPending.get(la1.id).k,'kL:1','local addMany parks a ref-only image under its new id');
+      Net._imgPending.clear();Net._imgIn.set('kM:2','data:image/png;base64,DD');
+      const mk2=Shape.make('image',{x:20,y:0,w:10,h:10,img:'kM:2'});
+      Net._imgPending.clear();   // Shape.make's _oa parks on construction — isolate the commit
+      Store.commit({op:'addMany',shapes:[mk2]});
+      const la2=state.shapes[state.shapes.length-1];
+      assert.strictEqual(la2.dataUrl,'data:image/png;base64,DD','known blob resolves on the local add');
+      assert.ok(!Net._imgPending.has(la2.id),'a resolved ref does not park');
+      Net._imgPending.clear();
+      Store.commit({op:'addMany',shapes:[Shape.make('image',{x:40,y:0,w:10,h:10,dataUrl:'data:image/png;base64,EE'})]});
+      const la3=state.shapes[state.shapes.length-1];
+      assert.ok(!Net._imgPending.has(la3.id),'a dataUrl-carrying copy does not park');
+      Net._imgIn.delete('kM:2');
+      console.log('  ✓ local add/addMany attaches ref-only images (ADR-1043)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17703,6 +17725,7 @@ pass += 10; // ADR-1039 wclock-restore sanitize pins
 pass += 7; // ADR-1040 img fingerprint collision pins
 pass += 5; // ADR-1041 import swap img-attach pins
 pass += 5; // ADR-1042 export parked-ref pins
+pass += 4; // ADR-1043 local add img-attach pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

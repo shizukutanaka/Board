@@ -1,3 +1,13 @@
+## [1.8.069]
+- **Fix: local adds attach ref-only images** — a copy of a shape whose blob
+  never arrived kept its `img:'k'` ref but the local `add`/`addMany` apply
+  path pushed the shape without `Net._attachShape`, so the ref was never
+  parked in `_imgPending`: no imgq re-request, the copy stayed a permanent
+  blank placeholder even when a peer held the blob. Both push sites now
+  ride `Net._attachShape` like every other intake path — an `_imgIn` hit
+  resolves immediately, an unknown key parks for the imgq heal loop
+  (ADR-1043).
+
 ## [1.8.068]
 - **Fix: exports ride a parked img ref through** — `roundShapesForExport`
   unconditionally deleted `o.img`, so a shape whose blob was never

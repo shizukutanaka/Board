@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.068';   // ADR-1042
+const V='1.8.069';   // ADR-1043
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1628,7 +1628,7 @@ const Store={
         // Local commits use fresh uids; undo re-pushes since undo removed it.
         if(forward){const wid=op.shape.id,wd=_wc()[wid];   // ADR-0734: tombstone outranks a stale add — skip it
           if(_tmb(wid,op)){/*del wins — stay deleted*/}
-          else{if(!byId(wid)){_sh().push(clone(op.shape));_sz()}_bT(wid,op.clock);if(wd)delete wd._del}}
+          else{if(!byId(wid)){_sh().push(Net._attachShape(clone(op.shape)));_sz()}_bT(wid,op.clock);if(wd)delete wd._del}}   // ADR-1043
         // ADR-0713: backward mirrors del-forward's locked gate — a since-locked
         // shape survives our undo as it survives a remote del; keep caches too.
         else{const cur=byId(op.shape.id);if(cur&&cur.locked){_selR(op);break}const i=_idIdx(op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);_wc()[op.shape.id]=_wM({_del:op.clock});_psc(op.shape.id);_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:[op.shape]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
@@ -1637,7 +1637,7 @@ const Store={
         // Atomic multi-add (paste/duplicate): N copies → one 'addMany'; undo is
         // 'add' (idempotent on id); reverse mirrors del.
         if(forward){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;   // ADR-0734: tombstone beats a stale add
-          if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id))_sh().push(clone(sh));}_sz();
+          if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id))_sh().push(Net._attachShape(clone(sh)));}_sz();   // ADR-1043
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);}   // ADR-0721
         else{for(const sh of op.shapes){const cur=byId(sh.id);if(cur&&cur.locked)continue;   // ADR-0713
           const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);_wc()[sh.id]=_wM({_del:op.clock});_psc(sh.id);}_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:op.shapes});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
@@ -6050,13 +6050,10 @@ function _placeCopies(srcShapes,dx,dy){
   const added=[];
   const built=[];
   const gidMap=_mP();
-  // Pre-generate new ids so connector bindings
-  // when both endpoints are in the pasted set (two-pass).
+  // Pre-generate new ids for two-pass connector bindings in the pasted set.
   const idMap=_mP();
   for(const orig of srcShapes)idMap.set(orig.id,uid());
-  // Deferred single commit (atomic undo): buil
-  // addMany op. nextZ() reads _sh(), which we haven't pushed to yet —
-  // assign z incrementally off a captured base
+  // Deferred single commit (atomic undo); z assigned off a captured base.
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
