@@ -1036,6 +1036,7 @@ Board/
 │   └── ADR-0985-imgpending-repark-on-purge.md  # `_pcC` 全置換パージが生き残り parked img 参照の imgq 再送ループを殺す実害 — `_pcR()` で swap 確定点の再 park (replace/clear/pageDel/_rs 4サイト)。0753 ピン更新+5 assert
 │   └── ADR-0986-rtc-intake-kind-gate.md  # RTC intake の BC-only 種棄却 + presence 蘇生 — 偽造 hello/ping/sync-req の任意 id 行生成を棄却、bye viaRtc の _rtcPeerId null 化削除、cursor/selection で行蘇生 (BC enrich-only 維持)。0825 ピン更新
 │   └── ADR-0987-frag-stream-dc-gate.md  # frag ストリームの DC 限定化 — 単一 reassembly slot を BC 偽造断片が実 RTC ストリームと相互奪い合う wedge DoS を閉塞 (src→'rtc' 定数化、0987 ピン + frag 系ピンを viaRtc 形式へ)
+||||||| 39991ea
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

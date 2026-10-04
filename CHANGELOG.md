@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ## [1.8.013] - 2026-10-01
 
 ### Fixed
@@ -18,6 +19,14 @@
 ### Fixed
 - remote `'replace'` (全置換) の `_bT` 一括刻印が **keep 存続図形まで `ptr.reborn`/`_nug.reborn` にマーク** していた過剰標識を閉塞 (ADR-0984): keep は born が swap 時計より新しく live オブジェクト自体が生き残る (差替えなし) のに「remote で再誕生」と誤認 → ジェスチャ cancel が `_gRst` の orig-restore をスキップし、ドラッグ途中位置がローカルにだけ残存 → ピアは arm-time 値を保持する一方向発散。reborn マークを **born スタンプの実適用時に限定** して閉塞 — incoming clone は wc リセット済みで常時 stamp+mark、keep は wc 復元済みで stamp skip→無マーク、'clear' keep の挙動と整合。behavioural ピン5 assert (keep 原状復元・swapped-in 保持の両側)
 
+||||||| 39991ea
+=======
+## [1.8.010] - 2026-10-01
+
+### Fixed
+- remote `'replace'` (全置換) の `_bT` 一括刻印が **keep 存続図形まで `ptr.reborn`/`_nug.reborn` にマーク** していた過剰標識を閉塞 (ADR-0984): keep は born が swap 時計より新しく live オブジェクト自体が生き残る (差替えなし) のに「remote で再誕生」と誤認 → ジェスチャ cancel が `_gRst` の orig-restore をスキップし、ドラッグ途中位置がローカルにだけ残存 → ピアは arm-time 値を保持する一方向発散。reborn マークを **born スタンプの実適用時に限定** して閉塞 — incoming clone は wc リセット済みで常時 stamp+mark、keep は wc 復元済みで stamp skip→無マーク、'clear' keep の挙動と整合。behavioural ピン5 assert (keep 原状復元・swapped-in 保持の両側)
+
+>>>>>>> origin/devin/1790861755-round678
 ## [1.8.009] - 2026-10-01
 
 ### Fixed
