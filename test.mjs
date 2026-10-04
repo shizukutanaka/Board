@@ -421,7 +421,7 @@ const checks = [
   ['img cache keyed by O(1) fingerprint not full dataUrl', html.includes("function _imgKey(") && html.includes("const k=_imgKey(dataUrl)") && !html.includes("_imgCache.get(dataUrl)")],
   // v1.7.93: ADR-0035 image import/export hygiene
   ['_imgKey uses three-segment fingerprint', html.includes("_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
-  ['export strips internal img blob ref', html.includes("delete o.img;        // ADR-0035")],
+  ['export keeps parked img ref, drops superseded one (ADR-1042)', html.includes("if(_iS(o.img)&&_iS(o.dataUrl))delete o.img;   // ADR-1042")],
   ['drawShape guards dataUrl-less image', html.includes("const img=_du(s)?getImg(_du(s)):null;")],
   ['getImg rejects non-dataUrl input', html.includes("!_sw(dataUrl,'data:'))return null;")],
   ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
@@ -16733,6 +16733,22 @@ try {
       assert.ok(Net._imgPending.has('ij'),'unknown ref parks for imgq heal');
       console.log('  ✓ import swap img-attach parity (ADR-1041)');
     }
+    {
+      // ADR-1042: exports used to `delete o.img` unconditionally — a parked
+      // ref (image blob never received) exported as a contentless image with
+      // nothing to heal. The ref now rides the export so an import can park
+      // it for imgq heal; a superseded ref (dataUrl present) is still dropped.
+      const ex=roundShapesForExport([{id:'e1',type:'image',x:0,y:0,w:10,h:10,z:1,img:'k:2'}]);
+      assert.strictEqual(ex[0].img,'k:2','parked ref rides the export');
+      const ex2=roundShapesForExport([{id:'e2',type:'image',x:0,y:0,w:10,h:10,z:1,img:'k:3',dataUrl:'data:image/png;base64,BB'}]);
+      assert.strictEqual(ex2[0].img,undefined,'superseded ref dropped');
+      assert.strictEqual(ex2[0].dataUrl,'data:image/png;base64,BB','dataUrl wins over the ref');
+      const ex3=roundShapesForExport([{id:'e3',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:image/png;base64,CC'}]);
+      assert.strictEqual(ex3[0].dataUrl,'data:image/png;base64,CC','dataUrl-only image unchanged');
+      const ex4=roundShapesForExport([{id:'e4',type:'rect',x:0,y:0,w:10,h:10,z:1}]);
+      assert.strictEqual('img' in ex4[0],false,'non-image untouched');
+      console.log('  ✓ export parked-ref ride-through (ADR-1042)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17686,6 +17702,7 @@ pass += 8; // ADR-1038 img sender-tagged slot pins
 pass += 10; // ADR-1039 wclock-restore sanitize pins
 pass += 7; // ADR-1040 img fingerprint collision pins
 pass += 5; // ADR-1041 import swap img-attach pins
+pass += 5; // ADR-1042 export parked-ref pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
