@@ -1,3 +1,8 @@
+## [1.8.026] - 2026-10-01
+
+### Fix + Docs
+- **letterSpacing measure parity** (ADR-1000): canvas `ctx.letterSpacing` は measureText 幅に参加するのに measure 経路2サイト (`resizeAfterTextEdit`/`fitSticky`) が `_sp(s)` を設定せず直前描画の stale 値で採寸 — spacing>0 で s.w/s.h を under-fit (付箋末尾クリップ / テキストが枠溢れ)、`fitSticky` は更に `_wrapCache` の正キーへ wrong 計測値を毒入れして後続 draw ヒットを誤らせる実害を、measure 前の `letterSpacing=(_sp(s)||0)+'px'` 設定で閉塞 (resizeAfterTextEdit は測定後 '0px' 復元、fitSticky は既存 sv2/rs2 内)。ソースピン 3 assert
+
 ## [1.8.025] - 2026-10-01
 
 ### Fix + Docs

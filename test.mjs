@@ -2863,6 +2863,18 @@ try {
     console.log('  ✓ reborn-mark lifecycle + dead-code pins (ADR-0999)');
   }
   pass += 5; // ADR-0999 lifecycle pins
+  // ADR-1000: canvas measure calls honour letterSpacing — ctx.letterSpacing
+  // participates in measureText width, so measure paths must set the shape's
+  // own spacing before _mTX or they compute/wrap at the last draw's stale
+  // value (s.w/s.h mis-fit) — and for the wrap cache they poison a key-correct
+  // entry that later draw calls then hit.
+  {
+    assert.ok(html.includes("sans-serif`;c.letterSpacing=(_sp(s)||0)+'px'"),'resizeAfterTextEdit measures at the shape spacing');
+    assert.ok(html.includes("ctx.font=_fontStr(s,fs);ctx.letterSpacing=(_sp(s)||0)+'px'"),'fitSticky measures at the shape spacing');
+    assert.ok(html.includes("_ln(lines)*fs*(s.lineH||1.25));\n  }\n  c.letterSpacing='0px';"),'resizeAfterTextEdit restores the ctx baseline');
+    console.log('  ✓ letterSpacing measure-parity pins (ADR-1000)');
+  }
+  pass += 3; // ADR-1000 letterSpacing pins
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
