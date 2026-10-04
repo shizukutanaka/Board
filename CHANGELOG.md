@@ -1,3 +1,12 @@
+## [1.8.072]
+- **Audit: parked-ref waitlist boundedness & ordering** — `_park` caps
+  `_imgPending` at 256 entries with FIFO eviction by first park; evicted
+  entries keep the shape's `img` ref so the straggler scan still resolves
+  them on blob arrival. Re-park refreshes `{k,t0}` in place (FIFO is by
+  first park, not last refresh); `_pcR` re-parking after wholesale purge is
+  the intended heal extension. Contract for new parked-ref paths written
+  (ADR-1046).
+
 ## [1.8.071]
 - **Fix: snapshot img puts join the answer store** — `_snapshotMsg` passed a
   throwaway dedup map to `_slimShapes`, so snapshot-carried `img:` keys never
