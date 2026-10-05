@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.072';   // ADR-1046
+const V='1.8.073';   // ADR-1047
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2065,10 +2065,7 @@ const Shape={
 // insertion order): on access we re-insert to mark recent, and evict the oldest
 // past the cap so a board with many pasted images can't leak memory.
 const _imgCache=_mP(),IMG_CACHE_MAX=60;
-// O(1) lookup key — a dataUrl can be ~4MB so keying on it hashes megabytes per
-// frame. ADR-0035: three-segment fingerprint (mime head + length + 48 chars each
-// from head/middle/tail): a colliding image must match three distant byte ranges
-// (a same-tail image used to render the WRONG cached image).
+// O(1) key — a dataUrl can be ~4MB, keying hashes MB/frame. ADR-0035: mime+len +48c head/mid/tail fingerprint — a colliding image must match three distant byte ranges (same-tail alone rendered the WRONG image).
 function _imgKey(u){if(!_iS(u))return'';
   const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
@@ -2078,7 +2075,7 @@ function getImg(dataUrl){
   if(img){_imgCache.delete(k);if(img._ik===dataUrl){_imgCache.set(k,img);return img}}   // ADR-1040: fingerprint hit must be the same bytes — a colliding key falls through to recache (no stale image)
   img=new Image();
   img._ik=dataUrl;
-  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — img loads don't bump it
+  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap keys on _gridVer — img loads don't bump it
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -10208,7 +10205,7 @@ const Minimap=(()=>{
         case 'line':case 'arrow':{if(_el(s)){const pts=_elbowPts(s);_bp(sx);_mT(sx,pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)_lT(sx,pts[i].x*sc+ox,pts[i].y*sc+oy);_st2(sx);break}if(s.curve){const me=_cE(s),cc=_curveCtrl(me,s.cbend);_bp(sx);_mT(sx,me.x1*sc+ox,me.y1*sc+oy);_qC(sx,cc.x*sc+ox,cc.y*sc+oy,me.x2*sc+ox,me.y2*sc+oy);_st2(sx);break}const pts=_linePts(s);_bp(sx);_mT(sx,pts[0].x*sc+ox,pts[0].y*sc+oy);for(let i=1;i<_ln(pts);i++)_lT(sx,pts[i].x*sc+ox,pts[i].y*sc+oy);_st2(sx);break}
         case 'pen':if(_ln(s.pts)<2)break;_bp(sx);_mT(sx,s.pts[0][0]*sc+ox,s.pts[0][1]*sc+oy);for(let i=1;i<_ln(s.pts);i++)_lT(sx,s.pts[i][0]*sc+ox,s.pts[i][1]*sc+oy);_st2(sx);break;
         case 'text':case 'sticky':{const rx2=s.x*sc+ox,ry2=s.y*sc+oy,rw2=_max(2,s.w*sc),rh2=_max(2,s.h*sc);sx.fillStyle=_stk(s)?(_coo(s)||_YW):(_fi(s)||_gC('--brand'));sx.fillRect(rx2,ry2,rw2,rh2);break}
-        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;_sv2(sx);_tr2(sx,fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);_tr2(sx,-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);_rs2(sx)}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{_fsS(sx,'#CBD5E1');sx.fillRect(rx3,ry3,rw3,rh3)}break}
+        case 'image':{const rx3=s.x*sc+ox,ry3=s.y*sc+oy,rw3=_max(2,s.w*sc),rh3=_max(2,s.h*sc);const img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img._ik===_du(s)&&img.complete&&img.naturalWidth){if(s.flip){const fx3=rx3+rw3/2,fy3=ry3+rh3/2;_sv2(sx);_tr2(sx,fx3,fy3);sx.scale(s.flip&1?-1:1,s.flip&2?-1:1);_tr2(sx,-fx3,-fy3);sx.drawImage(img,rx3,ry3,rw3,rh3);_rs2(sx)}else sx.drawImage(img,rx3,ry3,rw3,rh3)}else{_fsS(sx,'#CBD5E1');sx.fillRect(rx3,ry3,rw3,rh3)}break}   // ADR-1047: _ik verify like getImg — a collision must miss
       }}catch(_){}
       if(_mr)_rs2(sx);
     }
