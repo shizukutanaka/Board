@@ -2177,7 +2177,7 @@ const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state
 const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
 const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
-const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_rstCtx=(c,z,v)=>{if(c.reset)c.reset();else{let i=64;while(i--)_rs2(c);_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c)}if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)},_dS=(s,c)=>{try{drawShape(s,c)}catch(_){_rstCtx(c)}};   // ADR-0513/0907/1001
+const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_rstCtx=(c,z,v)=>{let i=64;while(i--)_rs2(c);_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c);if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)},_dS=(s,c)=>{try{drawShape(s,c)}catch(_){_rstCtx(c)}};   // ADR-0513/0907/1001
 const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
