@@ -17586,6 +17586,17 @@ try {
      Net._slimShapes([{id:'i9',type:'image',dataUrl:'z'.repeat(200)}]);
      assert.ok(!Net._imgSent.has('k1')&&Net._imgSent.has('k2'),'byte bound evicts oldest entry first');
      Net._imgSent.clear();Net._imgOuts.length=0;}
+    // ADR-1045: the snapshot path passed a throwaway `sent` map, so its puts
+    // never reached _imgSent — a snapshot-carried img ref was permanently
+    // unanswerable once the receiver's _imgIn evicted it (park expiry → blank).
+    {Net._imgSent.clear();Net._imgIn.clear();Net._imgOuts.length=0;
+     const _s45=Shape.make('image',{x:0,y:0,w:10,h:10,dataUrl:'data:image/png;base64,'+'S'.repeat(200)});
+     const _k45=Net._slimShapes([_s45],new Map())[0].img;
+     assert.ok(Net._imgSent.get(_k45)===_s45.dataUrl,'snapshot puts register into the answer store');
+     const _sent45=[];const _os45=Net._send;Net._send=m=>{if(m&&m.k==='img')_sent45.push(m.key)};
+     Net._onRecv({k:'imgq',key:_k45,peer:'zz'},false);
+     assert.ok(_sent45.includes(_k45),'snapshot-carried key stays imgq-answerable');
+     Net._send=_os45;Net._imgSent.clear();Net._imgOuts.length=0;}
     console.log('  ✓ imgq re-request answered from blob store or live shape (ADR-0835)');
   }
 

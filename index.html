@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.070';   // ADR-1044
+const V='1.8.071';   // ADR-1045
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8000,8 +8000,8 @@ const Net={
   _imgOuts:[], _imgChunks:_mP(),
   _slimShapes(shapes,sent){
     const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
-    for(const[k,d]of puts)_pu(this._imgOuts,[k,d]);
-    if(!sent&&_ln(puts)){let _sb=0;for(const[,d]of this._imgSent)_sb+=_ln(d);   // ADR-0842: byte-bound the answer store
+    for(const[k,d]of puts){_pu(this._imgOuts,[k,d]);if(sent)this._imgSent.set(k,d)}   // ADR-1045: snapshot puts join the answer store — a snapshot-carried ref must stay imgq-answerable
+    if(_ln(puts)){let _sb=0;for(const[,d]of this._imgSent)_sb+=_ln(d);   // ADR-0842: byte-bound the answer store
       while(_sb>64_000_000){const o=this._imgSent.keys().next().value;if(o==null)break;_sb-=_ln(this._imgSent.get(o));this._imgSent.delete(o)}}
     return slim;
   },
@@ -8166,8 +8166,7 @@ const Net={
           // ADR-0747
           if(e.k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
         }
-        // ADR-0629: the 256-cap eviction can strand parked shapes —
-        // resolve any board shape still holding this ref directly.
+        // ADR-0629: stragglers — resolve any shape still holding this ref.
         for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}
         _iv();break;}
       case 'imgq':{   // ADR-0835: O(1) answer — wire refs only ever exist for
