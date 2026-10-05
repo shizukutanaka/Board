@@ -16787,6 +16787,41 @@ try {
       Net._imgIn.delete('kM:2');
       console.log('  ✓ local add/addMany attaches ref-only images (ADR-1043)');
     }
+    {
+      // ADR-1044: pending-nudge × cross-path lifecycle — remote ops are the one
+      // mutation family that does NOT flush _nug first: applyRemote folds
+      // mid-run writes into the pending op's restore domains via _oa→_gTouch
+      // and marks re-borns via _bT→n.reborn, so the flush stays coherent.
+      state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;
+      const gn=Shape.make('rect',{x:0,y:0,w:20,h:20});
+      Store.commit({op:'add',shape:gn});state.history.length=0;state.histIdx=-1;
+      state.selection=new Set([gn.id]);
+      nudgeSelection(3,0);   // pending move: live x=3, op uncommitted
+      Store.applyRemote({op:'upd',id:gn.id,before:{w:20},after:{w:99},clock:{peer:'p9',seq:1,ts:1}});
+      Store.applyRemote({op:'align',dir:'lock',before:[{id:gn.id,locked:null}],after:[{id:gn.id,locked:true}],clock:{peer:'p9',seq:2,ts:2}});   // lock arrives via align dir:'lock' — 'upd' can't carry locked (noLock)
+      _nugEnd();   // flush on a mid-run-locked member: _nugLock reverts to orig —
+      // without the _gTouch fold the revert would also clobber the remote w write.
+      assert.strictEqual(byId(gn.id).x,0,'locked member reverts the local nudge (locked parity)');
+      assert.strictEqual(byId(gn.id).w,99,'ADR-1044: revert keeps the mid-run remote write — _gTouch folded it into orig');
+      assert.strictEqual(byId(gn.id).locked,true,'remote lock survives the revert');
+      assert.ok(!state.history.some(o=>o.op==='move'),'emptied op never commits');
+      // reborn exclusion: a swap replacing the member under the same id drops
+      // the id at flush — the stale local delta must not ride the adopted obj.
+      state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state._lastRep=null;
+      const gn2=Shape.make('rect',{x:0,y:0,w:20,h:20});
+      Store.commit({op:'add',shape:gn2});state.history.length=0;state.histIdx=-1;
+      state.wclock[gn2.id]={_born:{peer:'p0',seq:1,ts:1}};   // stale born → swap replaces the object
+      state.selection=new Set([gn2.id]);
+      nudgeSelection(3,0);
+      const inc={...JSON.parse(JSON.stringify(byId(gn2.id))),x:777};
+      Store.applyRemote({op:'replace',after:[inc],clock:{peer:'p9',seq:2,ts:2}});
+      _nugEnd();
+      assert.strictEqual(byId(gn2.id).x,777,'ADR-1044: reborn member keeps the incoming value — stale delta dropped');
+      assert.ok(!state.history.some(o=>o.op==='move'),'emptied op never commits');
+      _nugEnd();   // reentrant no-op
+      assert.ok(!state.history.some(o=>o.op==='move'),'double flush stays a no-op');
+      console.log('  ✓ pending nudge × remote apply folds/drops coherently (ADR-1044)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17742,6 +17777,7 @@ pass += 7; // ADR-1040 img fingerprint collision pins
 pass += 5; // ADR-1041 import swap img-attach pins
 pass += 5; // ADR-1042 export parked-ref pins
 pass += 4; // ADR-1043 local add img-attach pins
+pass += 7; // ADR-1044 pending-nudge × remote-apply lifecycle pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

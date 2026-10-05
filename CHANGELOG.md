@@ -1,3 +1,12 @@
+## [1.8.070]
+- **Audit: pending-nudge × cross-path lifecycle** — the `_nug` coalescer's
+  flush coverage is complete: every local mutation funnels through
+  `_recordCommitted`'s `_nugEnd()`, remote ops deliberately fold mid-run
+  writes into the pending op's restore domains via `_oa`→`_gTouch` and mark
+  re-borns via `_bT`→`n.reborn`, and `Net.init`'s single boot-time call site
+  makes cross-room nudge leaks unreachable. Clean — contract pinned with 7
+  behavioural assertions (ADR-1044).
+
 ## [1.8.069]
 - **Fix: local adds attach ref-only images** — a copy of a shape whose blob
   never arrived kept its `img:'k'` ref but the local `add`/`addMany` apply
