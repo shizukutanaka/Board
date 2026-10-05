@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.065';   // ADR-1039
+const V='1.8.068';   // ADR-1042
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1705,9 +1705,7 @@ const Store={
         else{for(const s of op.shapes)if(!byId(s.id)&&!_tmb(s.id,op)){_sh().push(Net._attachShape(clone(s)));_bT(s.id,op.clock)}_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723/0922/0926
         break;}
       case 'replace':{
-        // Whole-board swap (shared-link import). Rev
-        // shape arrays so Ctrl+Z restores the board import overwrote.
-        // On the wire since ADR-0613 — _lastRep orders concurrent swaps.
+        // Whole-board swap; on the wire since ADR-0613 (_lastRep orders swaps).
         const next=forward?op.after:op.before;
         _unB();   // ADR-0953: batched members join the swap's tomb-or-keep scan like peers see them
         if(op.clock)state._lastRep=op.clock;   // ADR-0614: newest applied swap marker — covers undo too
@@ -2074,11 +2072,12 @@ const _imgCache=_mP(),IMG_CACHE_MAX=60;
 function _imgKey(u){if(!_iS(u))return'';
   const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
-  if(!_iS(dataUrl)||!_sw(dataUrl,'data:'))return null;   // ADR-0035: never decode a non-dataUrl (e.g. dangling img ref)
+  if(!_iS(dataUrl)||!_sw(dataUrl,'data:'))return null;   // ADR-0035
   const k=_imgKey(dataUrl);
   let img=_imgCache.get(k);
-  if(img){_imgCache.delete(k);_imgCache.set(k,img);return img}
+  if(img){_imgCache.delete(k);if(img._ik===dataUrl){_imgCache.set(k,img);return img}}   // ADR-1040: fingerprint hit must be the same bytes — a colliding key falls through to recache (no stale image)
   img=new Image();
+  img._ik=dataUrl;
   img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap cache keys on _gridVer — img loads don't bump it
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
@@ -7583,8 +7582,8 @@ function importBoard(file){
       const origSel=_selIds();
       const _bpg=clone(_pgs()),_bcp=state.curPg;   // ADR-0646
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
-      _rs(shapes.map(clone));   // ADR-0009
-      _pgAdopt(d.pages,d.curPg);   // ADR-0646: adopt the file's page set
+      _rs(shapes.map(s=>Net._attachShape(clone(s))));   // ADR-0009/1041: parked img refs park for imgq heal like the snapshot path
+      _pgAdopt(d.pages,d.curPg);
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out.
       // Keeping them can let a re-imported shape (same id) inherit a stale LWW clock.
@@ -8063,8 +8062,7 @@ const Net={
     if(s&&_iS(s.img)&&!_du(s)){
       const d=this._imgIn.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
-      // ADR-0374: cap the parked-ref waitlist — a shape that
-      // leaves without chunks would grow _imgPending unboundedly.
+      // ADR-0374: bounded parked-ref waitlist.
       if(_iS(s.id))_park(this._imgPending,s.id,s.img);   // ADR-0835
     }
     return s;
@@ -8468,7 +8466,7 @@ function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
 function roundShapesForExport(shapes,dp=2){
   return shapes.map(s=>{
     const o={...s};
-    delete o.img;        // ADR-0035: internal IDB blob ref — meaningl
+    if(_iS(o.img)&&_iS(o.dataUrl))delete o.img;   // ADR-1042
     for(const k of ['x','y','w','h','x1','y1','x2','y2','rotate'])if(typeof o[k]==='number')o[k]=_round(o[k],dp);
     if(_iA(o.pts))o.pts=o.pts.map(p=>_iA(p)?p.map((v,i)=>_round(v,i<2?dp:3)):p);
     return o;
@@ -8591,7 +8589,8 @@ const Share={
       const _bpg=clone(_pgs()),_bcp=state.curPg;   // ADR-0646
       // ADR-0004: survives reload/closed-tab too, not just session undo.
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
-      _rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
+      _rs(valid.map(s=>Net._attachShape(clone(s))));   // ADR-1041: parked refs park for imgq heal
+      _pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out
       if(_vpOK(data.viewport)){

@@ -421,7 +421,7 @@ const checks = [
   ['img cache keyed by O(1) fingerprint not full dataUrl', html.includes("function _imgKey(") && html.includes("const k=_imgKey(dataUrl)") && !html.includes("_imgCache.get(dataUrl)")],
   // v1.7.93: ADR-0035 image import/export hygiene
   ['_imgKey uses three-segment fingerprint', html.includes("_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)")],
-  ['export strips internal img blob ref', html.includes("delete o.img;        // ADR-0035")],
+  ['export keeps parked img ref, drops superseded one (ADR-1042)', html.includes("if(_iS(o.img)&&_iS(o.dataUrl))delete o.img;   // ADR-1042")],
   ['drawShape guards dataUrl-less image', html.includes("const img=_du(s)?getImg(_du(s)):null;")],
   ['getImg rejects non-dataUrl input', html.includes("!_sw(dataUrl,'data:'))return null;")],
   ['image ingest shared + oversized import downscales via webp', html.includes("function _imgImportFile(") && html.includes("IMG_IMPORT_MAX_DIM") && html.includes("toDataURL('image/webp'")],
@@ -700,9 +700,9 @@ const checks = [
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
     html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  _cmt({op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
-    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      _rs(shapes.map(clone));")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      _rs(shapes.map(s=>Net._attachShape(clone(s))));")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
-    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      _rs(valid.map(clone));")],
+    html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());\n      _rs(valid.map(s=>Net._attachShape(clone(s))));")],
   ['ADR-0004: main() offers a one-time restore prompt when a backup exists at boot',
     html.includes("if(await Persist.checkBackup()){") && html.includes("if(confirm(t('backupAvailable')))await Persist.restoreBackup();") && html.includes("else await Persist.discardBackup();")],
   ['drag-drop accepts .board files', html.includes("_ew(f.name,'.board')")],
@@ -1233,8 +1233,8 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /dcRef\.onclose=\(\)=>\{[\s\S]*?this\._dcQ=null/.test(html)],
-  ['importBoard clears selection+wclock on whole-board swap', html.includes("_rs(shapes.map(clone));   // ADR-0009\n      _pgAdopt(d.pages,d.curPg);") && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
-  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(clone));_pgAdopt(data.pages,data.curPg);_setDocName(") && /_rs\(valid\.map\(clone\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
+  ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
+  ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))));") && /_rs\(valid\.map\(s=>Net\._attachShape\(clone\(s\)\)\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
@@ -15889,10 +15889,13 @@ try {
     };
     try{
       reset();
-      const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}')};
+      const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0,"pg":"import2"}],"pages":[{"id":"import1","name":"First"},{"id":"import2","name":"Second"}],"curPg":"import2"}')};
       for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length===1&&state.shapes[0].id==='fb9','a dropped .board file atomically replaces the board via FileReader');
+      assert.deepStrictEqual(state.pages.map(p=>p.id),['import1','import2'],'file import adopts all page metadata');
+      assert.strictEqual(state.curPg,'import2','file import restores the active page');
+      assert.strictEqual(state.shapes[0].pg,'import2','file import preserves shape page membership');
       reset();
       const efile={name:'e.excalidraw',type:'',size:200,text:()=>Promise.resolve('{"type":"excalidraw","elements":[{"id":"ex9","type":"rectangle","x":5,"y":5,"width":40,"height":30}]}')};
       for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
@@ -16711,6 +16714,56 @@ try {
       assert.strictEqual(byId('z1').groupId,'G2','older concurrent group rejected after del-undo');
       reset();
       console.log('  ✓ wclock restore paths sanitized (ADR-1039)');
+    }
+    {
+      // ADR-1040: _imgKey is an O(1) fingerprint (prefix/len/first+mid+last
+      // samples) — two different dataUrls can share it. A fingerprint hit
+      // must verify byte identity via _ik or a colliding image renders the
+      // wrong pixels. On mismatch the slot recaches to the true owner.
+      assert.ok(html.includes('if(img){_imgCache.delete(k);if(img._ik===dataUrl){_imgCache.set(k,img);return img}}'),'getImg verifies _ik on fingerprint hit');
+      reset();
+      const base='data:'+'a'.repeat(494),alt=base.slice(0,100)+'b'+base.slice(101);
+      assert.strictEqual(_imgKey(base),_imgKey(alt),'crafted pair shares the fingerprint');
+      const _IM=globalThis.Image;
+      globalThis.Image=class{set src(v){this._src=v}};
+      try{
+        const i1=getImg(base),i2=getImg(alt);
+        assert.notStrictEqual(i1,i2,'colliding dataUrl gets its own Image');
+        assert.strictEqual(i2._ik,alt,'cache slot recached to the true owner');
+        assert.strictEqual(getImg(alt)._ik,alt,'repeat hit stays on the true owner');
+        assert.strictEqual(getImg(base)._ik,base,'former owner recaches on next hit (thrash-on-collision only)');
+      }finally{globalThis.Image=_IM}
+      console.log('  ✓ img fingerprint collision verified (ADR-1040)');
+    }
+    {
+      // ADR-1041: importBoard/importFromHash swap via _rs without
+      // _attachShape — parked img refs stayed dead forever (no park → no
+      // imgq heal). Both now ride _attachShape like the snapshot path.
+      assert.ok(html.includes("_rs(shapes.map(s=>Net._attachShape(clone(s))))"),'importBoard attaches');
+      assert.ok(html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))))"),'importFromHash attaches');
+      reset();
+      Net._imgIn.set('kH','data:image/png;base64,AAAA');
+      const att=Net._attachShape({id:'ii',type:'image',img:'kH'});
+      assert.strictEqual(att.dataUrl,'data:image/png;base64,AAAA','known blob resolves on attach');
+      const par=Net._attachShape({id:'ij',type:'image',img:'kZ:2'});
+      assert.ok(Net._imgPending.has('ij'),'unknown ref parks for imgq heal');
+      console.log('  ✓ import swap img-attach parity (ADR-1041)');
+    }
+    {
+      // ADR-1042: exports used to `delete o.img` unconditionally — a parked
+      // ref (image blob never received) exported as a contentless image with
+      // nothing to heal. The ref now rides the export so an import can park
+      // it for imgq heal; a superseded ref (dataUrl present) is still dropped.
+      const ex=roundShapesForExport([{id:'e1',type:'image',x:0,y:0,w:10,h:10,z:1,img:'k:2'}]);
+      assert.strictEqual(ex[0].img,'k:2','parked ref rides the export');
+      const ex2=roundShapesForExport([{id:'e2',type:'image',x:0,y:0,w:10,h:10,z:1,img:'k:3',dataUrl:'data:image/png;base64,BB'}]);
+      assert.strictEqual(ex2[0].img,undefined,'superseded ref dropped');
+      assert.strictEqual(ex2[0].dataUrl,'data:image/png;base64,BB','dataUrl wins over the ref');
+      const ex3=roundShapesForExport([{id:'e3',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:image/png;base64,CC'}]);
+      assert.strictEqual(ex3[0].dataUrl,'data:image/png;base64,CC','dataUrl-only image unchanged');
+      const ex4=roundShapesForExport([{id:'e4',type:'rect',x:0,y:0,w:10,h:10,z:1}]);
+      assert.strictEqual('img' in ex4[0],false,'non-image untouched');
+      console.log('  ✓ export parked-ref ride-through (ADR-1042)');
     }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
@@ -17663,6 +17716,9 @@ pass += 11; // ADR-1036 existence-clock merge pins
 pass += 10; // ADR-1037 IDB wc intake gate parity pins
 pass += 8; // ADR-1038 img sender-tagged slot pins
 pass += 13; // ADR-1039 wclock-restore sanitize pins
+pass += 7; // ADR-1040 img fingerprint collision pins
+pass += 5; // ADR-1041 import swap img-attach pins
+pass += 5; // ADR-1042 export parked-ref pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
