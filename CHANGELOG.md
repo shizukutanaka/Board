@@ -1,3 +1,13 @@
+## [1.8.043] - 2026-10-01
+
+### Docs + Pin
+- **`saveBackup`/`:prev` ライフサイクル監査が clean 完走** (ADR-1017): 全 wholesale overwrite 経路 (local clear/import × 4・remote 'replace' forward) がスワップ前に `:prev` へ退避 — ピアの一括取込でも作業を黙殺しない。blob GC は live doc/`:prev` 両方の参照を保持、`restoreBackup` は `_repC` 可逆スワップで wire 伝播。remote 'replace' が先にバックアップを保存する実 intake ピン
+
+## [1.8.042] - 2026-10-01
+
+### Docs + Pin
+- **wire intake `_attachOp` × apply 網羅性監査が clean 完走** (ADR-1016): 全 wire 経路は attach→dedup→apply 順 — `_onRecv`/`_fragIn`/`_mergeSnapshotOp` が `_attachOp` で parked img 参照を解決/武装してから `_apply` へ ('add' の raw `clone` push も attach 済み shape)。`_apply` 内の `_attachShape` は undo 再 push 等 intake 迂回パスの予備線。img 参照 'add' が `_imgPending` 武装する実 intake ピン + 「新規 wire intake は `_attachOp` 先行・`_apply` push は `_attachShape`」規則化
+
 ## [1.8.041] - 2026-10-01
 
 ### Docs + Pin
