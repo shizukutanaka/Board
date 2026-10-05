@@ -1050,6 +1050,8 @@ Board/
 │   └── ADR-0999-reborn-mark-lifecycle.md  # reborn マークのライフサイクル監査 — _ptrReset/_nugEnd で終了時クリア、後続ジェスチャへの漏洩なし + dead snapBox 除去 ~150B
 │   └── ADR-1000-letterspacing-measure-parity.md  # measure 経路の ctx.letterSpacing 設定 — spacing>0 で s.w/s.h under-fit + wrapCache 毒入れを閉塞
 │   └── ADR-1001-throw-ctx-state-restore.md  # 0601 隔離の catch で ctx 全状態リセット (unbalanced save/rot/clip/props の後続図形漏洩を閉塞)
+│   └── ADR-1002-raf-loop-exception-safety.md  # rAF/描画ループ例外安全監査 clean — 全スロット clear-before-work で throw は ≤1フレーム穴+自己治癒
+│   └── ADR-1003-canvas-backing-dpr-lifecycle.md  # canvas バッキング×DPR ライフサイクル監査 clean — 全経路が両層同期再割当+キャッシュ無効化+再描画
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

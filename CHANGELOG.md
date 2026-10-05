@@ -1,3 +1,13 @@
+## [1.8.029] - 2026-10-01
+
+### Docs + Test
+- **canvas バッキングストア×DPR ライフサイクル監査 — clean 完走** (ADR-1003): `canvas.width`/`height` 再割当はビットマップ全消去なので同期が必須。全経路を走査 — `resize()` が scene/overlay 両層を一括再割当 + `_lastVp`(pan-blit)/`_pinchSnap`/`_pinchVp`/`_teVp`/`_lblVp` 無効化 + `Presentation.refit` + `_iv()`; window resize は 150ms debounce、visualViewport resize (iOS URLバー/キーボード) も同一経路、DPR 変化は `(resolution:Ndppx)` mq 単発+再監視、GPU contextlost/restored は `_ctxUp` で全パージ再描画、プレゼン突入/離脱は CSS box 差替後に明示 `resize()`、起動も先 `resize()`。`_inkD` 下書きペンは world 幾何なので resize 対象外が正 (±1.5x res drift で rebuild)、wheel プレビューは `_pinchSnap` 共有で同一クリア。契約を8 assert でピン化
+
+## [1.8.028] - 2026-10-01
+
+### Docs + Test
+- **rAF/描画ループ例外安全監査 — clean 完走** (ADR-1002): `frame()` の二段 try と `_rafId` 先行クリア、invalidate 系の `if(!_rafId)` dedup re-arm、ミニマップ `draw()` の `_raf=0` 先行クリア + `_rs2` を per-shape try 外配置 (throw でも save/restore 釣合) + `_sceneVer` は成功時のみ刻印、`_edgePanTick` 同一イディオム、`_ctxUp` の GPU ロスト全再描画を走査 — throw は最大1フレームの穴で自己治癒し、ループ凍結なし。永続/ストレージ面も `Persist.save` の quota toast・`saveBackup` の設計上 swallow・localStorage 全ガード・WeakMap キャッシュ GC で clean。契約を8 assert でピン化
+
 ## [1.8.027] - 2026-10-01
 
 ### Fix + Docs
