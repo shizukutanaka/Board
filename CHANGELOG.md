@@ -1,3 +1,13 @@
+## [1.8.021] - 2026-10-01
+
+### Fixed
+- **全置換スワップ後の stale editor クロージャを live 再束縛** (ADR-0995): text/label エディタの blur commit と `_stickyChain` が open 時に捕獲した shape 参照へ書き込むため、remote 'replace'/'clear'/snapshot adopt/import が盤面オブジェクトを差し替えると `byId` 判定は live なのに書込は死んだ旧オブジェクトへ向かう実害 — blur commit は wire `upd` が peers へ届くのにローカル live は remote 側の `text:''` のまま残る**一方向発散**、`_stickyChain` は stale 座標から連鎖先を計算しローカルのみ誤位置。3サイトを `!(s=byId(s.id))`/`!(hit=byId(hit.id))` 再束縛へ変更 (0992 確立規則の未適用残穴)。7 assert 実経路ピン追加
+
+## [1.8.020] - 2026-10-01
+
+### Docs + Test
+- undo-wire × ピア forward-apply 対称性監査の完走を文書化 (ADR-0994): `_undoWire` が全17種を網羅し wire op が無条件発行でも適用側ゲートが両側対称であることを検証 — locked 図形への prop-op 復元はローカル backward・ピア forward の双方で同一 `sh.locked` ゲートに落ち (0712/0716/0923 系)、pageAdd→pageDel `unpage` kill-set が両側同一 `op.shapes` でキャップ (0724)、del→addMany の `wc` 時計スナップと connClears 復元 upd が wire を正しく横断 (`_slimOp` は undo 専用フィールドのみ剥離、`_slimShapes`/`_imgSlim` は img 参照のみ縮退で validShape 通過)。実害なし — 実経路3シナリオ・10 assert でピン化 (locked 対称 no-op・wc+connClears carry・unpage kill-set parity)
+
 ## [1.8.019] - 2026-10-01
 
 ### Docs + Test
