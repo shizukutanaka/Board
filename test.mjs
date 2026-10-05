@@ -16454,6 +16454,47 @@ try {
       }finally{Persist.db=_odb;UI.toast=_ot}
       console.log('  ✓ backup-write failure surfaces an error toast (ADR-1028)');
     }
+    {
+      // ADR-1029: stamp×drop coverage symmetry — every LWW-arbitrated write
+      // stamps the same key space _lwwDrop arbitrates (shared _lwwOp/_chg
+      // gates); structural keys live outside per-prop LWW; undo/redo/remote
+      // all stamp the clocks they applied.
+      assert.ok(html.includes("_lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'}"),'single _lwwOp gate shared by drop+stamp');
+      assert.ok(html.includes("key==='pg'||key==='frac'||key==='groupId'||key[0]==='_'"),'structural keys stay outside per-prop LWW stamping');
+      assert.ok(html.includes("this._stampWrites(w);Net.broadcast(w)"),'undo stamps the inverse wire ops');
+      assert.ok(html.includes("this._stampWrites(op);Net.broadcast(op)"),'redo stamps the restamped op');
+      state.shapes.length=0;state.seenOps=new Set();state.wclock={};_invalidateGrid();
+      const r29=Shape.make('rect',{x:0,y:0,w:10,h:10});state.shapes=[r29];
+      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:5},before:{x:0},clock:{peer:'p9',seq:1,ts:100}}},false);
+      assert.strictEqual(r29.x,5,'remote upd applied');
+      assert.ok(state.wclock[r29.id]&&state.wclock[r29.id].x,'applied write stamped wclock[id].x');
+      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:1},before:{x:5},clock:{peer:'p9',seq:2,ts:50}}},false);
+      assert.strictEqual(r29.x,5,'stale-clock upd dropped by _lwwDrop');
+      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:9},before:{x:5},clock:{peer:'p9',seq:3,ts:200}}},false);
+      assert.strictEqual(r29.x,9,'newer-clock upd applied + restamped');
+      state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+      console.log('  ✓ stamp/drop coverage symmetry holds (ADR-1029)');
+    }
+    {
+      // ADR-1030: join-handshake × room-switch lifecycle — every in-flight join
+      // artifact (sync-req retry counter, throttled snapshot resend, inbound
+      // reassembly slots) resets on init; causal markers + rtc link reset only
+      // on a real room change; restore commits as a 'replace' so it rides
+      // history + broadcast + born stamps.
+      assert.ok(html.includes("_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;"),'init resets the deferred-snapshot + sync-req retry machinery');
+      assert.ok(html.includes("this._snapIn=null;this._opcIn=null;"),'init resets inbound reassembly slots');
+      assert.ok(html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp);"),'backup restore commits as a replace (history+broadcast+born)');
+      assert.ok(html.includes("const s=this._slimOp(op);this._flushImgOuts();"),'every op broadcast passes _slimOp+img-blob funnel');
+      Net.init('room30a');
+      Net._snapRetry=2;Net._snapRx=false;Net._snapT=42;Net._snapIn={x:1};Net._opcIn={x:1};state._lastRep={peer:'x',seq:1,ts:1};
+      Net.init('room30b');
+      assert.strictEqual(Net._snapT,0,'deferred snapshot resend canceled on switch');
+      assert.strictEqual(Net._snapRetry,0,'sync-req retry counter reset on switch');
+      assert.ok(Net._snapIn===null&&Net._opcIn===null,'inbound reassembly slots reset on switch');
+      assert.strictEqual(state._lastRep,null,'causal marker reset on real room switch');
+      if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}Net.bc=null;
+      console.log('  ✓ join-handshake × room-switch lifecycle (ADR-1030)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17394,6 +17435,8 @@ pass += 6; // ADR-1025 real sw.js registration pins
 pass += 5; // ADR-1026 apply-failure dedup-evict pins
 pass += 10; // ADR-1027 wire-mutation×invalidation + presence lifecycle pins
 pass += 4; // ADR-1028 saveBackup failure-surfacing pins
+pass += 9; // ADR-1029 stamp×drop symmetry pins
+pass += 8; // ADR-1030 join×room-switch lifecycle pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

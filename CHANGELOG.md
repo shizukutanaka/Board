@@ -1,3 +1,27 @@
+## [1.8.056]
+- **Docs+pin: join-handshake × room-switch + restore-path lifecycle audit
+  (clean)** — verified `Net.init` resets every in-flight join artifact on a
+  room switch (deferred snapshot resend `_snapT`, sync-req retry counter,
+  inbound `snap`/`opc` reassembly slots, img transfer state, non-rtc
+  presence, heartbeat) while causal markers (`_lastRep`/`_nameTs`) and the
+  rtc link reset only on a *real* room change; `restoreBackup` commits via
+  `_repC` as a normal 'replace' (undo + broadcast + born stamps ride) and
+  always runs before `Net.init`; every op broadcast funnels through
+  `_slimOp` + `_mk('op')` + BC/DC(fragment). Contract pins + behavioural
+  init-reset test (ADR-1030).
+
+## [1.8.055]
+- **Docs+pin: stamp×drop coverage symmetry audit (clean)** — per-property
+  LWW arbitration audited end-to-end: `_lwwDrop` (drop stale writes) and
+  `_stampWrites` (record applied write clocks) share the `_lwwOp`/`_chg`
+  gates and cover the identical key space; structural keys
+  (pg/frac/groupId/`_`-prefixed/non-beautify `type`) stay outside per-prop
+  LWW, mirroring the intake-side strips (ADR-0912/0913). undo stamps the
+  inverse wire ops, redo stamps the restamped op, applyRemote stamps after
+  applying; connClears mutations are un-stamped but deterministic on both
+  sides (convergent). Contract rule + behavioural pins (remote upd stamps
+  wclock → stale upd dropped → newer upd restamps) (ADR-1029).
+
 ## [1.8.054]
 - **Fix: silent backup-write loss** — `Persist.saveBackup` (the pre-swap
   safety-net write behind clear/import/share swaps) swallowed
