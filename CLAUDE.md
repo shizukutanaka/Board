@@ -1054,6 +1054,7 @@ Board/
 │   └── ADR-1003-canvas-backing-dpr-lifecycle.md  # canvas バッキング×DPR ライフサイクル監査 clean — 全経路が両層同期再割当+キャッシュ無効化+再描画
 │   └── ADR-1004-sr-announce-channel.md  # SR アナウンスチャネル監査 clean — 単一 funnel+末尾スペースリピート+t() キー全解決 (undefined 不達)
 │   └── ADR-1005-no-store-warning.md  # Persist db 喪失 (open hard-error/versionchange) で save() が沈黙 no-op — warn-once noStore toast で閉塞
+│   └── ADR-1006-timer-lifecycle-audit.md  # 遅延コールバック (setTimeout/interval/Promise) 全サイト監査 clean — fire 時 self-guard または cancel 漏斗網羅を規則化
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
