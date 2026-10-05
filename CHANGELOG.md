@@ -1,3 +1,13 @@
+## [1.8.048] - 2026-10-01
+
+### Fixed
+- Lifecycle flushes now fold open editors before the dirty save: the text and label editors commit only on blur, so a visibilitychange→hidden / pagehide / beforeunload while editing persisted the doc without the in-flight text — silent one-way loss (peers kept the blank add; isNew shapes stayed blank) (ADR-1022).
+
+## [1.8.047] - 2026-10-01
+
+### Fixed
+- Persistence, sync and export paths now serialize the mid-erase batch: a hidden/tab-close save, snapshot reply, or export fired while an erase stroke was in flight dropped the batched shapes — board members still live (no del op yet) that would vanish from the saved doc or the joiner's adopt with no record anywhere (ADR-1021).
+
 ## [1.8.046] - 2026-10-01
 
 ### Fixed
