@@ -1,3 +1,13 @@
+## [1.8.052] - 2026-10-06
+
+### Fixed
+- ADR-1026: `applyRemote` stamped the dedup key before applying, so a throw anywhere between the stamp and a finished apply (`_lwwDrop`, saveBackup, `_apply`, connFix, `_stampWrites`) left the op permanently recorded-but-never-run — never re-delivered, never retried by snapshot heal, a silent one-way divergence. The post-stamp body now runs in `try{...}` and a failure evicts the key (`_sO().delete(k)`) so the next heal re-enters the apply; `bc.onmessage` gains the same `try/catch` guard the DC path has had since ADR-0010.
+
+## [1.8.051] - 2026-10-06
+
+### Fixed
+- ADR-1025: the service worker never registered — `navigator.serviceWorker.register()` rejects `blob:`/`data:` script URLs by spec (scriptURL's scheme must be http/https), so the inline-blob worker introduced at v1.6.5 always rejected and the whole offline layer was dead code (the `.then()` swallowed the rejection silently). Replaced with a real `sw.js` (network-first navigations, stale-cache purge, ok-only caching) and a direct `register('sw.js')`; update-notification listener preserved. Also retargets the SW pins at `sw.js`. **Note:** this makes `sw.js` a required sibling file when hosting the app — single-file `file://` use is unaffected (SW registration just no-ops there).
+
 ## [1.8.050] - 2026-10-06
 
 ### Fixed

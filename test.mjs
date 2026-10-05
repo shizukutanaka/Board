@@ -8,6 +8,7 @@ import assert from 'assert';
 
 const html = readFileSync('./index.html', 'utf8');
 const readme = readFileSync('./README.md', 'utf8');
+const swjs = readFileSync('./sw.js', 'utf8');   // ADR-1025: the SW is a real file — inline blob registration is spec-rejected
 const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
@@ -59,7 +60,7 @@ const checks = [
   // (privacy / zero-tracking) and offline-equivalence (ships an offline fallback).
   ['Privacy: no telemetry/analytics primitives', !/sendBeacon|XMLHttpRequest|\bgtag\(|google-analytics|googletagmanager|mixpanel|amplitude|\bSentry\b/i.test(html)],
   ['Privacy: zero third-party origins (only W3C SVG namespace identifier)', ((html.match(/https?:\/\/[A-Za-z0-9._-]+/gi)||[]).every(u=>/(?:www\.)?w3\.org/i.test(u)))],
-  ['Offline-equivalence: SW ships a cache-first offline fallback', /caches\.open\(/.test(html) && (/new Response\(['"]offline/.test(html) || /status:\s*503/.test(html))],
+  ['Offline-equivalence: SW ships a cache-first offline fallback', /caches\.open\(/.test(swjs) && (/new Response\(['"]offline/.test(swjs) || /status:\s*503/.test(swjs))],
   // Longevity (local-first ownership, §3.7): the autosave must request durable
   // (non-evictable) storage, else a board lives in the browser's best-effort
   // bucket and a "clear site data" or disk-pressure eviction loses it.
@@ -630,7 +631,7 @@ const checks = [
   ['lostpointercapture gesture cancel (ADR-0521)', html.includes("'lostpointercapture'")&&html.includes('_cancelPointerGesture()')&&html.includes('_nP=()=>')],
   ['pointerleave clears hover + laser (ADR-0526)', html.includes("'pointerleave'")&&html.includes('state.hover=null')],
   ['contextmenu cancels mid-gesture (ADR-0524)', html.includes("'contextmenu'")&&html.includes('if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu')],
-  ['SW caches only ok responses (ADR-0529)', html.includes('if(n.ok)c.put(e.request,n.clone())')&&html.includes("e.request.method==='GET'&&n.ok")],
+  ['SW caches only ok responses (ADR-0529)', swjs.includes('const cl=n.clone();caches.open(C).then(c=>c.put(e.request,cl))')],
   ['non-primary buttons do not arm ptr.down — right/X1/X2/stylus-barrel (ADR-0532/0896)', html.indexOf('if(e.button>1)return')<html.indexOf('ptr.down=true')&&html.indexOf('if(e.button>1)return')>0],
   ['openTextEditor binds the live shape, not the pre-clone (ADR-0533)', html.includes('s=byId(s.id)||s')],
   ['window blur re-bases pointer/gesture state (ADR-0534)', html.includes("_on(window,'blur'")&&html.includes('_pointers.clear()')&&html.includes('window._prevTool=null')],
@@ -656,7 +657,7 @@ const checks = [
   ['applyRemote gates clock via validClock (wclock-poison guard)', html.includes('function validClock(')&&html.includes('if(!validClock(op.clock))return')],
   ['local clocks stamped via monotonic nowTs (no wall-clock regression)', html.includes('function nowTs()')&&html.includes('ts:nowTs()')&&!html.includes('ts:Date.now()')],
   ['uid() uses crypto.randomUUID for 122-bit collision safety', html.includes('crypto.randomUUID')],
-  ['service worker purges stale caches', html.includes("caches.keys()") && html.includes("k!==C")],
+  ['service worker purges stale caches', swjs.includes("caches.keys()") && swjs.includes("k!==C")],
   // v1.6.20: fourth audit pass
   ['drawShape opacity uses nullish coalescing (opacity=0 invisible, not opaque)', html.includes('c.globalAlpha=_oP(s)??1')],
   ['pointercancel restores in-progress resize/move shapes', html.includes("_dk('resize'))_gR2(ptr.resizeOrig)") && html.includes("_dk('move'))_gR1(ptr.dragStartShapes)")],
@@ -1153,8 +1154,8 @@ const checks = [
     html.includes('this._lastSelSent=null;_iv();')],
   // v1.7.63 robustness audit
   ['SW: navigations are network-first (cache-first pinned users to the first cached version forever)',
-    html.includes("if(e.request.mode==='navigate')")
-    && html.includes("catch(_){const r=await c.match(e.request);if(r)return r;return new Response('offline',{status:503})}")],
+    swjs.includes("e.request.mode==='navigate'")
+    && swjs.includes("catch(()=>caches.match(e.request).then(r=>r||new Response('offline',{status:503})))")],
   ['peer flood: MAX_PEERS cap + peer-id type/length intake guard',
     html.includes('const MAX_PEERS=32')
     && html.includes('if(_pr().size>=MAX_PEERS)return;')
@@ -1698,7 +1699,7 @@ const fakeWin = {
   location: { hash: '', origin: 'http://test', pathname: '/index.html' },
   history: { replaceState(){} },
   navigator: { language:'en', onLine:true,
-    serviceWorker:{ register:()=>Promise.resolve(), _listeners:{},
+    serviceWorker:{ register(u){ this._regArgs=(this._regArgs||[]);this._regArgs.push(u);return Promise.resolve() }, _listeners:{},
       addEventListener(type,fn){ this._listeners[type]=fn; } },
     clipboard: { writeText: () => Promise.resolve() } },
   localStorage: { _d: {}, getItem(k){ return this._d[k] || null }, setItem(k,v){ this._d[k] = String(v) }, removeItem(k){ delete this._d[k] } },
@@ -16376,6 +16377,42 @@ try {
       state.docName=prevN;
       console.log('  ✓ docName empty-write convergence (ADR-1024)');
     }
+    {
+      // ADR-1025: navigator.serviceWorker.register() rejects blob:/data:
+      // script URLs by spec (scriptURL's scheme must be http/https), so the
+      // previous inline-blob worker never actually registered — the whole
+      // offline layer was dead code since v1.6.5. sw.js must be a real file.
+      const regs=fakeWin.navigator.serviceWorker._regArgs||[];
+      assert.ok(regs.length>0&&regs.every(u=>u==='sw.js'),'the SW registers a real script file, not a blob URL');
+      assert.ok(!html.includes('createObjectURL')||!html.includes("serviceWorker.register(_swu"),'no blob-URL SW registration remains');
+      const sw=swjs;
+      assert.ok(sw.includes("addEventListener('fetch'"),'sw.js intercepts fetches');
+      assert.ok(sw.includes('navigate'),'sw.js network-first serves navigations');
+      assert.ok(sw.includes('caches'),'sw.js populates the offline cache');
+      assert.ok(html.includes("controllerchange"),'the update-notification listener survives');
+      console.log('  ✓ service worker registers a real sw.js (ADR-1025)');
+    }
+    {
+      // ADR-1026: the dedup key is stamped BEFORE the op applies — a throw
+      // mid-apply would wedge the op forever (never re-delivered). On failure
+      // applyRemote evicts the key so a later heal re-enters the apply.
+      state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seenOps=new Set();state.wclock={};
+      const _oA=Store._apply;
+      let threw=0;
+      Store._apply=()=>{threw++;throw new Error('boom')};
+      const op={op:'del',shapes:[],ids:[],clock:{peer:'pQ',seq:777}};
+      Store.applyRemote(op);
+      Store._apply=_oA;
+      assert.strictEqual(threw,1,'the first apply threw once');
+      Store._apply=()=>{threw++};
+      Store.applyRemote({...op});
+      Store._apply=_oA;
+      assert.strictEqual(threw,2,'a failed apply is retried, not permanently deduped');
+      assert.ok(html.includes('catch(_){_sO().delete(k)}'),'applyRemote evicts the dedup key on a failed apply');
+      assert.ok(html.includes("this.bc.onmessage=e=>{try{this._onRecv(e.data)}catch(_){}}"),'BC intake matches the guarded DC path');
+      assert.ok(!html.includes('this.bc.onmessage=e=>this._onRecv(e.data)'),'no unguarded BC onmessage remains');
+      console.log('  ✓ apply-remote failure evicts the dedup key (ADR-1026)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17312,6 +17349,8 @@ pass += 7; // ADR-1021 erase-batch serialization pins
 pass += 5; // ADR-1022 editor-fold flush pins
 pass += 8; // ADR-1023 wire-buffer lifecycle pins
 pass += 6; // ADR-1024 docName empty-write pins
+pass += 6; // ADR-1025 real sw.js registration pins
+pass += 5; // ADR-1026 apply-failure dedup-evict pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
