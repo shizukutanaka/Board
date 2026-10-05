@@ -1038,6 +1038,8 @@ Board/
 │   └── ADR-0987-frag-stream-dc-gate.md  # frag ストリームの DC 限定化 — 単一 reassembly slot を BC 偽造断片が実 RTC ストリームと相互奪い合う wedge DoS を閉塞 (src→'rtc' 定数化、0987 ピン + frag 系ピンを viaRtc 形式へ)
 │   └── ADR-0988-kind-transport-matrix.md  # kind×transport 行列監査完走 — 全 kind の正当トランスポートを列挙 (BC-only/DC-only/dual-legit/等価許容)、受理側契約をピン化
 │   └── ADR-0989-kind-coverage-symmetry.md  # kind-coverage 対称監査完走 — op 語彙17種が validRemotePayload/_apply/_undoWire/REMOTE_OPS で一致、undo-wire 出力の remote-legality を56 assert でピン化
+│   └── ADR-0990-type-conversions-wire.md  # 型変換のワイヤ収束 — _typOK ゲートで「適用キー==刻印キー」を担保 (style 系の type を _apply/stamp/snapshot-merge で採用、upd strip 維持、偽造 pen/未知型拒否)
+│   └── ADR-0991-finalize-bridge-tomb.md  # finalize ブリッジ tomb parity — broadcast-only del がローカル tomb を broadcast 時計へ再刻印 (undo-clock vs broadcast-clock の非対称解消、_bN ゲートで reborn 存続)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

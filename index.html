@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.015';   // ADR-0989
+const V='1.8.017';   // ADR-0991
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1344,6 +1344,7 @@ function _cleanVal(v,depth){
 }
 const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky','image','frame']);   // ADR-0387
 const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
+const _typOK=(v,p,sh)=>_TYPES.has(v)&&(v!=='pen'||(_ptsOK(p=(p&&p.pts)||sh.pts)&&_ln(p)>0));   // ADR-0990
 const _CSS=typeof CSS!=='undefined'?CSS:null;
 // 'none' is a Board sentinel (fill:'none' = no fill, ADR-0288), not a CSS color.
 const _colOK=v=>v==='none'||v==='default'||(_CSS?_CSS.supports('color',v):/^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+\([^)]{0,80}\)$|^[a-zA-Z]{1,20}$/.test(v));   // ADR-0870
@@ -1536,7 +1537,7 @@ const Store={
     const C=op.clock;if(!C)return;
     // stamp live shapes only — a clock for a dead id outlives wclock cleanup
     const stamp=(id,after,before)=>{if(!after||!byId(id))return;const w=_wc()[id]||(_wc()[id]=_wM());
-      for(const key of _ok(after)){if(key==='id'||key==='type'||key==='pg'||key==='frac'||key==='groupId'||key[0]==='_')continue;if(this._chg(before,after,key))w[key]=C;}};   // ADR-0914/0916
+      for(const key of _ok(after)){if(key==='id'||key==='pg'||key==='frac'||key==='groupId'||key[0]==='_'||(key==='type'&&(op.op==='upd'||!_typOK(after[key],after,byId(id)))))continue;if(this._chg(before,after,key))w[key]=C;}};   // ADR-0914/0916/0990
     if(op.op==='upd')stamp(op.id,op.after,op.before);
     else if(op.op==='group'||op.op==='ungroup'){
       const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
@@ -1605,13 +1606,11 @@ const Store={
   },
   _apply(op,forward){
     _iG();
-    // ADR-0027: harvest the ids and pre-mutation
-    // repaint clips to their union instead of repainting the frame.
-    // Partial patch payloads ({id,c:'#f00'}) yield
-    // finite rects only; over-covering is always safe, missing is not.
+    // ADR-0027: harvest ids + pre-mutation clips to their union. Partial patches
+    // ({id,c:'#f00'}) yield finite rects; over-cover is safe, missing is not.
     const _ids=_opIds(op);
     let _dmg=null;
-    const _u=s=>{if(!s)return;let b=null;try{b=_bb(s)}catch(_){return}   // ADR-0373: pseudo-shape patches must not crash damage estimate
+    const _u=s=>{if(!s)return;let b=null;try{b=_bb(s)}catch(_){return}   // ADR-0373: pseudo-shape patches must not crash _bb
     if(!b||![b.x,b.y,b.w,b.h].every(Number.isFinite))return;const m=(_szz(s)||2)/2+10;_dmg=_dmgU(_dmg,{x:b.x-m,y:b.y-m,w:b.w+2*m,h:b.h+2*m});};
     for(const id of _ids)_u(byId(id));                          // pre-mutation (del/move/upd)
     for(const v of [op.shape,op.shapes,op.before,op.after]){
@@ -1833,10 +1832,8 @@ const Store={
           // apply of our undo-wire skips it → diverged props. The forward
           // gate still applies so an unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
-          const p=clone(raw);delete p.pg;delete p.frac;delete p.groupId;if(p.type!=null&&(op.op!=='beautify'||!_TYPES.has(p.type)))delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];   // ADR-0373/0730/0912/0913/0916/0917
-          // Same LWW guard as 'upd' (_lwwSkip) — since
-          // _stampWrites records per-property write clocks — undo
-          // must not clobber a newer remote write here
+          const p=clone(raw);delete p.pg;delete p.frac;delete p.groupId;if(p.type!=null&&!_typOK(p.type,p,sh))delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];   // ADR-0373/0730/0912/0913/0916/0917/0990
+          // Same LWW guard as 'upd' (_lwwSkip): undo must not clobber a newer remote write
           if(!forward)for(const k of _ok(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
           _oa(sh,p);
         }
@@ -5608,10 +5605,9 @@ function resizeAfterTextEdit(s,text,c){
     s.w=_max(20,mw);s.h=_max(fs*(s.lineH||1.25),_ln(lines)*fs*(s.lineH||1.25));
   }
 }
-// New text/sticky shapes are committed and broadcast with empty text up front,
-// then filled in the editor — collaborators would otherwise see a blank shape
-// forever (an invisible hitbox on peers). Bridge with a broadcast-ONLY op for
-// the finalize delta: stamped for LWW, but OUT of local history — undo = 1 step.
+// New text/sticky shapes commit+broadcast empty up front, then fill in the editor —
+// peers would otherwise see a blank shape forever (invisible hitbox). Bridge with
+// a broadcast-ONLY op for the finalize delta: LWW-stamped, OUT of local history.
 function _syncTextFinalize(s,before,deleted){
   if(typeof Net===_un||typeof Net.broadcast!=='function')return;
   const op=deleted
@@ -5625,7 +5621,8 @@ function _syncTextFinalize(s,before,deleted){
     if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after);}}
   }
   _fck(op);
-  if(!deleted)Store._stampWrites(op);
+  if(deleted)_bN(s.id,op.clock)||_wD(s.id,op.clock);   // ADR-0991: tomb parity with peers' del-apply
+  else Store._stampWrites(op);
   Net.broadcast(op);
 }
 function openTextEditor(s,isNew){
@@ -8276,10 +8273,10 @@ const Net={
       const rc=rw[k];
       if(!validClock(rc))continue;
       if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}   // ADR-0927: existence clocks merge too
-      // ADR-0372: gate the merged VALUE too — before a stale field
-      // LWW-merges {x:NaN, pts:'bad', id:'x', __proto__}
+      // ADR-0372: gate the merged value — a stale field must not LWW-merge {x:NaN,pts:'bad',__proto__}
       const v=op.shape[k];
-      if(v===_ud||k==='id'||k==='type'||k==='pg'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;   // ADR-0919
+      if(v===_ud||k==='id'||k==='pg'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;   // ADR-0919
+      if(k==='type'&&!_typOK(v,null,ex))continue;   // ADR-0990
       const lc=lw[k];
       if(!lc||clockNewer(rc,lc)){ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k]);if(k==='dataUrl')duNew=true;}   // ADR-0969
     }

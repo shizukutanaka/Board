@@ -1,3 +1,13 @@
+## [1.8.017] - 2026-10-01
+
+### Fixed
+- **finalize ブリッジの del tomb を broadcast 時計へ再刻印** (ADR-0991): `_syncTextFinalize` の del 分岐 (空テキスト図形の除去をピアへ同期する broadcast-only op) は `_stampWrites` を呼ばず、ローカル tomb は undo backward が刻んだ **undo-clock**、ピア tomb は del-apply が刻む **broadcast-clock** で非対称だった。`undo-clock < c < broadcast-clock` を持つ shape-carrying op (snapshot add / replace-born) がローカルでは採用・ピアでは tomb-drop される一方向復活の窓を、`_bN` ゲート付き `_wD(s.id,op.clock)` (ピアの del-apply と同一書込・同一 gate) で閉塞。`upd` 分岐の `_stampWrites` は不変、5 assert ピン追加
+
+## [1.8.016] - 2026-10-01
+
+### Fixed
+- **型変換がピアへ伝搬しない発散を解消** (ADR-0990): `toggleLineArrow`(直線↔矢印)/`toggleStickyText`(付箋↔テキスト) が発行する `style` op は `{id,type}` パッチを運ぶが、ワイヤでは合法 (`validPatch` 通過・`_slimOp`/`_lwwDrop` 保持) なのに `_apply` が非 beautify op の `type` を無条件剥離 → **ピアは変換されず一方向発散**、before 側も剥離されて **ローカル undo すら型を戻せず**、`stamp()` が `type` を構造キーとして skip して wclock 仲裁・スナップショット heal も不可能だった。`_typOK` ゲート (書き込み後が妥当図形になるか — `pen` のみ pts 必須) を `_apply`/`stamp`/`_mergeSnapshotOp` の3サイトへ適用: 正当な変換は適用+刻印+undo 復元+スナップショット heal へ乗り、偽造 `rect→pen`(pts 無し) や未知型は従来通り棄却。`upd` は従来の `_stripStruct` を維持 (変換は style 系でのみ合法的に運ばれる設計意図)。0373 ピンを新契約へ更新 + 12 assert の実動作ピン追加
+
 ## [1.8.015] - 2026-10-01
 
 ### Docs + Test

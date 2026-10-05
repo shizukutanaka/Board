@@ -109,9 +109,11 @@ const checks = [
   ['patch strips drop pg (upd + style paths)', (html.match(/delete p\.pg;/g)||[]).length>=2],
   ['patch strips drop frac (upd + style paths)', (html.match(/delete p\.frac;/g)||[]).length>=2],
   ['patch strips drop groupId (upd + style paths)', (html.match(/delete p\.groupId;/g)||[]).length>=2],
-  // ADR-0914: structural keys get no wclock either — a forged frac/pg stamp would
-  // still suppress legit zorder/pg writes via _lwwSkip even though _apply strips them
-  ['stampWrites skips structural keys', html.includes("key==='id'||key==='type'||key==='pg'||key==='frac'||key==='groupId'")],
+  // ADR-0914/0990: structural keys get no wclock either — a forged frac/pg stamp
+  // would still suppress legit zorder/pg writes via _lwwSkip even though _apply
+  // strips them. `type` stamps only where it applies (patch-family ops that keep
+  // the _typOK gate); 'upd' strips it first so it never stamps.
+  ['stampWrites skips structural keys', html.includes("key==='id'||key==='pg'||key==='frac'||key==='groupId'") && html.includes("(key==='type'&&(op.op==='upd'||!_typOK(")],
   // v1.1: op validation in _onRecv
   ['_onRecv validates op.clock', html.includes("!_iS(op.clock.peer)")],
   // v1.1: import validates shapes
@@ -2550,6 +2552,68 @@ try {
         assert.ok(validRemotePayload(w),`'${h.op}' inverse '${w.op}' passes wire validation`);}}
     console.log('  ✓ kind-coverage × undo-wire remote-legality (ADR-0989)');
   }
+  // ADR-0990: type conversions are wire ops — a remote 'style' op carrying
+  // `type` applies it and stamps w.type so concurrent conversions arbitrate;
+  // forged type writes that would break shape validity drop before apply
+  // AND before stamp (stamped keys == applied keys).
+  {
+    const CK2=(p,n)=>({peer:p,seq:n,ts:nowTs()});
+    const ln=Shape.make('line',{x1:0,y1:0,x2:40,y2:0});ln.id='cv1';
+    const rc=Shape.make('rect',{x:0,y:0,w:10,h:10});rc.id='cv2';
+    state.shapes=[ln,rc];_invalidateGrid();state.wclock={};
+    Store.applyRemote({op:'style',before:[{id:'cv1',type:'line'}],after:[{id:'cv1',type:'arrow'}],clock:CK2('pcv',1)});
+    assert.strictEqual(byId('cv1').type,'arrow','remote style type applies — line→arrow propagates');
+    assert.strictEqual((state.wclock['cv1']||{}).type&&state.wclock['cv1'].type.peer,'pcv','applied type write stamps the clock');
+    Store.applyRemote({op:'style',before:[{id:'cv2'}],after:[{id:'cv2',type:'pen'}],clock:CK2('pcv',2)});
+    assert.strictEqual(byId('cv2').type,'rect','forged rect→pen (no pts) drops the type key');
+    assert.ok(!(state.wclock['cv2']||{}).type,'a dropped type write stamps no clock');
+    Store.applyRemote({op:'style',before:[{id:'cv2'}],after:[{id:'cv2',type:'bogus'}],clock:CK2('pcv',3)});
+    assert.strictEqual(byId('cv2').type,'rect','an unknown type value drops the type key');
+    const pn=Shape.make('pen',{pts:[[0,0],[1,1]]});pn.id='cv6';state.shapes.push(pn);_invalidateGrid();
+    Store.applyRemote({op:'style',before:[{id:'cv6',type:'pen'}],after:[{id:'cv6',type:'rect'}],clock:CK2('pcv',4)});
+    assert.strictEqual(byId('cv6').type,'rect','pen→rect applies — a real pen keeps its pts but loses the type');
+    Store.applyRemote({op:'upd',id:'cv1',before:{type:'arrow'},after:{type:'line'},clock:CK2('pzz',9)});
+    assert.strictEqual(byId('cv1').type,'arrow','forged upd-carried type never applies');
+    assert.strictEqual(state.wclock['cv1'].type.peer,'pcv','forged upd-carried type never stamps either');
+    Store._apply({op:'style',before:[{id:'cv1',type:'line'}],after:[{id:'cv1',type:'arrow'}],clock:CK2('pzz',10)},false);
+    assert.strictEqual(byId('cv1').type,'line','backward apply restores the converted type — undo works');
+    const iw=_undoWire({clock:CK2('me',1),op:'style',before:[{id:'cv1',type:'line'}],after:[{id:'cv1',type:'arrow'}]});
+    assert.ok(Array.isArray(iw)&&iw.length===1&&validRemotePayload(iw[0]),'a type-conversion inverse is a legal wire op');
+    const ex=Shape.make('line',{x1:0,y1:0,x2:40,y2:0});ex.id='cv4';state.shapes.push(ex);_invalidateGrid();
+    Net._mergeSnapshotOp({op:'add',shape:{...ex,type:'arrow'},wc:{type:{peer:'ps',seq:1,ts:nowTs()}},clock:{peer:'ps',seq:1,ts:1}});
+    assert.strictEqual(byId('cv4').type,'arrow','snapshot merge adopts a stamped type write under LWW');
+    const ex2=Shape.make('rect',{x:0,y:0,w:10,h:10});ex2.id='cv5';state.shapes.push(ex2);_invalidateGrid();
+    Net._mergeSnapshotOp({op:'add',shape:{...ex2,type:'pen'},wc:{type:{peer:'ps',seq:2,ts:nowTs()}},clock:{peer:'ps',seq:2,ts:1}});
+    assert.strictEqual(byId('cv5').type,'rect','forged snapshot pen-type (ex has no pts) is not merged');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ type conversions converge — wire apply + stamp + snapshot merge (ADR-0990)');
+  }
+  // ADR-0991: the _syncTextFinalize del bridge restamps the local tomb to the
+  // broadcast clock — without it the undo-backward tomb (undo clock) and every
+  // peer's del-apply tomb (broadcast clock) disagree, so a shape-carrying op
+  // arriving between the two clocks is adopted locally but tombed on peers.
+  {
+    const ob=Net.broadcast;let sent=null;Net.broadcast=o=>{sent=o};
+    const s=Shape.make('text',{x:0,y:0,w:10,h:10});s.id='fz1';s.text='';
+    state.shapes=[];_invalidateGrid();
+    state.wclock={fz1:{_del:{peer:state.peerId,seq:1,ts:1}}};   // the undo-backward tomb (old clock)
+    _syncTextFinalize(s,'x',true);Net.broadcast=ob;
+    assert.ok(sent&&sent.op==='del'&&sent.shapes[0].id==='fz1','the finalize bridge still broadcasts the del');
+    const t=state.wclock['fz1']._del;
+    assert.ok(t&&t.peer===state.peerId&&t.ts>1,'local tomb restamps to the broadcast clock — parity with peers');
+    Net._mergeSnapshotOp({op:'add',shape:{id:'fz1',type:'text',x:0,y:0,w:10,h:10,z:1,text:'x'},wc:{},clock:{peer:'pz',seq:1,ts:1}});
+    assert.ok(!byId('fz1'),'a shape-carrying op older than the tomb is tomb-blocked here as on peers');
+    state.wclock={fz2:{_born:{peer:'px',seq:1,ts:nowTs()+60000}}};
+    const s2=Shape.make('text',{x:0,y:0,w:10,h:10});s2.id='fz2';
+    Net.broadcast=o=>{sent=o};_syncTextFinalize(s2,'x',true);Net.broadcast=ob;
+    assert.ok(!state.wclock['fz2']._del,'a newer _born outranks the finalize del — tomb not written');
+    const s3=Shape.make('text',{x:0,y:0,w:10,h:10});s3.id='fz3';s3.text='typed';state.shapes=[s3];_invalidateGrid();
+    state.wclock={};
+    Net.broadcast=o=>{sent=o};_syncTextFinalize(s3,'',false);Net.broadcast=ob;
+    assert.strictEqual(state.wclock['fz3'].text.peer,state.peerId,'the upd finalize still stamps the local wclock');
+    state.shapes.length=0;state.wclock={};_invalidateGrid();
+    console.log('  ✓ finalize-bridge tomb parity (ADR-0991)');
+  }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
@@ -3135,10 +3199,10 @@ try {
     assert.strictEqual(ls.id,sid,'id rebind stripped');
     assert.strictEqual(ls._penSig,undefined,'_penSig stripped');
     assert.strictEqual(ls.x,7,'legit prop in the same patch still applied');
-    Store.applyRemote({op:'style', after:[{id:sid,type:'image',stroke:'#123456'}], before:[{id:sid,stroke:'#0F172A'}], clock:{peer:'attacker', seq:31, ts:6}});
-    assert.strictEqual(ls.type,'rect','batch-patch type rebind stripped');
+    Store.applyRemote({op:'style', after:[{id:sid,type:'pen',stroke:'#123456'}], before:[{id:sid,stroke:'#0F172A'}], clock:{peer:'attacker', seq:31, ts:6}});
+    assert.strictEqual(ls.type,'rect','batch-patch validity-breaking type rebind stripped (ADR-0990 gate)');
     assert.strictEqual(ls.stroke,'#123456','batch-patch legit prop applied');
-    console.log('  ✓ ADR-0373: remote patches cannot rebind id/type or write _-keys (7 asserts)');
+    console.log('  ✓ ADR-0373: remote patches cannot rebind id/write _-keys; type applies only when valid (7 asserts)');
   }
 
   // ADR-0602: an op may address every shape on the board — a >500-shape del
@@ -16584,6 +16648,7 @@ pass += 3; // ADR-0947 labelPos domain-clamp pins
 }
 pass += 6; // ADR-0988 kind×transport acceptance matrix pins
 pass += 56; // ADR-0989 kind-coverage × undo-wire remote-legality pins
+pass += 12; // ADR-0990 type-conversion convergence pins
 pass += 4; // ADR-0949 send-funnel exception-safety pins
 pass += 3; // ADR-0950 pointer bookkeeping leak pins
 pass += 4; // ADR-0951 lblpos cancel-restore pins
@@ -16616,6 +16681,7 @@ pass += 8; // ADR-0948 mid-gesture button-path cancel pins
 pass += 6; // ADR-0942 mid-gesture tool-key pins
 pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
+  pass += 5; // ADR-0991 finalize-bridge tomb parity pins
   pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
