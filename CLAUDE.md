@@ -1043,6 +1043,8 @@ Board/
 │   └── ADR-0992-stale-reference-removal-audit.md  # stale 参照×除去経路監査 — 図形を見続ける参照は全て id live 再解決か除去サイト purge (_psc/_pcC) で完備、_apply 時計保証も全入口 gated (8軸 clean)
 │   └── ADR-0993-undo-remote-removal-audit.md  # undo×remote 除去の仲裁対称性監査 — backward ゲート全てがピア forward ゲートと等効、undo の新 HLC 時計が観測済み remote 時計を常に上回り対称な復活/復元へ収束
 │   └── ADR-0994-undo-wire-peer-apply-audit.md  # undo-wire×ピア forward 適用の対称性監査 — locked ゲート両側同一・unpage kill-set parity・wc/connClears/afterWc/nts carry 全網羅、_slimOp は undo 専用フィールドのみ剥離
+│   └── ADR-0995-stale-swap-editor-closures.md  # 全置換スワップ後の stale editor クロージャ re-bind — open 時捕獲の shape 参照へ blur commit したが dead オブジェクトへ書込み wire upd だけがピアへ届く一方向発散を !(s=byId(s.id)) 再束縛で閉塞 (text/label/_stickyChain)
+│   └── ADR-0996-wholesale-swap-derived-state.md  # 全置換スワップ×派生状態監査 — 7系統全 clean (_idIndex/_grpMap 等は _iG チョークポイント、pen 系は e.pts===p 参照 sig、_wrapCache は WeakMap、_imgPending は _pcR 再パーク、エディタは per-frame live 再解決)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
