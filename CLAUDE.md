@@ -1091,6 +1091,7 @@ Board/
 │   └── ADR-1040-img-fingerprint-verify.md  # `_imgKey` 指紋ヒットの `_ik` バイト検証 — 衝突 dataUrl の誤画像描画を解消
 │   └── ADR-1041-import-attach-parity.md  # importBoard/importFromHash の `_rs` スワップを `_attachShape` 経由へ — parked img 参照の dead ref を解消
 │   └── ADR-1042-export-parked-img-ref.md  # export の無条件 `delete o.img` を条件化 — parked ref を搬出し import 側 imgq heal へ接続
+│   └── ADR-1043-local-add-img-attach.md  # 局所 add/addMany の push を `_attachShape` 経由へ — 貼付コピーの parked img 参照が imgq 未登録で空白のまま残る実害を解消
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
