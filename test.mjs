@@ -93,7 +93,7 @@ const checks = [
   // v1.1: toBlob null guard
   ['toBlob has null guard', html.includes("if(!bl){_eT(_EF)")],
   // ADR-0907: export render loops isolate per-shape drawShape (0601/0887 parity)
-  ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}}')],
+  ['export render loops isolate drawShape', html.includes('_dS=(s,c)=>{try{drawShape(s,c)}catch(_){_rstCtx(c)}}')],
   // ADR-0909: non-Element event targets can't TypeError the paste/keydown gates
   ['paste/keydown target guard uses optional matches', (html.match(/e\.target\.matches\?\.\(/g)||[]).length>=2],
   // ADR-0980: same for the document-level ctx-menu outside-click guard
@@ -10338,9 +10338,23 @@ try {
 
   // ADR-0601: per-shape draw isolation — one bad shape can't blank the board
   {
-    assert.equal(html.split('try{drawShape(s)}catch(_){}').length-1,2,'both draw loops isolate per-shape');
-    assert.ok(html.includes('try{drawShape(_df())}catch(_){}'),'draft draw isolated too');
+    assert.equal(html.split('try{drawShape(s)}catch(_){_rstCtx(ctx,z,v)}').length-1,2,'both draw loops isolate per-shape');
+    assert.ok(html.includes('try{drawShape(_df())}catch(_){_rstCtx(ctx,z,v)}'),'draft draw isolated too');
     console.log('  \u2713 draw(): per-shape isolation pinned (2 asserts)');
+  }
+
+  // ADR-1001: a mid-shape throw must not leak ctx state into the next shape —
+  // an unbalanced save (rot block / corner clip) leaves the CTM rotated and
+  // alpha/dash/letterSpacing/shadow bleed into every later draw. _rstCtx
+  // resets the whole state stack (ctx.reset() where available; save-drain +
+  // explicit prop reset on engines without it) then re-applies the world
+  // transform. _dS (export loops, ADR-0907) shares the same restore.
+  {
+    assert.ok(html.includes('_rstCtx=(c,z,v)=>{let i=64;while(i--)_rs2(c);')&&!/_rstCtx=[^;]*c\.reset\(/.test(html),'save-drain restore; no ctx.reset() (it clears the bitmap — would blank earlier shapes)');
+    assert.ok(html.includes("_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c)"),'legacy prop reset exists');
+    assert.ok(html.includes('if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)'),'world transform re-applied');
+    assert.ok(html.includes('catch(_){_rstCtx(c)}}'),'export _dS restores too');
+    console.log('  \u2713 draw(): ADR-1001 ctx-state restore pinned (4 asserts)');
   }
 
   // ADR-0606: a viewport resize during presentation re-fits the current

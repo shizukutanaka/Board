@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.026';   // ADR-1000
+const V='1.8.027';   // ADR-1001
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2176,7 +2176,7 @@ const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state
 const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
 const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
-const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_dS=(s,c)=>{try{drawShape(s,c)}catch(_){}};   // ADR-0513/0907
+const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_rstCtx=(c,z,v)=>{let i=64;while(i--)_rs2(c);_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c);if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)},_dS=(s,c)=>{try{drawShape(s,c)}catch(_){_rstCtx(c)}};   // ADR-0513/0907/1001
 const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
@@ -2661,9 +2661,9 @@ function draw(){
   const _skipScene=panned&&!(clipRects&&_ln(clipRects));
   if(!_skipScene){
     if(state.showGrid)drawGrid(W,H);
-    for(const s of _drawIter){if(_frm(s)&&_pgOk(s)&&inView(s,_view))try{drawShape(s)}catch(_){}}   // ADR-0601: one bad shape must not blank the rest
-    for(const s of _drawIter){if(s.type!=='frame'&&_pgOk(s)&&inView(s,_view))try{drawShape(s)}catch(_){}}
-    if(_df())try{drawShape(_df())}catch(_){}
+    for(const s of _drawIter){if(_frm(s)&&_pgOk(s)&&inView(s,_view))try{drawShape(s)}catch(_){_rstCtx(ctx,z,v)}}   // ADR-0601/1001
+    for(const s of _drawIter){if(s.type!=='frame'&&_pgOk(s)&&inView(s,_view))try{drawShape(s)}catch(_){_rstCtx(ctx,z,v)}}
+    if(_df())try{drawShape(_df())}catch(_){_rstCtx(ctx,z,v)}
     // Predicted ink tail (ADR-0023) — one segmen
     // point, discarded when the next real sample
     // touches draft.pts, so it can't leak into state
@@ -2768,7 +2768,7 @@ function drawEmptyHint(c,W,H){
   c.font='14px '+(_gC('--ui-font')||'system-ui,sans-serif');
   _fT(c,t('emptyHint'),W/(2*DPR),H/(2*DPR));
 }
-// ADR-0011: ephemeral peer selection outlines — peer-colored thin [3,3] dash bbox, distinct from the locked [5,4] dash. _pr()[].sel dies with the peer entry.
+// ADR-0011: peer selection outlines — peer-colored [3,3] dash bbox; dies with the peer entry.
 function drawPeerSelections(c){
   if(_pA())return;   // same rationale as drawPeerCursors
   for(const p of _pr().values()){
@@ -3982,7 +3982,7 @@ const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.drag
 
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
 // ADR-0964: orig-restore — cancel paths + the locked-mid-gesture gate.
-const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970: (re)born by a REMOTE peer while this gesture was live — exact arrival order, immune to clock skew; local births (alt-drag copies, own adds) still restore
+const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970: reborn = remote birth while this gesture was live (arrival order); own births still restore
 const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&!_rb(id))_geoR(s,o)}};
 const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s&&!_rb(o.id)){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
 const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};

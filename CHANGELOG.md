@@ -1,3 +1,8 @@
+## [1.8.027] - 2026-10-01
+
+### Fix + Docs
+- **drawShape throw の ctx 状態リーク** (ADR-1001): ADR-0601 の per-shape 隔離 `try{drawShape(s)}catch(_){}` は例外を飲むだけで、`_sv2` 未対 (`_rot` ブロックの translate+rotate、コーナー clip) と entry 時プロパティ (globalAlpha/letterSpacing/setLineDash/shadow) が後続全図形へ漏洩 — 投げた1図形を救って残りを毎フレーム破壊する反転実害。`_rstCtx` で catch 時に全状態リセット (`ctx.reset()`、無い環境は save-drain + 明示プロパティリセット) + 世界行列再適用で閉塞。`_dS` エクスポート描画ループも同一閉塞。ピン 4 assert
+
 ## [1.8.026] - 2026-10-01
 
 ### Fix + Docs
