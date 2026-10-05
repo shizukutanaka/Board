@@ -1,3 +1,8 @@
+## [1.8.044] - 2026-10-01
+
+### Docs + Pin
+- **`_dcQ` バックプレッシャキュー順序性監査が clean 完走** (ADR-1018): send 失敗で FIFO キュー発火・後続送信は後ろへ並ぶ (presence は上流スロットル/デデュプ済みで飢餓クラス不存在)・`bufferedamountlow` で順序 drain・4096/32MiB キャップは新着 drop・>256KiB は発火前棄却・onclose/init でリセット。fake dc で「投げる→キュー→FIFO drain→解放・oversize drop」を実経路ピン
+
 ## [1.8.043] - 2026-10-01
 
 ### Docs + Pin

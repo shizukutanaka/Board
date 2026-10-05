@@ -1066,6 +1066,7 @@ Board/
 │   └── ADR-1015-history-trim-boundary.md  # history トリム境界監査 clean — tip-only-trim 不変条件で histIdx 常に len-1
 │   └── ADR-1016-wire-intake-attach.md  # wire intake `_attachOp` 網羅監査 clean — attach→dedup→apply 順で parked img 常に武装
 │   └── ADR-1017-backup-lifecycle.md  # `saveBackup`/`:prev` 監査 clean — 全 overwrite 経路がスワップ前退避・remote 'replace' も網羅
+│   └── ADR-1018-dcq-lifecycle.md  # `_dcQ` 順序性監査 clean — FIFO・4096/32MiB キャップ・low-water drain・dead-link リセット
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
