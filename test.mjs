@@ -401,7 +401,7 @@ const checks = [
   ['penWidths uses varying pressure signal', html.includes("usePr=hasPr&&(mx-mn)>0.05")],
   ['SVG pen carries pressure for parity', html.includes("_num(p&&p[1])+oy,p&&p[2]")],
   // v1.6.15: smart alignment guides (snap to objects)
-  ['snapBox helper present', html.includes("function snapBox")],
+  ['snapBox helper present', html.includes("function _snapBoxIdx")],
   ['move uses object snap when grid off', html.includes("function objectSnap") && html.includes("!state.snap")],
   ['guides rendered during drag', html.includes("function drawGuides") && html.includes("_gd()")],
   // v1.6.16: dashed/dotted line styles
@@ -1771,7 +1771,7 @@ try {
              getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
              doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, importSvgText, importExcText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
-             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
+             _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, _mkSnapIdx, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
              _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -1800,7 +1800,7 @@ try {
           getHandles, applyResize, resizeSnap, handleCursor, getRotHandle,
           doGroup, doUngroup, doPaste, doDuplicate, doCopy, doClearAll, pickTop, buildSVG, exportScale, inView, wrapText, wrapTextCached, cycleSel, describeShape,
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
-          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, snapBox, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
+          _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, _mkSnapIdx, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
           _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
@@ -2848,6 +2848,33 @@ try {
     console.log('  ✓ peer-clock uniqueness × seenOps dedup (ADR-0998)');
   }
   pass += 6; // ADR-0998 clock pins
+  // ADR-0999: reborn-mark lifecycle — remote births while ptr.down mark
+  // ptr.reborn; _ptrReset clears it on every gesture-exit path (0764
+  // unified), and _nug.reborn dies with its nug object at _nugEnd.
+  // A leaked mark would suppress orig-restore in a LATER gesture →
+  // one-way divergence. Also pins: dead helper 'snapBox' removed —
+  // _snapBoxIdx+_mkSnapIdx is the live path.
+  {
+    assert.ok(html.includes('ptr.reborn=null'),'_ptrReset clears the reborn set on gesture exit');
+    assert.ok(html.includes('ptr.reborn||(ptr.reborn=new Set())'),'marks only materialise while ptr.down');
+    assert.ok(html.includes('_nugLock(o,n.reborn)'),'pending-nug reborn set is consumed at _nugEnd');
+    assert.ok(html.includes('_nug.reborn||(_nug.reborn'),'nug marks only materialise while a nug is pending');
+    assert.ok(!html.includes('function snapBox('),'dead snapBox wrapper removed (site is _snapBoxIdx+_mkSnapIdx)');
+    console.log('  ✓ reborn-mark lifecycle + dead-code pins (ADR-0999)');
+  }
+  pass += 5; // ADR-0999 lifecycle pins
+  // ADR-1000: canvas measure calls honour letterSpacing — ctx.letterSpacing
+  // participates in measureText width, so measure paths must set the shape's
+  // own spacing before _mTX or they compute/wrap at the last draw's stale
+  // value (s.w/s.h mis-fit) — and for the wrap cache they poison a key-correct
+  // entry that later draw calls then hit.
+  {
+    assert.ok(html.includes("sans-serif`;c.letterSpacing=(_sp(s)||0)+'px'"),'resizeAfterTextEdit measures at the shape spacing');
+    assert.ok(html.includes("ctx.font=_fontStr(s,fs);ctx.letterSpacing=(_sp(s)||0)+'px'"),'fitSticky measures at the shape spacing');
+    assert.ok(html.includes("_ln(lines)*fs*(s.lineH||1.25));\n  }\n  c.letterSpacing='0px';"),'resizeAfterTextEdit restores the ctx baseline');
+    console.log('  ✓ letterSpacing measure-parity pins (ADR-1000)');
+  }
+  pass += 3; // ADR-1000 letterSpacing pins
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
@@ -4045,21 +4072,21 @@ try {
   {
     const tol = 8;
     // Moving box near a target whose left edge is 5 away → snaps left edges, emits a vertical guide.
-    let r = snapBox({x:105,y:200,w:50,h:30}, [{x:100,y:0,w:40,h:40}], tol);
+    let r = _snapBoxIdx({x:105,y:200,w:50,h:30},_mkSnapIdx([{x:100,y:0,w:40,h:40}]),tol);
     assert.strictEqual(r.dx, -5, 'left edge snaps to nearby target left edge');
     assert.ok(r.guides.some(g => g.x1 === g.x2 && g.x1 === 100), 'vertical guide at snap x');
     // Centre-x alignment: target centre at 120, moving centre at 124 (w=40 → x=104) → snap by -4.
-    r = snapBox({x:104,y:300,w:40,h:20}, [{x:100,y:0,w:40,h:40}], tol);
+    r = _snapBoxIdx({x:104,y:300,w:40,h:20},_mkSnapIdx([{x:100,y:0,w:40,h:40}]),tol);
     assert.ok(Math.abs(r.dx) <= tol && r.dx !== 0, 'centre-x within tol snaps');
     // Out of range → no snap, no guides.
-    r = snapBox({x:500,y:500,w:40,h:20}, [{x:100,y:0,w:40,h:40}], tol);
+    r = _snapBoxIdx({x:500,y:500,w:40,h:20},_mkSnapIdx([{x:100,y:0,w:40,h:40}]),tol);
     assert.strictEqual(r.dx, 0); assert.strictEqual(r.dy, 0);
     assert.strictEqual(r.guides.length, 0, 'no guides when nothing in range');
     // Nearest anchor wins: two anchors of the one target are in range, smallest adj chosen.
-    r = snapBox({x:113,y:0,w:20,h:10}, [{x:100,y:0,w:20,h:10}], tol);
+    r = _snapBoxIdx({x:113,y:0,w:20,h:10},_mkSnapIdx([{x:100,y:0,w:20,h:10}]),tol);
     assert.strictEqual(r.dx, -3, 'nearest anchor (offset 3) wins over farther ones (>8 ignored)');
     // Both axes can snap simultaneously → two guides.
-    r = snapBox({x:103,y:103,w:20,h:20}, [{x:100,y:100,w:20,h:20}], tol);
+    r = _snapBoxIdx({x:103,y:103,w:20,h:20},_mkSnapIdx([{x:100,y:100,w:20,h:20}]),tol);
     assert.strictEqual(r.dx, -3); assert.strictEqual(r.dy, -3);
     assert.strictEqual(r.guides.length, 2, 'x and y snap emit two guides');
     console.log('  ✓ alignment guides: edge/centre snap, nearest wins, dual-axis, out-of-range no-op');
@@ -4446,12 +4473,12 @@ try {
     const mov={x:50,y:50,w:40,h:40};
     const targets=[{x:0,y:0,w:40,h:40}];
     // mov.x=50, mov.y=50; target bottom/right edge=40 → both axes snap by -10
-    const r1=snapBox(mov,targets,15);
+    const r1=_snapBoxIdx(mov,_mkSnapIdx(targets),15);
     assert.strictEqual(r1.dx,-10,'snapBox: snaps left edge to target right edge (d=-10)');
     assert.strictEqual(r1.dy,-10,'snapBox: snaps top edge to target bottom edge (d=-10)');
     assert.strictEqual(r1.guides.length,2,'snapBox: emits x and y guide when both axes snap');
     // out of tolerance: tol=4 but nearest is 10 away → no snap
-    const r2=snapBox(mov,targets,4);
+    const r2=_snapBoxIdx(mov,_mkSnapIdx(targets),4);
     assert.strictEqual(r2.dx,0,'snapBox: no snap when out of tolerance');
     assert.strictEqual(r2.guides.length,0,'snapBox: no guides when out of tolerance');
     console.log('  ✓ snapBox: edge/centre snap, nearest wins, out-of-range no-op');

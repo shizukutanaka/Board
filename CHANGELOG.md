@@ -1,3 +1,13 @@
+## [1.8.026] - 2026-10-01
+
+### Fix + Docs
+- **letterSpacing measure parity** (ADR-1000): canvas `ctx.letterSpacing` は measureText 幅に参加するのに measure 経路2サイト (`resizeAfterTextEdit`/`fitSticky`) が `_sp(s)` を設定せず直前描画の stale 値で採寸 — spacing>0 で s.w/s.h を under-fit (付箋末尾クリップ / テキストが枠溢れ)、`fitSticky` は更に `_wrapCache` の正キーへ wrong 計測値を毒入れして後続 draw ヒットを誤らせる実害を、measure 前の `letterSpacing=(_sp(s)||0)+'px'` 設定で閉塞 (resizeAfterTextEdit は測定後 '0px' 復元、fitSticky は既存 sv2/rs2 内)。ソースピン 3 assert
+
+## [1.8.025] - 2026-10-01
+
+### Fix + Docs
+- **reborn マークのライフサイクル監査 + デッドコード除去** (ADR-0999): ジェスチャ中 remote (再)誕生マーク (`ptr.reborn`/`_nug.reborn`) がリークすると後続ジェスチャの orig 復元を誤抑制する一方向発散経路を検証 — `ptr.reborn` は `_ptrReset` (0764 のジェスチャ終端統一) で毎回クリア、`_nug.reborn` は `_nugEnd` で flush と共に死滅、両者とも `c.peer!==_pi()` ゲートで own 誕生は混入しない。clean 完走。併せて dead wrapper `snapBox` を除去 (~150B 回収 — 全呼出は `_snapBoxIdx`+`_mkSnapIdx` キャッシュ経路へ移行済み)。ソースピン 5 assert
+
 ## [1.8.024] - 2026-10-01
 
 ### Docs + Test
