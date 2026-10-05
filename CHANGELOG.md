@@ -1,3 +1,13 @@
+## [1.8.024] - 2026-10-01
+
+### Docs + Test
+- **ピア時計一意性×seenOps dedup 衝突監査** (ADR-0998): `(peer,seq)` dedup キーの再利用による silent op ドロップ (リロードで `state.seq` が巻き戻るとピア側 seenOps が新 op を全棄却する収束破壊クラス) を検証 — `peerId = 永続base + per-boot 6文字 suffix` (ADR-0459) で `clock.peer` が起動毎にユニークのため再起動衝突は構造的に不存在、wire op 全サイトが `++state.seq` 単調、`seq:0` リテラルは全て `_nameWin`/pageName/snapshot-heal の仲裁専用比較オブジェクトで op clock として送出されず、`seq:i` はフラグメント index、永続 wclock の旧 incarnation 値も (ts,peer,seq) 全順序で正しく仲裁。実害なし — 実経路ピン 6 assert (suffix 有、commit 毎 fresh seq、dedup キー incarnation 束縛、undo fresh seq)
+
+## [1.8.023] - 2026-10-01
+
+### Docs + Test
+- **live↔stored-op 参照エイリアシング監査** (ADR-0997): op-log (`state.history`) の `before`/`after`/`shapes`/`shape` が live 図形と可変構造を共有しないか全 producer/apply 経路で検証 — 8系統全て clean (`_apply` は全 push で `clone()`、del/clear/align/_repC/style/gesture-capture は全 commit サイトで `clone()` またはリテラル生成、`way` 配列は両側 clone、`pts`/`way` の in-place 変異はコミット後に存在しない、`_attachShape` は共有参照に対し読み取り専用 — 解決時のみ新オブジェクト返却、`_undoWire` の before/after 参照共有は send 直列化のみで変異なし)。実害なし — 実経路ピン 7 assert (producer 変異→live 非伝播、live 変異→history 非伝播、del スナップ非 live 参照、undo 復元 clone、`_attachShape` 非破壊)
+
 ## [1.8.022] - 2026-10-01
 
 ### Docs + Test
