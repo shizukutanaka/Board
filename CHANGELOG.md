@@ -1,3 +1,13 @@
+## [1.8.034] - 2026-10-01
+
+### Fix
+- **window blur で transient 視覚状態が凍結残存する実害を閉塞** (ADR-1008): blur/hidden/pagehide は Alt keyup や pointerleave を飲み込むため、⌥measure ギャップガイド (`state.measure`)・quick-conn ドットの hover id (`state.hover`)・消しゴム赤枠プレビュー (`state._ehov`) が入力の生じた瞬間のまま残り、復帰後も毎フレーム幽霊描画 (measure は次の Alt keydown まで永続)。pointer 系は 0604/0608/0611 で網羅済みだったが hover/修飾由来の3状態だけが未カバー — 全ライフサイクル経路から呼ばれる `_clearTouchState` に3クリアを畳み込み、blur で `_ivO()` 再描画。新規 transient 視覚状態は同漏斗または per-frame 再導出必須の規則化。実経路ピン (fireWin('blur') で3状態クリア)
+
+## [1.8.033] - 2026-10-01
+
+### Fix
+- **キー長押し auto-repeat で離散アクションが発火する実害を閉塞** (ADR-1007): `e.repeat` フィルタゼロで OS リピート毎 (~30/s) に全アクションが発火 — パリティ型トグル (`g` grid/`⇧G` snap/`m` minimap/`⌘F` search/`?` help/`⌘B/I/U`/`⇧H/V` flip/`⇧X` swap/`⌘⇧L` lock/`⌘⇧I` inverse) は終端状態が不定で UI が振動し、ワンショット系 (`⌘E` PNG/`⌘⇧E` SVG/`⌘P` PDF/`⌘⇧S` board エクスポート ×4、`⌘⌥G` wrapFrame 入れ子スパム、`⌘⇧G` ungroup、`Enter` スタンプ、`⌥B` beautify) が連続コミット。連続系 (undo/nudge/zoom/rotate/zorder/fontSize/`⌘D`/`⌘⇧V` cascade/Tab/Esc/tool) は従来通り流す設計で、discrete 集合のみを遮断。実キー経路ピン (repeat:true で grid/minimap/bold 非振動 + ⌘Z 通過)
+
 ## [1.8.032] - 2026-10-01
 
 ### Docs + Test

@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.032';   // ADR-1006
+const V='1.8.034';   // ADR-1008
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2093,11 +2093,11 @@ let _penCachePx=0;
 // wholesale `state.shapes=` replacement — dead entries would otherwise sit
 // until the global caps evict them.
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985
-const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790: keep-LAST matches byId's last-wins
-const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985: wholesale replace — dup ids; a live erase batch dies
+const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
+const _rs=arr=>{_eraseBatch=[];state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646: unpg'd shapes belong to pages[0] positionally
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
-const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694: no page set → every s.pg is stale — scrub, else a heal misses them
+const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694
 function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;_pgHealS();
 const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
 state.curPg=nc;if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}_pgBar();_iG()}   // ADR-0664/0690/0748/0749/0750
@@ -4844,12 +4844,13 @@ _on(canvas,'gesturechange',e=>{
 _on(canvas,'gestureend',()=>{_pinchSnap=null;_pinchVp=null;_iv()});
 _on(window,_PU,_resetPinch);_on(window,_PC,_resetPinch);   // ADR-0950
 // ADR-0534: blur can lose pointerup — re-base gesture/pointer state.
-function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav()}   // ADR-0608/0632: blur/hidden/pagehide — stale pointer ids must not survive
+function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinchSnap=null;_pinchVp=null;_iv()}Minimap.cancelNav();state.measure=state.hover=state._ehov=null}   // ADR-0608/0632/1008
 _on(window,'blur',()=>{
   if(ptr.down)_cancelPointerGesture();
   _clearTouchState();
   Net.sendCursorHide();   // ADR-0611: blur doesn't fire pointerleave — hide our cursor on peers too
   if(window._prevTool){pickTool(window._prevTool);window._prevTool=null}   // space keyup lost to a blur
+  _ivO();   // ADR-1008: hover/measure chrome cleared — repaint the overlay
 });
 
 let _wheelZoomEnd=0;
@@ -5828,6 +5829,7 @@ _on(window,_KD,e=>{
     if(k===_TB){const tgt=_trapStep(_focusables(_dlg),_aE(),_sK(e));if(tgt){_pd(e);_fc(tgt)}}
     return;
   }
+  if(e.repeat){const B=meta?'fepibu':_aK(e)?'b':'gm?/';if(B.includes(k)||(!meta&&k===_EN)||(meta&&((_sK(e)&&'xsgl'.includes(k))||_aK(e)&&e.code==='KeyG'))||(!meta&&_sK(e)&&!_aK(e)&&'hvx'.includes(k)))return}   // ADR-1007: repeats run continuous actions only
   if(meta&&(k==='z'||k==='y')&&ptr.down)_cancelPointerGesture();   // ADR-0574: undo mid-gesture applies a stale before
   if(meta&&k==='z'&&!_sK(e)){_pd(e);if(Store.undo())_tst(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&_sK(e)))){_pd(e);if(Store.redo())_tst(t('redone'))}
@@ -9513,8 +9515,8 @@ function applyStyleToSelection(patch){
 // style op on change. Multiple input events during a drag never hit the undo stack.
 const _sbf={};
 function _sfbCapture(p){for(const id of _sl()){const s=byId(id);if(s&&!_lk(s)&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
-function _sfbBlur(p){const b=[],a=[];for(const k in _sbf)if(_ew(k,p)){const s=byId(k.slice(0,-p.length));if(s&&!_lk(s)&&_sbf[k]!==s[p])_pp(b,a,s.id,p,_sbf[k],s[p]);delete _sbf[k]}if(_ln(b))_styleOp(b,a)}   // ADR-0962: gesture boundary — commit preview drift as one op, then clear
-function _sfbFlush(p,v){const b=[],a=[],sel=_sT(_sl());for(const k in _sbf)if(_ew(k,p)&&!sel.has(k.slice(0,-p.length)))delete _sbf[k];for(const id of sel){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){_pu(b,{id,[p]:_sbf[k]});_pu(a,{id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}   // ADR-0962: prune keys whose id left the selection
+function _sfbBlur(p){const b=[],a=[];for(const k in _sbf)if(_ew(k,p)){const s=byId(k.slice(0,-p.length));if(s&&!_lk(s)&&_sbf[k]!==s[p])_pp(b,a,s.id,p,_sbf[k],s[p]);delete _sbf[k]}if(_ln(b))_styleOp(b,a)}   // ADR-0962
+function _sfbFlush(p,v){const b=[],a=[],sel=_sT(_sl());for(const k in _sbf)if(_ew(k,p)&&!sel.has(k.slice(0,-p.length)))delete _sbf[k];for(const id of sel){const k=id+p;if(k in _sbf){const s=byId(id);if(s&&!_lk(s)){_pu(b,{id,[p]:_sbf[k]});_pu(a,{id,[p]:v});}delete _sbf[k];}}if(_ln(b)&&b.some(x=>x[p]!==v)){_styleOp(b,a)}}   // ADR-0962
 
 // ADR-0062: per-connector elbow toggle via style op — undo + wclock sync free.
 function toggleElbow(){
