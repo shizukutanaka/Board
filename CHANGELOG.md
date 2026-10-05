@@ -1,3 +1,18 @@
+## [1.8.041] - 2026-10-01
+
+### Docs + Pin
+- **history 有界性×トリム境界監査が clean 完走** (ADR-1015): `_recordCommitted` の chop→push→shift/inc で trim は tip (histIdx=len-1) のみ発火 — mid-undo では先に redo 枝が切除され shift 経路に到達しないため `histIdx` は常に len-1 を維持 (数値調整不要の構造的不変条件)。undo+commit の redo 枝破壊・>MAX 投入後の histIdx tip 追従・trim 後 undo が最新 op を辿る実経路ピン + 「新規履歴書込は chop→push 順序保持」規則化
+
+## [1.8.040] - 2026-10-01
+
+### Docs + Pin
+- **id 衝突×取込経路の冪等性監査が clean 完走** (ADR-1014): wire 'add'/'addMany'/pageAdd は `!byId && !_tmb` で dedup (held id 到着は born-stamp のみ併合 0926)、paste/dup/.board JSON は `_placeCopies` の idMap で全 id+group+binding 再採番、.excalidraw/drawio/SVG import は `Shape.make` が新規 uid (src id は binding 解決マップ専用)、全置換系は `_rs` の原子 swap。held id への remote add が重複・props clobber を起こさない実経路ピン + 「新規取込経路は remap/dedup/swap のいずれか」規則化
+
+## [1.8.039] - 2026-10-01
+
+### Docs + Pin
+- **armed pending-op × 全置換スワップ不変条件監査が clean 完走** (ADR-1013): `_nug` 連結 op は `_nugLock` の `gone` フィルタが死 id を剥離し空 op を棄却 (0965/0971 の merge 設計で `applyRemote` が flush しないのは意図)、`_sbf` スライダ buffer は byId ゲートで自己浄化、`_eraseBatch` は `_rs` リセット+ストローク生涯限定、ジェスチャ状態は `_ptrReset` 漏斗。armed nudge + remote del → 後続 commit が履歴へ残すのは実 op のみ (junk op+phantom undo 不存在) を実経路ピンで固定
+
 ## [1.8.038] - 2026-10-01
 
 ### Docs + Pin
