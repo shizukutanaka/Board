@@ -2498,6 +2498,58 @@ try {
     assert.strictEqual(Net._snapIn,null,'RTC stream completed and freed the slot');
     console.log('  ✓ frag streams gated to the DC (ADR-0987)');
   }
+  // ADR-0988: the accepted side of the kind×transport matrix — dual-legit
+  // kinds still process through the real _onRecv path on BOTH transports.
+  {
+    Net._rtcPeerId='rtc:m1';state.peers.set('rtc:m1',{color:'#abc'});
+    Net._onRecv({k:'cursor',peer:'z',x:1,y:2},true);
+    assert.deepStrictEqual(state.peers.get('rtc:m1').cursor,{x:1,y:2},'DC cursor enriches the rtc row');
+    Net._onRecv({k:'selection',peer:'z',ids:['a']},true);
+    assert.deepStrictEqual(state.peers.get('rtc:m1').sel,['a'],'DC selection enriches the rtc row');
+    Net._onRecv({k:'name',name:'dc-doc',ts:nowTs()+4000,peer:'z'},true);
+    assert.strictEqual(state.docName,'dc-doc','DC name applies via LWW');
+    Net._onRecv({k:'bye',peer:'z'},true);
+    assert.ok(!state.peers.has('rtc:m1'),'DC bye drops the rtc row');
+    state.peers.set('b1',{});Net._onRecv({k:'bye',peer:'b1'});
+    assert.ok(!state.peers.has('b1'),'BC bye drops its row');
+    Net._onRecv({k:'name',name:'bc-doc',ts:nowTs()+5000,peer:'b1'});
+    assert.strictEqual(state.docName,'bc-doc','BC name applies via LWW');
+    Net._rtcPeerId=null;state.docName='';
+    console.log('  ✓ kind×transport acceptance matrix (ADR-0988)');
+  }
+  // ADR-0989: kind-coverage symmetry — every op kind in the vocabulary has a
+  // _undoWire inverse, and every emitted inverse stays inside the remote-accept
+  // domain (REMOTE_OPS ∩ validRemotePayload) so an undo actually reaches peers.
+  {
+    const mk=id=>{const s=Shape.make('rect',{x:0,y:0,w:4,h:4});s.id=id;return s};
+    const CK={peer:'x',seq:1,ts:nowTs()};
+    const hist=[
+      {op:'add',shape:mk('h1')},
+      {op:'addMany',shapes:[mk('h2')]},
+      {op:'del',shapes:[mk('h3')]},
+      {op:'clear',shapes:[mk('h4')],wc:{}},
+      {op:'upd',id:'h5',before:{x:0},after:{x:1}},
+      {op:'move',ids:['h6'],dx:1,dy:2,before:[{id:'h6',x:0,y:0}],after:[{id:'h6',x:1,y:2}]},
+      {op:'zorder',changes:[{id:'h7',before:'a',after:'b'}]},
+      {op:'style',before:[{id:'h8',stroke:'#000'}],after:[{id:'h8',stroke:'#fff'}]},
+      {op:'resize',before:[{id:'h9',w:4}],after:[{id:'h9',w:8}]},
+      {op:'align',dir:'left',before:[{id:'h10',x:0}],after:[{id:'h10',x:5}]},
+      {op:'beautify',before:[{id:'h11'}],after:[{id:'h11',type:'rect'}]},
+      {op:'group',ids:['h12','h13'],gid:'g1',before:[{id:'h12'},{id:'h13'}]},
+      {op:'ungroup',ids:['h14'],gids:['g2'],before:[{id:'h14',groupId:'g2'}]},
+      {op:'replace',before:[mk('h15')],after:[mk('h16')],wc:{}},
+      {op:'pageAdd',id:'pg1',name:'P',shapes:[]},
+      {op:'pageDel',id:'pg1',shapes:[mk('h17')],wc:{}},
+      {op:'pageName',id:'pg1',before:'a',after:'b',bts:1,btp:'x'},
+    ];
+    assert.strictEqual(hist.length,17,'vocabulary covers all 17 op kinds');
+    for(const h of hist){const ws=_undoWire({clock:CK,...h});
+      assert.ok(Array.isArray(ws)&&ws.length>0,`undo-wire emits for '${h.op}'`);
+      for(const w of ws){
+        assert.ok(Store.REMOTE_OPS.has(w.op),`'${h.op}' inverse '${w.op}' stays remote-legal`);
+        assert.ok(validRemotePayload(w),`'${h.op}' inverse '${w.op}' passes wire validation`);}}
+    console.log('  ✓ kind-coverage × undo-wire remote-legality (ADR-0989)');
+  }
   // ADR-0826: snapshot responder election — lowest non-asker, non-rtc peer id
   // answers (ADR-0455/0465). A regression starves or storms joiners.
   {
@@ -16530,6 +16582,8 @@ pass += 3; // ADR-0947 labelPos domain-clamp pins
   assert.ok(!Net._dcQ,'a successful send leaves no backlog');
   Net.dc=_odc;Net._dcQ=_oq;Net._dcQB=_oqb;
 }
+pass += 6; // ADR-0988 kind×transport acceptance matrix pins
+pass += 56; // ADR-0989 kind-coverage × undo-wire remote-legality pins
 pass += 4; // ADR-0949 send-funnel exception-safety pins
 pass += 3; // ADR-0950 pointer bookkeeping leak pins
 pass += 4; // ADR-0951 lblpos cancel-restore pins
