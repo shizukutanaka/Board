@@ -23,9 +23,8 @@ and sacrificed the rest.
 ## Decision
 `_rstCtx(c, z, v)` runs in the catch of every per-shape draw site:
 
-- **`c.reset()`** where available (Canvas 2D Baseline 2023): clears the
-  entire drawing state — save stack, clip, transform and all props.
-- **Legacy fallback**: drain the save stack (`_rs2` on an empty stack is a
+- **Save-drain** (no `c.reset()` — it also clears the bitmap, which would
+  blank every shape already drawn this frame): drain the save stack (`_rs2` on an empty stack is a
   no-op, so a bounded 64-iteration loop drains every leaked save including
   the frame's own dmg-clip save — repainting outside the clip is a harmless
   superset) and explicitly reset the props drawShape may leak
