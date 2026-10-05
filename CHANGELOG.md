@@ -31,7 +31,8 @@
   clocks that veto legitimate zorder/group ops via `_lwwSkip` (silent
   divergence until heal). All restore sites now funnel through a shared
   `_wK` prop-key filter + `validClock` inside `_wR`; `_wAdopt` reuses the
-  same filter (ADR-1039).
+  same filter. `_wR` keeps the real LWW `frac`/`groupId` clocks so
+  del→undo/replace never lets an older zorder/group op win (ADR-1039).
 
 ## [1.8.064]
 - **Fix: img reassembly slots are per (key, sender)** — `imgq` is answered by

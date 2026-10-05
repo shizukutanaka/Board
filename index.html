@@ -851,7 +851,7 @@ const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h)
 const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries;   // ADR-0788
-const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wK=k=>k!=='id'&&k!=='type'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&k[0]!=='_',_wR=(id,w)=>{const n=_wM();if(_iO(w)&&_ln(_ok(w))<=64)for(const k of _ok(w))if((_wK(k)||k==='_born'||k==='_del')&&validClock(w[k]))n[k]=clone(w[k]);_wc()[id]=n},_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789/1039
+const _wD=(id,c)=>_wc()[id]=_wM({_del:c}),_wK=k=>k!=='id'&&k!=='type'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&k[0]!=='_',_wR=(id,w)=>{const n=_wM();if(_iO(w)&&_ln(_ok(w))<=64)for(const k of _ok(w))if((_wK(k)||k==='frac'||k==='groupId'||k==='_born'||k==='_del')&&validClock(w[k]))n[k]=clone(w[k]);_wc()[id]=n},_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id)))_wD(id,clockNewer(w._del,c)?w._del:c)};   // ADR-0789/1039
 const _bT=(id,c)=>{const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born)){w._born=c;if(c.peer!==_pi()){if(ptr.down)(ptr.reborn||(ptr.reborn=new Set())).add(id);if(_nug)(_nug.reborn||(_nug.reborn=new Set())).add(id)}}},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926/0970/0984
 const _wAdopt=(id,rw)=>{   // ADR-0927
   if(!rw||!_iO(rw))return;
@@ -1715,7 +1715,7 @@ const Store={
         for(const s of keep)_sh().push(s);_pcR();   // ADR-0926/0985: a newer re-add outranks the swap's removal
         _iG();   // ADR-0613
         _sz();
-        if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);   // ADR-1039: filtered adopt — junk/structural keys can't stamp veto clocks
+        if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);   // ADR-1039: filtered adopt — junk/proto/pg keys dropped
         if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
         if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN)}   // ADR-0736/0926
         for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928: stamp U as _born — peers' forward apply does it
@@ -2179,7 +2179,7 @@ const _zG=()=>{state.guides=state.readout=state.bindPreview=null},_zR=()=>{state
 const _bp=c=>c.beginPath(),_st2=c=>c.stroke(),_fil=c=>c.fill();   // ADR-0510: canvas path shorthand
 const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
-const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_rstCtx=(c,z,v)=>{if(c.reset)c.reset();else{let i=64;while(i--)_rs2(c);_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c)}if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)},_dS=(s,c)=>{try{drawShape(s,c)}catch(_){_rstCtx(c)}};   // ADR-0513/0907/1001
+const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_rstCtx=(c,z,v)=>{let i=64;while(i--)_rs2(c);_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c);if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)},_dS=(s,c)=>{try{drawShape(s,c)}catch(_){_rstCtx(c)}};   // ADR-0513/0907/1001
 const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
