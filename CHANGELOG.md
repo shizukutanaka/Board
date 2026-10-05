@@ -1,3 +1,13 @@
+## [1.8.031] - 2026-10-01
+
+### Fix
+- **永続化不可環境の無通知消失を閉塞** (ADR-1005): `Persist.open()` の `onerror` (IDB ブロック/プライベートモード) は boot の `console.warn` のみ、別タブのスキーマアップグレード (onversionchange) でも `this.db=null` 固定 — 以後 `save()` が `if(!this.db)return` で**沈黙 no-op** となり、編集1時間分が無警告で消失する非対称 (onblocked 経路は `saveBlocked` toast 済み)。新キー `noStore` (ja/en) + warn-once `_dbWarn()` を導入し、`save()` の early-return と boot catch の両方で発火 (500ms debounce の連発は `_dbW` フラグで1回のみ)。ピン 5 assert
+
+## [1.8.030] - 2026-10-01
+
+### Docs + Test
+- **SR アナウンスチャネル監査 — clean 完走** (ADR-1004): `_ann` → `UI.announce` が唯一の SR ナレーション経路 (`#sr` aria-live=polite)。`el.textContent===msg?msg+' ':msg` の末尾スペーストグルで同一文連続通知も発火、`_ann` 呼出は全てイベント起点 (per-frame ループ内になし) で burst 時の coalesce は spec 準拠、`_announceSel` は `_tst` (cap4+dedup の第2ライブリージョン) 経由、`t()` は `T[k]||en[k]||k` で `undefined` 不達 + ja/en キー対称 (ADR-0335 ガード存続)、`T.k[tool]` フォールバック・接続状態 `#sConn` 別リージョンも確認。契約を8 assert でピン化
+
 ## [1.8.029] - 2026-10-01
 
 ### Docs + Test

@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.029';   // ADR-1003
+const V='1.8.031';   // ADR-1005
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -959,7 +959,7 @@ const I18N={
     imgBig:'画像が大きすぎます。縮小してください',snapBig:'ボードが大きすぎて共有できません',imgErr:'画像を読み込めませんでした',
     emptyHint:'クリックまたはツールバーから描き始める · ? でショートカット一覧',
     themeAuto:'テーマ: 自動(OS 追従)',themeLight:'テーマ: ライト',themeDark:'テーマ: ダーク',
-    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',lockedNoop:'ロック済み — ⌘⇧L で解除',exportFailed:'書き出し失敗',saveFailed:'保存失敗',saveBlocked:'別タブが旧版を保持 — 今回は保存されません',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
+    popupBlocked:'ポップアップをブロックしてください',invalidBoard:'ボードファイルが無効です',lockedNoop:'ロック済み — ⌘⇧L で解除',exportFailed:'書き出し失敗',saveFailed:'保存失敗',saveBlocked:'別タブが旧版を保持 — 今回は保存されません',noStore:'保存不可 — このセッションは永続化されません',quotaExceeded:'保存容量が逼迫しています — ⌘E/⌘⇧E で書き出しを推奨',
     quotaWarn:'保存容量の 8 割超を使用中です — ⌘E/⌘⇧E で書き出しておくと安全です',
     snap:'スナップ',grid:'グリッド',minimap:'ミニマップ',on:'オン',off:'オフ',online:'オンライン',offline:'オフライン',shapes:'図形',selDims:'選択',
     selCount:'個を選択',selNone:'選択を解除',
@@ -1042,7 +1042,7 @@ const I18N={
     imgBig:'Image too large — please resize',snapBig:'Board too large to share',imgErr:'Image failed to load',
     emptyHint:'Click or pick a tool to start drawing · Press ? for shortcuts',
     themeAuto:'Theme: Auto (follows OS)',themeLight:'Theme: Light',themeDark:'Theme: Dark',
-    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',lockedNoop:'Locked — ⌘⇧L to unlock',exportFailed:'Export failed',saveFailed:'Save failed',saveBlocked:'Another tab holds an older board — this session won\'t persist',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
+    popupBlocked:'Pop-up blocked — please allow pop-ups for PDF export',invalidBoard:'Invalid .board file',lockedNoop:'Locked — ⌘⇧L to unlock',exportFailed:'Export failed',saveFailed:'Save failed',saveBlocked:'Another tab holds an older board — this session won\'t persist',noStore:'No storage — this session won\'t persist',quotaExceeded:'Storage quota exceeded — export locally with ⌘E/⌘⇧E',
     quotaWarn:'Storage is over 80% full — exporting via ⌘E/⌘⇧E is recommended',
     copied:'Copied',pasted:'Pasted',deleted:'Deleted',cleared:'Cleared',
     beautified:'Beautified',beautifyNone:'Nothing to beautify (select a pen stroke close to a rectangle, ellipse, or line)',
@@ -8649,18 +8649,14 @@ const Persist={
       this.save();
     }
   },
-  // Pure mapping from a thrown error to the toast key — keep a
-  // distinct QuotaExceededError when the originator
-  // an actionable case the generic save-failed toast hides. Calling
-  // out the quota path lets the user respond (
-  // watching saves silently fail. Pure → unit-tested.
+  // Pure mapping thrown error → toast key; QuotaExceededError is the
+  // actionable case worth surfacing distinctly. Pure → unit-tested.
   _saveErrMsg(err){
     if(err&&err.name==='QuotaExceededError')return t('quotaExceeded');
     return t('saveFailed')+': '+((err&&err.message)||'unknown');
   },
-  // Proactive quota warning — fires once per ~5min over 80% of the origin's
-  // budget so the user can export before QuotaExceededError. estimate is
-  // async + may not exist (old Safari) — errors swallowed.
+  // Proactive quota warning once per ~5min over 80% of the origin budget;
+  // estimate is async + may not exist (old Safari) — errors swallowed.
   _quotaWarn(){
     const nav=(typeof navigator!==_un)?navigator:null;
     if(!nav||!nav.storage||!nav.storage.estimate)return;
@@ -8669,8 +8665,11 @@ const Persist={
       if(quota&&usage/quota>0.8){this._qWAt=_now();_eT('quotaWarn')}
     }).catch(()=>{});
   },
+  // ADR-1005: db absent (open error/versionchange) → saves silently no-op;
+  // warn once per session (saveBlocked parity, not a per-debounce storm).
+  _dbWarn(){if(this._dbW)return;this._dbW=1;_eT('noStore')},
   async save(explicit){
-    if(!this.db)return;
+    if(!this.db)return this._dbWarn();
     try{
       const tx=_trx(this.db,[DB_STORE,DB_IMG_STORE],_RW);
       const imgs=_oS(tx,DB_IMG_STORE);
@@ -8733,11 +8732,8 @@ const Persist={
       _sz();
     }
   },
-  // ADR-0004 (self-overwrite): doClearAll/importBoard replace
-  // _sh() wholesale. Session undo (Ctrl+Z) covers a mistaken swap
-  // overwrites the only IndexedDB slot with the new board: without it,
-  // closed tab the pre-replace board is gone.
-  // Best-effort: a failed backup must not block the swap
+  // ADR-0004 (self-overwrite): doClearAll/importBoard swap _sh() wholesale —
+  // without a pre-replace backup the old board is gone. Best-effort only.
   async saveBackup(shapes,viewport,docName){
     if(!this.db||!shapes||!_ln(shapes))return;
     try{
@@ -9383,11 +9379,8 @@ function wire(){
   // online
   _on(window,'online',UI.updateOnline);
   _on(window,'offline',UI.updateOnline);
-  // PWA install button (v1.6.92): show on installability —
-  // `beforeinstallprompt` fires on Chrome/Edge when the PWA criteria are
-  // met. Safari/Firefox never fire it — the button stays hidden there.
-  // We call _pd(e) to suppress the browser's auto-infobar — our
-  // install is fully user-initiated via our button.
+  // PWA install button: `beforeinstallprompt` fires on Chrome/Edge only;
+  // _pd(e) suppresses the auto-infobar so install stays user-initiated.
   _on(window,'beforeinstallprompt',e=>{
     _pd(e);
     _installPrompt=e;
@@ -10267,7 +10260,7 @@ const Minimap=(()=>{
   UI.refreshLangBtn();   // ADR-0014: LANG/T already reflect the persi
   UI.updateOnline();
   resize();
-  try{await Persist.open();await Persist.load()}catch(err){console.warn('persist init',err)}
+  try{await Persist.open();await Persist.load()}catch(err){console.warn('persist init',err);Persist._dbWarn()}
   // ADR-0004: single-notification restore prom
   // destructive replace (clear-all/import) never undone before reload.
   try{

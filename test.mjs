@@ -10390,6 +10390,34 @@ try {
   }
   pass += 8; // ADR-1003 backing-store/DPR lifecycle pins
 
+  // ADR-1004: SR announce channel — _ann is the sole narration funnel into a
+  // polite live region; the repeat-space toggle, locale-key resolution, and the
+  // second (toast) live region must hold or narration silently degrades.
+  {
+    assert.ok(html.includes('<div id="sr" aria-live="polite"'),'SR live region exists');
+    assert.ok(html.includes('_ann=m=>UI.announce(m)'),'single announce funnel');
+    assert.ok(html.includes("el.textContent===msg?msg+' ':msg"),'repeat-announce space toggle');
+    assert.ok(html.includes('aria-live="polite" aria-atomic="false"'),'toast stack is a second polite region');
+    assert.ok(html.includes('k:{select:'),'tool-name dict present');
+    assert.ok(html.includes("_ann(_rnd(_vp().zoom*100)+'%')"),'discrete zoom narration');
+    assert.ok(html.includes("_ann(t(n>(Net._pCt|0)?'peerJoined':'peerLeft'))"),'peer join/leave narration');
+    assert.ok(html.includes("_tst(n===0?t('selNone')"),'selection narration via toast channel');
+    console.log('  \u2713 SR announce channel pins (ADR-1004, 8 asserts)');
+  }
+  pass += 8; // ADR-1004 SR-announce-channel pins
+
+  // ADR-1005: db absence makes save() a silent no-op — warn once, not per
+  // debounced save. The onblocked path already toasts saveBlocked.
+  {
+    assert.ok(html.includes('_dbWarn(){if(this._dbW)'),'warn-once gate exists');
+    assert.ok(html.includes('if(!this.db)return this._dbWarn()'),'save() covers db-loss paths');
+    assert.ok(html.includes('Persist._dbWarn()'),'boot surfaces open failure');
+    assert.ok(html.includes("noStore:'保存不可")&&html.includes("noStore:'No storage"),'noStore key both locales');
+    assert.ok(html.includes("r.onblocked=()=>{_oT('saveBlocked')"),'onblocked path unchanged');
+    console.log('  \u2713 no-store warn-once pins (ADR-1005, 5 asserts)');
+  }
+  pass += 5; // ADR-1005 no-store warning pins
+
   // ADR-0606: a viewport resize during presentation re-fits the current
   // frame — without it the zoom drifts off the frame after window resize /
   // mobile rotation (visualViewport resize routes through the same handler).
