@@ -16495,6 +16495,24 @@ try {
       if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}Net.bc=null;
       console.log('  ✓ join-handshake × room-switch lifecycle (ADR-1030)');
     }
+    {
+      // ADR-1031: presence-channel send signatures × lifecycle — selection/cursor
+      // dedup keys must self-correct across a room switch; a newly-seen peer
+      // forces a resend; the pg rides the selection key; init rebases _pCt.
+      assert.ok(html.includes("const key=_JS(ids.sort())+'|'+(state.curPg||'')"),'selection presence key carries the viewed page');
+      assert.ok(html.includes("this._lastSelSent=null;_iv();"),'a newly-seen peer forces a selection resend');
+      assert.ok(html.includes("this._pCt=_pr().size"),'init rebases the presence-count baseline');
+      assert.ok(html.includes("if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return"),'cursor send is throttle-gated');
+      Net._lastSelSent='stale';
+      const _ob=Net._bcast;let selSent=0;Net._bcast=m=>{if(m&&m.k==='selection')selSent++;return _ob.call(Net,m)};
+      Net._touchPeer('p780x');
+      assert.strictEqual(Net._lastSelSent,null,'new peer forces selection resend key');
+      state.selection.add('sel780');
+      Net.sendSelectionIfChanged();
+      assert.ok(selSent>=1,'selection presence emitted after peer touch');
+      Net._bcast=_ob;Net._lastSelSent='';state.selection.delete('sel780');state.peers.delete('p780x');
+      console.log('  ✓ presence-channel signature lifecycle (ADR-1031)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17437,6 +17455,7 @@ pass += 10; // ADR-1027 wire-mutation×invalidation + presence lifecycle pins
 pass += 4; // ADR-1028 saveBackup failure-surfacing pins
 pass += 9; // ADR-1029 stamp×drop symmetry pins
 pass += 8; // ADR-1030 join×room-switch lifecycle pins
+pass += 7; // ADR-1031 presence-signature lifecycle pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
