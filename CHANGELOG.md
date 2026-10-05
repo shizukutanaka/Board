@@ -1,3 +1,17 @@
+## [1.8.054]
+- **Fix: silent backup-write loss** — `Persist.saveBackup` (the pre-swap
+  safety-net write behind clear/import/share swaps) swallowed
+  quota/tx-abort failures in a catch-all, so the destructive swap
+  proceeded with no recoverable `:prev` and no warning. The catch now
+  reuses `save()`'s `_saveErrMsg` surfacing (ADR-1028); restoreBackup
+  already surfaced via `backupRestoreFailed`. Behavioural pin: a
+  throwing transaction produces exactly one `err` toast.
+
+## [1.8.053] - 2026-10-06
+
+### Docs / Tests
+- ADR-1027: wire-mutation × grid-invalidation + presence lifecycle audit — clean sweep. Every live-shape `_oa` site runs under `_apply`'s head `_iG()`, and the lazy `_grid`/`_idIndex` rebuild absorbs post-`_iG` mutations (connFix); `main()` awaits `Persist.open()`/`Persist.load()` before `Net.init()` so no wire intake can precede the doc restore; every outbound op stamps a unique `(peer,++seq,ts)` clock via `_fck`; presence rows are touched under `MAX_PEERS`, reaped at 15s (`rtc:` rows are `onclose`-owned), dropped instantly on `bye`, and reach RTC peers through the dual-transport `_bcast`. Contract: a new mutation path that calls `_oa` on a live shape must already have `_iG()` fired in the same event turn — `_oa` itself stays invalidation-free by design. Pins the invariants (10 asserts).
+
 ## [1.8.052] - 2026-10-06
 
 ### Fixed

@@ -16413,6 +16413,47 @@ try {
       assert.ok(!html.includes('this.bc.onmessage=e=>this._onRecv(e.data)'),'no unguarded BC onmessage remains');
       console.log('  ✓ apply-remote failure evicts the dedup key (ADR-1026)');
     }
+    {
+      // ADR-1027: wire-mutation × grid-invalidation + presence lifecycle — clean audit.
+      // (a) Every live-shape `_oa` site runs under `_apply`'s head `_iG()`; the lazy
+      // `_grid`/`_idIndex` rebuild absorbs post-`_iG` mutations (e.g. connFix).
+      assert.ok(html.includes('_iG=_invalidateGrid'),'_iG aliases _invalidateGrid');
+      assert.ok(html.includes('if(byId(o.id)===o)_gTouch(o.id,_ok(p))'),'_oa gesture-touches live shapes only');
+      assert.ok(html.includes("dcRef._pid='rtc:'+uid().slice(0,4)"),'each channel stamps its own rtc presence id');
+      // (b) Boot order: the doc restore fully awaits before any wire intake can exist.
+      const _lo=html.indexOf('await Persist.open();await Persist.load()'),_ni=html.indexOf('Net.init();');
+      assert.ok(_lo>-1&&_ni>-1&&_lo<_ni,'main() awaits Persist.open/load before Net.init');
+      // (c) Every outbound op carries a unique (peer,++seq,ts) clock — no dedup-dropped send.
+      assert.ok(html.includes('_fck=o=>{o.clock={peer:_pi(),seq:++state.seq,ts:nowTs()}}'),'all broadcast paths stamp a unique clock');
+      // (d) Presence lifecycle: reap skips rtc: (onclose-owned); _bcast is dual-transport.
+      assert.ok(html.includes("if(_sw(id,'rtc:'))continue;"),'the presence reaper leaves rtc rows to onclose');
+      assert.ok(html.includes('this._sendDC(_JS(msg))'),'_bcast reaches the DataChannel too');
+      const _pc0=Net.peerCount();
+      Net._touchPeer('bcPeerX');
+      assert.strictEqual(Net.peerCount(),_pc0+1,'touchPeer adds a presence row');
+      Net._onRecv({k:'bye',peer:'bcPeerX'});
+      assert.strictEqual(Net.peerCount(),_pc0,'bye intake drops the row immediately');
+      Net._touchPeer('rtc:zzzz');
+      Net._reapPeers();
+      assert.strictEqual(Net.peerCount(),_pc0+1,'a fresh rtc row survives the reaper');
+      console.log('  ✓ wire-mutation × invalidation + presence lifecycle audit (ADR-1027)');
+    }
+    {
+      // ADR-1028: the pre-swap safety-net write must not fail silently —
+      // saveBackup shares save()'s _saveErrMsg surfacing (quota/tx abort → err
+      // toast) instead of the old catch-all swallow.
+      assert.ok(html.includes("}catch(err){_e(this._saveErrMsg(err))}"),'saveBackup surfaces write failures like save()');
+      assert.ok(html.includes("_eT('backupRestoreFailed');return false"),'restoreBackup already surfaces on failure (parity)');
+      const _odb=Persist.db,_ot=UI.toast,seen=[];
+      UI.toast=(m,k)=>seen.push(k);
+      Persist.db={transaction(){throw new Error('tx boom')}};
+      try{
+        await Persist.saveBackup([Shape.make('rect',{x:0,y:0,w:1,h:1})],{x:0,y:0,zoom:1},'B');
+        assert.ok(seen.includes('err'),'a backup-write failure toasts kind err');
+        assert.strictEqual(seen.length,1,'a failed backup surfaces exactly once per call');
+      }finally{Persist.db=_odb;UI.toast=_ot}
+      console.log('  ✓ backup-write failure surfaces an error toast (ADR-1028)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17351,6 +17392,8 @@ pass += 8; // ADR-1023 wire-buffer lifecycle pins
 pass += 6; // ADR-1024 docName empty-write pins
 pass += 6; // ADR-1025 real sw.js registration pins
 pass += 5; // ADR-1026 apply-failure dedup-evict pins
+pass += 10; // ADR-1027 wire-mutation×invalidation + presence lifecycle pins
+pass += 4; // ADR-1028 saveBackup failure-surfacing pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
