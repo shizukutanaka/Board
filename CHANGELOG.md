@@ -1,3 +1,11 @@
+## [1.8.073]
+- **Fix: minimap image render verifies `_ik` like `getImg`** — the minimap
+  scene branch was the only `_imgCache` reader bypassing `getImg`'s byte
+  verify: a fingerprint-collision pair drew the right image on canvas but
+  the wrong bitmap in the minimap (same class as ADR-1040, one consumer
+  left open). A collision now misses to the placeholder; new cache readers
+  must verify `_ik` (ADR-1047).
+
 ## [1.8.072]
 - **Audit: parked-ref waitlist boundedness & ordering** — `_park` caps
   `_imgPending` at 256 entries with FIFO eviction by first park; evicted

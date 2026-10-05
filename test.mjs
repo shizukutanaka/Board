@@ -16755,6 +16755,15 @@ try {
       console.log('  ✓ img fingerprint collision verified (ADR-1040)');
     }
     {
+      // ADR-1047: the minimap scene render read _imgCache.get directly and
+      // skipped the _ik byte-verify — a fingerprint collision drew the wrong
+      // bitmap there while the canvas was right. Every raw .get site must
+      // verify _ik (getImg already does); contract: new _imgCache readers
+      // go through getImg or check img._ik===<the dataUrl asked for>.
+      assert.ok(html.includes("img=_du(s)?_imgCache.get(_imgKey(_du(s))):null;if(img&&img._ik===_du(s)"),'minimap image branch verifies _ik on the fingerprint hit');
+      console.log('  ✓ minimap img fingerprint verify (ADR-1047)');
+    }
+    {
       // ADR-1041: importBoard/importFromHash swap via _rs without
       // _attachShape — parked img refs stayed dead forever (no park → no
       // imgq heal). Both now ride _attachShape like the snapshot path.
@@ -17805,6 +17814,7 @@ pass += 8; // ADR-1038 img sender-tagged slot pins
 pass += 13; // ADR-1039 wclock-restore sanitize pins
 pass += 7; // ADR-1040 img fingerprint collision pins
 pass += 5; // ADR-1041 import swap img-attach pins
+pass += 1; // ADR-1047 minimap img _ik-verify pin
 pass += 5; // ADR-1042 export parked-ref pins
 pass += 4; // ADR-1043 local add img-attach pins
 pass += 7; // ADR-1044 pending-nudge × remote-apply lifecycle pins
