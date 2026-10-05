@@ -10350,7 +10350,7 @@ try {
   // explicit prop reset on engines without it) then re-applies the world
   // transform. _dS (export loops, ADR-0907) shares the same restore.
   {
-    assert.ok(html.includes('_rstCtx=(c,z,v)=>{if(c.reset)c.reset()'),'reset() fast path exists');
+    assert.ok(html.includes('_rstCtx=(c,z,v)=>{let i=64;while(i--)_rs2(c);')&&!/_rstCtx=[^;]*c\.reset\(/.test(html),'save-drain restore; no ctx.reset() (it clears the bitmap — would blank earlier shapes)');
     assert.ok(html.includes("_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c)"),'legacy prop reset exists');
     assert.ok(html.includes('if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)'),'world transform re-applied');
     assert.ok(html.includes('catch(_){_rstCtx(c)}}'),'export _dS restores too');
