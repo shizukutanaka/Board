@@ -1,3 +1,33 @@
+## [1.8.060]
+- **Docs+pin: wholesale intake bounds audit (clean)** — the snapshot family's
+  aux-field surface is bounded end to end: `msg.shapes`/`msg.ops` are sliced
+  at `SHARE_MAX_SHAPES` before iteration, adopted shapes pass `validShape` +
+  the `_tAlive` tomb gate, carried ops are adds-only, envelope-peer-bound and
+  re-run through `applyRemote` (never applied directly), `wc` maps take the
+  `_wAdopt` idiom (≤64 keys, per-key `validClock`, structural/proto skip),
+  `msg.pages` goes through `_vPages` + the 64-cap union-heal, and rep/name
+  markers are `validClock`/`_tsOK`/`_idOK`/`_s80` gated. Contract rule for
+  new wholesale fields + 12 pins (ADR-1034).
+
+## [1.8.059]
+- **Fix: foreign img ordinal persisted verbatim (ADR-1033)** — a peer's
+  parked `img:k:N` ref is store-relative: `:N` is a collision ordinal in
+  *that* store's keyspace. Persisted as-is, reload could attach a different
+  local `k:N` occupant — silent wrong-image restore with no imgq heal.
+  `_imgSlim`'s persist call sites now '@'-mark `/:\d+$/` refs; `_imgAttach`
+  strips the mark and keeps them parked for imgq heal only. Base-hash refs
+  stay locally resolvable (content-faithful). 11 behavioural pins.
+
+## [1.8.058]
+- **Fix: dual-connected presence merge (ADR-1032)** — a link partner who is
+  also a room peer counted as two: `_pk` routed every viaRtc presence
+  message to the synthetic `rtc:` row, so the avatar stack, `peerCount`,
+  and the join/leave SR announces showed `P-` plus a phantom `RT` entry
+  forever, while their cursor/selection rendered under a second color.
+  `_pk` now lands viaRtc presence on the partner's real row whenever one
+  exists and folds the synthetic `rtc:` row away; pure-link partners keep
+  the link row exactly as before. 6 behavioural pins.
+
 ## [1.8.057]
 - **Docs+pin: presence-channel send-signature × lifecycle audit (clean)** —
   verified the presence dedup keys self-correct across a room switch:

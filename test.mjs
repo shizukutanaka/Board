@@ -16296,8 +16296,8 @@ try {
       const sm=Net._snapshotMsg();
       assert.ok(sm.shapes.some(x=>x.id===eba.id),'snapshot reply includes erase-batch members');
       assert.ok(html.includes("const _shWB=()=>_ln(_eraseBatch)?_sh().concat(_eraseBatch):_sh();"),'whole-board union helper exists');
-      assert.ok(html.includes("_imgSlim(_shWB(),stored)"),'doc save unions the erase batch');
-      assert.ok(html.includes("_imgSlim(shapes.concat(_eraseBatch),stored)"),':prev backup unions the erase batch');
+      assert.ok(html.includes("_imgSlim(_shWB(),stored,1)"),'doc save unions the erase batch');
+      assert.ok(html.includes("_imgSlim(shapes.concat(_eraseBatch),stored,1)"),':prev backup unions the erase batch');
       assert.ok(html.includes("const ops=_shWB().map(s=>({"),'snapshot ops include the batch');
       assert.ok(html.includes("shapes=_shWB()"),'board/clipboard export defaults union the batch');
       flushErase();   // drain via the real commit path; the next block reset()s anyway
@@ -16512,6 +16512,66 @@ try {
       assert.ok(selSent>=1,'selection presence emitted after peer touch');
       Net._bcast=_ob;Net._lastSelSent='';state.selection.delete('sel780');state.peers.delete('p780x');
       console.log('  ✓ presence-channel signature lifecycle (ADR-1031)');
+    }
+    {
+      // ADR-1032: viaRtc presence merges onto the link partner's real row when
+      // one exists — a dual-connected peer must not count as two avatars.
+      assert.ok(html.includes("if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}"),'viaRtc presence folds the synthetic row into the real row');
+      Net.init('room781a');
+      Net._rtcPeerId='rtc:zz9';
+      state.peers.set('rtc:zz9',{color:'#000',lastSeen:_now()});
+      state.peers.set('p-real',{color:'#111',lastSeen:_now()});
+      assert.strictEqual(Net._pk({peer:'p-real'},true),'p-real','dual partner presence lands on the BC row');
+      assert.ok(!state.peers.has('rtc:zz9'),'synthetic link row folded away on merge');
+      assert.strictEqual(Net._pk({peer:'p-other'},true),'rtc:zz9','no matching row → pure-link presence stays on the link row');
+      assert.strictEqual(Net._pk({peer:'p-real'},false),'p-real','BC path unchanged');
+      Net._rtcPeerId=null;state.peers.clear();
+      console.log('  ✓ rtc×room presence merge (ADR-1032)');
+    }
+    {
+      // ADR-1033: ':'-chained img keys are per-store ordinals — a foreign
+      // parked ref persisted verbatim could resolve against a different
+      // local ':N' occupant on reload. Persist '@'-marks them; _imgAttach
+      // strips the mark and keeps the ref parked for imgq heal only.
+      assert.ok(html.includes("img:'@'+s.img"),'persist marks foreign chained img refs');
+      assert.ok(html.includes("img:s.img.slice(1)"),'_imgAttach strips the foreign mark without attaching');
+      const st=new Map([['i1x1','data:image/png;base64,AAAA'],['i2x9','data:image/png;base64,BBBB']]);
+      const fA={id:'imA',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i1x1:1'},
+            fB={id:'imB',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i2x9'},
+            fC={id:'imC',type:'image',x:0,y:0,w:10,h:10,z:1,img:'i3x3:2'};
+      const slp=_imgSlim([fA,fB,fC],st,1);
+      assert.strictEqual(slp.slim[0].img,'@i1x1:1','chained foreign ref @-marked at persist');
+      assert.strictEqual(slp.slim[1].img,'i2x9','base-hash key stays unmarked (content-faithful)');
+      assert.strictEqual(slp.slim[2].img,'@i3x3:2','second chained ref marked too');
+      const att=_imgAttach(slp.slim,st);
+      assert.strictEqual(att[0].img,'i1x1:1','mark stripped — parked ref heals via imgq');
+      assert.strictEqual(att[0].dataUrl,undefined,'marked ref never attaches the local :N occupant');
+      assert.strictEqual(att[1].dataUrl,'data:image/png;base64,BBBB','base-hash ref resolves locally');
+      assert.strictEqual(_imgSlim([fA],new Map()).slim[0].img,'i1x1:1','wire path unmarked — keyspace is shared');
+      console.log('  ✓ foreign img-ref persistence marking (ADR-1033)');
+    }
+    {
+      // ADR-1034: wholesale intake bounds — every array field is slice-bounded
+      // before iteration, every clock map is per-key validClock + count-capped,
+      // ops carried inside another message are envelope-peer-bound and re-run
+      // through applyRemote (validRemotePayload) — never applied directly.
+      assert.ok(html.includes("for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){if(op.clock?.peer===msg.peer)this._mergeSnapshotOp(op)}"),'snapshot ops bounded + envelope-peer bound');
+      assert.ok(html.includes("const valid=_s0(shapes,SHARE_MAX_SHAPES).map(s=>this._attachShape(s)).filter(s=>validShape(s)&&!_tAlive(s.id,wm.get(s.id)))"),'adopted shapes bounded + validated + tomb-gated');
+      assert.ok(html.includes("const ks=_ok(rw);if(_ln(ks)>64)return;"),'adopted wc maps are key-count capped');
+      assert.ok(html.includes("if(!op||op.op!=='add'||!op.shape)return 'skip';"),'snapshot-carried ops are adds only');
+      reset();
+      assert.strictEqual(Net._mergeSnapshotOp({op:'clear',shapes:[],clock:{peer:'q',seq:1,ts:1}}),'skip','forged non-add inside ops is skipped');
+      assert.strictEqual(Net._mergeSnapshotOp({op:'add',clock:{peer:'q',seq:1,ts:1}}),'skip','shape-less add is skipped');
+      const wc65={};for(let i=0;i<65;i++)wc65['p'+i]={peer:'q',seq:1,ts:1};
+      Net._applySnapshot({shapes:[{id:'sA',type:'rect',x:0,y:0,w:10,h:10,z:1},{id:'sB',type:'nope',x:0,y:0,z:2}],ops:[{shape:{id:'sA'},wc:wc65}]});
+      assert.strictEqual(state.shapes.length,1,'only the valid shape is adopted');
+      assert.strictEqual(state.shapes[0].id,'sA','the surviving adopt is the valid shape');
+      assert.strictEqual(state.wclock['sA'],undefined,'a >64-key wc map is rejected wholesale');
+      const wcP=JSON.parse('{"x":{"peer":"q","seq":1,"ts":1},"__proto__":{"peer":"q","seq":1,"ts":1}}');
+      Net._applySnapshot({shapes:[{id:'sC',type:'rect',x:0,y:0,w:5,h:5,z:3}],ops:[{shape:{id:'sC'},wc:wcP}]});
+      assert.ok(state.wclock['sC']&&state.wclock['sC'].x,'a small legit wc map is adopted');
+      assert.ok(!('__proto__' in state.wclock['sC']),'proto keys never enter wclock');
+      console.log('  ✓ wholesale intake bounds (ADR-1034)');
     }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
@@ -17456,6 +17516,9 @@ pass += 4; // ADR-1028 saveBackup failure-surfacing pins
 pass += 9; // ADR-1029 stamp×drop symmetry pins
 pass += 8; // ADR-1030 join×room-switch lifecycle pins
 pass += 7; // ADR-1031 presence-signature lifecycle pins
+pass += 6; // ADR-1032 rtc×room presence merge pins
+pass += 11; // ADR-1033 foreign img-ref marking pins
+pass += 12; // ADR-1034 wholesale intake bounds pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

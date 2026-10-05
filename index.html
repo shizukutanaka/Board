@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.057';   // ADR-1031
+const V='1.8.060';   // ADR-1034
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8129,7 +8129,12 @@ const Net={
     if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
   },
   _pk(msg,viaRtc){   // ADR-0498: peer-key routing — RTC peers use
-    return viaRtc?this._rtcPeerId:msg.peer;
+    if(!viaRtc)return msg.peer;
+    // ADR-1032: a link partner who is also a room peer must not count twice —
+    // presence lands on their real row when one exists and the synthetic
+    // 'rtc:' row is folded away; pure-link partners keep the link row.
+    if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}
+    return this._rtcPeerId;
   },
   _bcast(msg){   // ADR-0401: dual-transport fold — BroadcastChannel + RTC DataChannel
     this._send(msg);
@@ -8684,7 +8689,7 @@ const Persist={
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       // ADR-0031: strip image bytes from the doc record into content-hash
       // blobs — doc + :prev share one copy; autosave clones stay small.
-      const{slim,puts}=_imgSlim(_shWB(),stored);
+      const{slim,puts}=_imgSlim(_shWB(),stored,1);
       for(const[k,d]of puts)imgs.put(d,k);
       // GC: drop blobs neither the live doc nor the pre-replace backup reference
       const prev=await reqDone(_oS(tx,DB_STORE).get(DOC_KEY+':prev'));
@@ -8747,7 +8752,7 @@ const Persist={
       const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
-      const{slim,puts}=_imgSlim(shapes.concat(_eraseBatch),stored);
+      const{slim,puts}=_imgSlim(shapes.concat(_eraseBatch),stored,1);
       for(const[k,d]of puts)imgs.put(d,k);
       _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,pages:_pgs(),curPg:state.curPg,savedAt:_now()},DOC_KEY+':prev');
       await txDone(tx);
@@ -8809,16 +8814,13 @@ const Persist={
     }catch(_){_eT('backupRestoreFailed');return false}
   }};
 function txDone(tx){return new Promise((r,j)=>{tx.oncomplete=()=>r();tx.onerror=()=>j(tx.error);tx.onabort=()=>j(tx.error)})}
-// ADR-0031: content-hash keys for image blobs. FNV-1a over the dataUrl is enough
-// — the key only names a blob in a same-origin private store, and the rare
-// collision resolves by chaining (':1', ':2', …) against the stored value, so
-// two different images can never overwrite each other.
+// ADR-0031: content-hash keys for image blobs — FNV-1a over the dataUrl; the
+// rare collision chains (':1', ':2', …) against the stored value.
 function _imgHash(d){let h=0x811c9dc5;for(let i=0;i<_ln(d);i++){h^=d.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return 'i'+_ln(d).toString(36)+'x'+h.toString(36)}
 function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+1):k+':1'}
-// Split shapes into a slim array (image bytes → `img` ref) + the blob puts that
-// are not already stored. `stored` is the current key→dataUrl map; new puts are
-// registered into it so dedup + collision-chaining stay deterministic.
-function _imgSlim(shapes,stored){
+// Split shapes into slim (image bytes → `img` ref) + blob puts not already
+// stored. New puts register into `stored` so dedup/chaining stay deterministic.
+function _imgSlim(shapes,stored,fmark){
   const slim=[],puts=[];
   for(const s of shapes){
     if(s&&_im(s)&&_iS(s.dataUrl)&&_du(s).length>128){
@@ -8827,15 +8829,16 @@ function _imgSlim(shapes,stored){
       if(stored.get(k)===_ud){stored.set(k,_du(s));_pu(puts,[k,_du(s)])}
       const{dataUrl:_x,...rest}=s;
       _pu(slim,{...rest,img:k});
-    }else _pu(slim,s);
+    }else _pu(slim,s&&fmark&&_iS(s.img)&&/:\d+$/.test(s.img)&&!_sw(s.img,'@')?{...s,img:'@'+s.img}:s);   // ADR-1033: ':N' is a per-store ordinal — mark foreign refs so _imgAttach heals via imgq, never a local :N hit
   }
   return{slim,puts};
 }
-// Inverse of _imgSlim: re-attach bytes and drop the ref so live shapes carry the
-// wire-format dataUrl exactly as before (ops/share/history unchanged).
+// Inverse of _imgSlim: re-attach bytes, drop the ref (ops/share/history
+// keep the wire dataUrl).
 function _imgAttach(shapes,imgs){
   return shapes.map(s=>{
     if(s&&_iS(s.img)&&!_du(s)){
+      if(_sw(s.img,'@')){const{img:_x,...rest}=s;return{...rest,img:s.img.slice(1)}}   // ADR-1033: foreign ordinal — strip, stay parked
       const d=imgs.get(s.img);
       if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
     }
