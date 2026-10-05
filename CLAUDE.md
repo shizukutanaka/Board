@@ -1041,6 +1041,7 @@ Board/
 │   └── ADR-0990-type-conversions-wire.md  # 型変換のワイヤ収束 — _typOK ゲートで「適用キー==刻印キー」を担保 (style 系の type を _apply/stamp/snapshot-merge で採用、upd strip 維持、偽造 pen/未知型拒否)
 │   └── ADR-0991-finalize-bridge-tomb.md  # finalize ブリッジ tomb parity — broadcast-only del がローカル tomb を broadcast 時計へ再刻印 (undo-clock vs broadcast-clock の非対称解消、_bN ゲートで reborn 存続)
 │   └── ADR-0992-stale-reference-removal-audit.md  # stale 参照×除去経路監査 — 図形を見続ける参照は全て id live 再解決か除去サイト purge (_psc/_pcC) で完備、_apply 時計保証も全入口 gated (8軸 clean)
+│   └── ADR-0993-undo-remote-removal-audit.md  # undo×remote 除去の仲裁対称性監査 — backward ゲート全てがピア forward ゲートと等効、undo の新 HLC 時計が観測済み remote 時計を常に上回り対称な復活/復元へ収束
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
