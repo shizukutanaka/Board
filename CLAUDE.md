@@ -1094,6 +1094,7 @@ Board/
 │   └── ADR-1043-local-add-img-attach.md  # 局所 add/addMany の push を `_attachShape` 経由へ — 貼付コピーの parked img 参照が imgq 未登録で空白のまま残る実害を解消
 │   └── ADR-1044-pending-nudge-remote-lifecycle.md  # `_nug` coalescer の flush 網羅監査 — 全ローカル変異は `_recordCommitted` で flush、remote は `_gTouch` fold + `n.reborn` で整合、clean 完走
 │   └── ADR-1045-snapshot-img-answer-store.md  # snapshot の `sent` 使い捨てマップで img 参照キーが `_imgSent` 不達 → imgq 応答不能の実害を解消 (snapshot puts も応答ストアへ登録)
+│   └── ADR-1046-img-pending-waitlist-bound.md  # `_park` 待機リスト 256上限+FIFO 監査 — 追い出しでも straggler スキャンで自己治癒、再 park は挿入位置維持、clean 完走
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

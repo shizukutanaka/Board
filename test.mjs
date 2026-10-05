@@ -3324,6 +3324,25 @@ try {
     assert.strictEqual(byId(im.id).img,undefined,'ref dropped on resolution');
     console.log('  ✓ pageDel pending wipe + straggler resolution (ADR-0753)');
   }
+  // ADR-1046: the parked-ref waitlist is bounded at 256 entries with FIFO
+  // eviction by insertion order — an evicted entry keeps its shape's `img`
+  // ref, so the ADR-0629 straggler scan still resolves it if the blob ever
+  // arrives (bounded waitlist, not lost-heal). Re-parking an existing id
+  // updates the entry in place (Map.set keeps the insertion slot), so FIFO
+  // order is by first park, not last refresh.
+  {
+    state.shapes.length=0;_invalidateGrid();Net._imgPending.clear();Net._imgIn.clear();
+    const _ids46=[];
+    for(let i=0;i<258;i++){const s=Shape.make('image',{x:i,y:0,w:1,h:1,img:'kP'+i});
+      state.shapes.push(s);_invalidateGrid();Net._attachShape(s);_ids46.push(s.id)}
+    assert.ok(Net._imgPending.size<=256,'parked-ref waitlist bounded');
+    assert.ok(!Net._imgPending.has(_ids46[0])&&Net._imgPending.has(_ids46[257]),'oldest evicted, newest kept');
+    const _p46=Net._imgPending.keys().next().value;
+    Net._imgPending.set(_p46,{k:'kZ',t0:nowTs()});
+    assert.strictEqual(Net._imgPending.keys().next().value,_p46,'re-set keeps the insertion slot (FIFO by first park)');
+    Net._imgPending.clear();state.shapes.length=0;_invalidateGrid();
+    console.log('  ✓ img-pending waitlist bound + FIFO order pins (ADR-1046)');
+  }
 
   // applyRemote does NOT enter local undo stack
   const histLen = state.history.length;
@@ -17789,6 +17808,8 @@ pass += 5; // ADR-1041 import swap img-attach pins
 pass += 5; // ADR-1042 export parked-ref pins
 pass += 4; // ADR-1043 local add img-attach pins
 pass += 7; // ADR-1044 pending-nudge × remote-apply lifecycle pins
+pass += 2; // ADR-1045 snapshot img-answer-store pins
+pass += 3; // ADR-1046 img-pending waitlist bound/FIFO pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
