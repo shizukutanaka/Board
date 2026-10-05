@@ -1,3 +1,23 @@
+## [1.8.038] - 2026-10-01
+
+### Docs + Pin
+- **id 索引×shape-set 変異の整合性監査が clean 完走** (ADR-1012): `byId` lazy index は size drift で自己修復するため、唯一の穴パターンは「同件数でのオブジェクト入替」(splice-with-insert/`[i]=`) — 全21変異サイト走査で同パターン不存在を確認 (全サイトが件数変化か `_iG` 同行)。`_eraseBatch` もストローク生涯に限定 (commit/cancel/swap 全出口で `=[]`)。同件数 swap で byId が新 id 解決・旧 id 消滅する実経路ピン + 「`_sh()[i]=` 禁止・同件数置換は `_iG` 必須」規則化
+
+## [1.8.037] - 2026-10-01
+
+### Docs + Pin
+- **派生キャッシュ不変条件監査が clean 完走** (ADR-1011): 全キャッシュ (wrap/pen bitmap/pen bbox/CSS/ハロー/検索/ミニマップ/conn ラベル/img pending/ジェスチャスナップ/スナップ索引/img byte バジェット/スライダ buffer) のキー完全性×有界性×ライフタイムを走査 — WeakMap (shape obj キー) は GC で swap 安全、id キーは全て `_psc`/`_pcC`/`_tTk` サイトで網羅。webfont 不使用 (system stack) のため font-load stale 経路は不存在。`_wrapCache` キーに spacing/font が含まれる契約を memo-hit/remeasure の実経路ピンで固定
+
+## [1.8.036] - 2026-10-01
+
+### Fix
+- **snapshot adopt が旧盤面の選択 id を幽霊保持する parity 穴を閉塞** (ADR-1010): 全置換スワップ全経路監査で `Net._applySnapshot` (join 採用 + sync-req 応答) だけが `_scl()` 欠落 — 'replace'/`'clear'`/import/share-link/IDB restore は全て選択破棄。mid-session 再同期が選択中に着くと swap 済み図形の死 id が `state.selection` に残り (byId-safe なので描画クラッシュはないが) status バー/SR アナウンスが幻影選択を報告、選択スコープ ops が空 op を量産。`_rs` 直後に `_scl()` 追加で 'replace' parity 完備。全置換 = transient chrome (1009) + selection の両リセット規則を確立
+
+## [1.8.035] - 2026-10-01
+
+### Fix
+- **全置換スワップで stale measure ガイドが残存する実害を閉塞** (ADR-1009): `state.measure` は唯一「コピー幾何」を保持する transient chrome — `_drawMeasure` が `m.a`/`m.b` を id 解決なしで直接描画するため、remote 'replace'/'clear'・import/snapshot 取込・swap undo が採寸元図形を消しても Alt keyup まで幽霊ガイドが毎フレーム残った。`_rs` (import/snapshot funnel) + `_apply` 'clear'/'replace' 3サイトで `state.measure=null`。他 transient (hover/_ehov/bindPreview/_sbf) は id 解決で dead-safe、draft/lineClick は gesture/modal 所有で継続が設計意図と確認。実経路ピン (applyRemote replace + commit clear で measure 消滅)
+
 ## [1.8.034] - 2026-10-01
 
 ### Fix

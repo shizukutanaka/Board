@@ -16141,6 +16141,50 @@ try {
     assert.strictEqual(state.hover,null,'blur drops the quick-conn hover id');
     assert.strictEqual(state._ehov,null,'blur drops the eraser hover box');
     console.log('  ✓ blur clears transient hover/measure chrome (ADR-1008)');
+    // ADR-1009: wholesale swaps invalidate the stored measure geometry — the
+    // only transient chrome state that isn't a dead-id-safe lookup.
+    reset();
+    state.measure={a:{x:0,y:0,w:1,h:1},b:{x:2,y:2,w:1,h:1}};
+    Store.applyRemote({op:'replace',after:[],afterWc:{},clock:{peer:'p9',seq:1,ts:Date.now()+1}});
+    assert.strictEqual(state.measure,null,'remote replace drops stale measure guides');
+    state.measure={a:{x:0,y:0,w:1,h:1},b:{x:2,y:2,w:1,h:1}};
+    Store.commit({op:'clear'});
+    assert.strictEqual(state.measure,null,'local clear drops stale measure guides');
+    console.log('  ✓ wholesale swap clears stale measure chrome (ADR-1009)');
+    // ADR-1010: snapshot adopt is the same wholesale swap — selection parity
+    // with 'replace': ids of the swapped-out board must not linger.
+    reset();
+    const A9=Shape.make('rect',{x:0,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:A9});
+    state.selection=new Set([A9.id]);
+    Net._applySnapshot({shapes:[]});
+    assert.strictEqual(state.selection.size,0,'snapshot adopt drops stale selection ids');
+    console.log('  ✓ snapshot adopt drops stale selection (ADR-1010)');
+    // ADR-1011: the sticky-wrap memo key must cover every prop that changes
+    // the measured lines — a missed prop poisons the cache across edits.
+    reset();
+    const SW=Shape.make('sticky',{x:0,y:0,w:200,h:100,text:'aa bb cc'});
+    let mCalls=0;const mN=()=>{mCalls++;return 5};
+    wrapTextCached(SW,'aa bb',60,16,mN);const mC0=mCalls;
+    wrapTextCached(SW,'aa bb',60,16,mN);
+    assert.strictEqual(mCalls,mC0,'same wrap inputs hit the memo — no remeasure');
+    SW.spacing=4;
+    wrapTextCached(SW,'aa bb',60,16,mN);
+    assert.ok(mCalls>mC0,'a spacing change remeasures');
+    console.log('  ✓ wrap memo key covers spacing — stale-hit poison blocked (ADR-1011)');
+    // ADR-1012: byId must not serve a stale entry across a same-count
+    // wholesale swap — size-equal replacement only heals via _iG.
+    {
+    reset();
+    const A1=Shape.make('rect',{x:0,y:0,w:10,h:10}),A2=Shape.make('rect',{x:20,y:0,w:10,h:10});
+    Store.commit({op:'add',shape:A1});Store.commit({op:'add',shape:A2});
+    const B1=Shape.make('rect',{x:5,y:5,w:10,h:10}),B2=Shape.make('rect',{x:60,y:5,w:10,h:10});
+    Store.applyRemote({op:'replace',after:[B1,B2],afterWc:{[B1.id]:{x:{peer:'p9',seq:1,ts:1}},[B2.id]:{x:{peer:'p9',seq:1,ts:1}}},clock:{peer:'p9',seq:9,ts:Date.now()+100}});
+    assert.strictEqual(state.shapes.length,2,'same-count swap sanity');
+    assert.strictEqual(byId(B1.id),state.shapes[0],'byId resolves a same-count-swapped id');
+    assert.ok(!byId(A1.id),'byId no longer resolves the swapped-out id');
+    console.log('  ✓ byId survives a same-count wholesale swap (ADR-1012)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
