@@ -867,7 +867,7 @@ const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
 const _bName=()=>{const ts=nowTs();_nameTs=ts;_namePeer=_pi();Net._bcast(_mk('name',{name:state.docName,ts}))};   // ADR-0696/0938
 const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699
-const _setDocName=n=>{state.docName=n;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
+const _setDocName=n=>{state.docName=n||_UT;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
 const _hx=()=>state.histIdx;
@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.048';   // ADR-1022
+const V='1.8.050';   // ADR-1024
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -9298,7 +9298,7 @@ function wire(){
     const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();_bName()};   // ADR-0402
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
-    _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value||_UT);_ps()});
+    _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value);_ps()});
     _on(docNameEl,'blur',()=>{docNameEl.value=_dn()});   // ADR-0609: after the edit, the display reflects the LWW-resolved name
   }
   _oC(_g('btnInstall'),_onBtnInstall);

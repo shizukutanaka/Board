@@ -1,3 +1,13 @@
+## [1.8.050] - 2026-10-06
+
+### Fixed
+- ADR-1024: empty docName writes converged — clearing the name field broadcast `''` to peers while the local `change` handler normalized to `Untitled` off-wire only, leaving a permanent one-way divergence at an equal LWW clock. `_setDocName` now normalizes `n||_UT` at the single write site, so local commits, wire intake, importers, and loads all converge on `Untitled` (the adopted write still records its clock).
+
+## [1.8.049] - 2026-10-06
+
+### Docs + Tests
+- ADR-1023 wire-buffer lifecycle audit clean: every room-scoped Net buffer (seenOps, img sent/chunk/out queues, imgq throttle, frag slots, presence rows+timer, causal markers, RTC link) resets on `Net.init`; doc-scoped state (seq, wclock, content-addressed `_imgPending`) correctly survives. Pins cover the reset/survive split.
+
 ## [1.8.048] - 2026-10-01
 
 ### Fixed
