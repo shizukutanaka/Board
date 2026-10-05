@@ -16261,6 +16261,26 @@ try {
     assert.ok(!Net._dcQ,'queue released after drain');
     Net.dc=_odc2;
     console.log('  ✓ _dcQ arms on send-throw, drains FIFO, drops oversized (ADR-1018)');
+    // ADR-1019: every live mutation reaches a repaint — _apply always
+    // ends _iv-or-_iD, both invalidators co-schedule the minimap, and
+    // draw() re-adds gesture-mutated targets over the stale grid.
+    assert.ok(html.includes('if(!_dmg){_iv();}'),'op tail falls back to full invalidate without damage');
+    assert.ok(html.includes('else _iD(_dmg);'),'op tail routes bounded damage through _iD');
+    assert.ok(/function invalidate\(\)\{_damage=null;needsRender=true;needOverlay=true;if\(!_rafId\)_rafId=_rAF\(frame\);_ms\(\)\}/.test(html),'invalidate co-schedules minimap');
+    assert.ok(/invalidateDamage\(r\)\{_damage=_dmgU\(_damage,r\);needsRender=true;needOverlay=true;if\(!_rafId\)_rafId=_rAF\(frame\);_ms\(\)\}/.test(html),'invalidateDamage co-schedules minimap');
+    assert.ok(html.includes('if(ptr.dragStartShapes)')&&html.includes('ptr.resizeOrig')&&html.includes('ptr.rotOrig'),'gesture-mutated targets re-added over the stale grid');
+    console.log('  ✓ every mutation path repaints + minimap co-schedule (ADR-1019)');
+    // ADR-1020: user-driven viewport mutations schedule a save — the doc
+    // record's viewport is only useful if pan/zoom persists; every write
+    // site now reaches _ps() (trailing-edge debounced, per-frame cheap).
+    const vpPs=(html.match(/_iv\(\);_ps\(\)/g)||[]).length;
+    assert.ok(vpPs>=8,'every pan/zoom invalidator site schedules persist');
+    assert.ok(html.includes("v.zoom=nz;\n  _rZ();\n  _iv();_ps();"),'zoomAt persists');
+    assert.ok(html.includes("ptr.x=sp.x;ptr.y=sp.y;_iv();_ps();return;"),'drag pan persists');
+    assert.ok(html.includes("_xC(v.y+vy/v.zoom);_iv();_ps();"),'edge pan persists');
+    assert.ok(html.includes("_savedVp=null;_rZ();_ps()}"),'presentation leave persists the restored viewport');
+    assert.ok(html.includes("(canvas.height/(v.zoom*DPR))/2);\n  _ps();"),'centerOn persists');
+    console.log('  ✓ viewport mutations schedule persist (ADR-1020)');
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17192,7 +17212,8 @@ pass += 4; // ADR-0936 absolute-writer pins
   pass += 4; // ADR-0935 producer-bound pins
   pass += 5; // ADR-0991 finalize-bridge tomb parity pins
   pass += 5; // ADR-0992 stale-reference × removal completeness pins
-  pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
+  pass += 6; // ADR-1020 viewport-persist pins
+pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
