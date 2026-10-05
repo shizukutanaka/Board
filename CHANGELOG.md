@@ -1,3 +1,41 @@
+## [1.8.065]
+- **Fix: wclock restore paths sanitize prop keys** — `op.wc`/`afterWc`
+  restores (`_wR` loops + `clone(afterWc)`/`clone(op.wc)` on 'replace')
+  accepted any key, so a forged snapshot could stamp `frac`/`groupId`/`pg`
+  clocks that veto legitimate zorder/group ops via `_lwwSkip` (silent
+  divergence until heal). All restore sites now funnel through a shared
+  `_wK` prop-key filter + `validClock` inside `_wR`; `_wAdopt` reuses the
+  same filter. `_wR` keeps the real LWW `frac`/`groupId` clocks so
+  del→undo/replace never lets an older zorder/group op win (ADR-1039).
+
+## [1.8.064]
+- **Fix: img reassembly slots are per (key, sender)** — `imgq` is answered by
+  every peer holding the blob; two answerers splice-mixed chunks into a
+  single `msg.key` slot, failed `_imgHash`, and left the parked ref
+  permanently unresolved in ≥3-peer rooms. Slots are now keyed
+  `key+'|'+peer` (mirroring `_fragIn`'s ADR-0469 src-tagging) plus an
+  `_imgIn.has` early break so dead streams stop buffering once the blob
+  resolves (ADR-1038).
+
+## [1.8.063]
+- **Fix: IDB doc `wc` intake shares the `_wAdopt` gate** — `load()` used to
+  stamp every key of `d.wc[id]` after a bare `validClock`, so a stale or
+  tampered record could plant `frac`/`groupId`/`pg` prop clocks that veto
+  legitimate zorder/group ops via `_lwwSkip` (silent divergence until heal).
+  The intake now funnels `if(_idOK(k))_wAdopt(k,d.wc[k])` — the same
+  ≤64-key / validClock / structural+proto+junk skip gate the wire path uses,
+  ~90B reclaimed (ADR-1037).
+
+## [1.8.062]
+- **Docs+pin: existence-clock pairwise merge audit (clean)** — `_mergeSnapshotOp`
+  merges `_born`/`_del` per-key via independent `clockNewer` adopts, so a
+  live sender shape (`born > del`) can never tomb the receiver's copy;
+  unknown ids adopt `wc` before `applyRemote`, making the `_tmb` verdict
+  match the sender (`del > born` keeps dead, `born > del` resurrects).
+  Accepted residual: a forged `_del`-only `wc` can install a tomb on a live
+  shape — bounded (`wcOk`/`validClock`), and real ops gate on their own
+  clock so convergence survives. Contract rule + 11 pins (ADR-1036).
+
 ## [1.8.061]
 - **Docs+pin: `_dcQ` × fragment-stream interleave audit (clean)** — frag
   streams are transport-bound (`viaRtc`-only `snap`/`opc` intake), queued

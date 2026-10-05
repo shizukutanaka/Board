@@ -1084,6 +1084,10 @@ Board/
 │   └── ADR-1033-foreign-img-ref-marking.md  # `:`-連鎖 img キーはストア相対序数 — 外来 parked 参照を persist 時 '@' マークし _imgAttach はローカル解決せず imgq 修復のみへ
 │   └── ADR-1034-wholesale-intake-bounds.md  # snapshot/`replace` aux 面の intake 境界監査 (clean) — 契約: 配列は slice 上限、時計 map は個数 cap+個別 validClock+構造キー skip、同梱 op は envelope-peer 結合+applyRemote 漏斗
 │   └── ADR-1035-dc-queue-frag-interleave.md  # `_dcQ` × frag interleave 監査 (clean) — frag は DC 限定、同送信者重なりは seq0/n/src で slot 再起動、img は content-hash 検証
+│   └── ADR-1036-existence-clock-merge.md  # snapshot merge の `_born`/`_del` pairwise 採用監査 (clean) — 送信者 live なら受信側は必ず born>del、偽造 del-only wc の tomb 混入は受容残存
+│   └── ADR-1037-idb-wc-intake-parity.md  # IDB `d.wc` intake を `_wAdopt` ゲートへ統一 — 構造キー印字による zorder/group veto 発散を閉塞
+│   └── ADR-1038-img-slot-sender-tag.md  # img 再組立スロットを (key,sender) 単位化 — 複数回答者の混線で parked 画像が永久未解決だった実害を閉塞
+│   └── ADR-1039-wclock-restore-sanitize.md  # `op.wc`/`afterWc` 復元を `_wK` フィルタ付き `_wR` へ統一 — 構造キー時計による zorder/group veto 発散を閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

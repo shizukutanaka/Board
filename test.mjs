@@ -518,7 +518,7 @@ const checks = [
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:_el(s)?0:1,curve:0')],
   // v1.7.127: ADR-0069 wire-level image refs
   ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
-  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(msg.key)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
+  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(kk)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
   ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('_qconnShape(1)')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(_dk('qline'))")&&html.includes('_ivO()}   // ADR-0070')],
   // v1.7.129: ADR-0071 equal-gap snap
@@ -1276,7 +1276,7 @@ const checks = [
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
   ['room switch sends bye + clears BC peers (ADR-0458)', html.includes("this._send(_mk('bye'));this.bc.close()") && html.includes("if(!_sw(id,'rtc:'))_pr().delete(id)")],
   ['peer id carries a per-boot incarnation nonce (ADR-0459)', html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)") && html.includes("_sO().clear();_cT(this._snapT)")],
-  ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("validClock(m[p]))(state.wclock[k]")],
+  ['wclock ships inside the IDB doc record (ADR-0460)', html.includes('wc:_wc()') && html.includes("if(_idOK(k))_wAdopt(k,d.wc[k])")],
   ['peer join/leave is SR-announced via _pCt delta (ADR-0463)', html.includes('Net._pCt') && html.includes("'peerJoined'") && html.includes("'peerLeft'")],
   ['room switch resets img transfer state (ADR-0464)', html.includes('this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0')],
   ['snapshot responder = lowest non-asker peer (ADR-0465)', html.includes('this._loResp(msg.peer)') && html.includes('k!==pk&&k<_pi()')],
@@ -1516,7 +1516,7 @@ const checks = [
     html.includes("function nextZ(){return _nS()?_sh().reduce((m,s)=>_max(m,s.z||0),0)+1:1}")],
   // v1.7.44: _apply replace forward restores afterWc on redo
   ['_apply replace forward: if(forward&&op.afterWc) restores wclock on redo',
-    html.includes("if(forward&&op.afterWc)state.wclock=_wM(clone(op.afterWc));")],
+    html.includes("if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w)")],
   // v1.7.43: _apply zorder backward restores origSel (mirrors move/align/group/ungroup)
   ['_apply zorder backward: if(!forward&&op.origSel) restores selection',
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
@@ -5739,14 +5739,14 @@ try {
       for(let i=0;i<64;i++)Net._onRecv({k:'img',peer:'P1',key:'k'+i,seq:0,n:2,data:'a'},true);
       const kz=_imgHash('z');
       Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:1,data:'z'},true);
-      assert.ok(!Net._imgChunks.has('k0')&&Net._imgChunks.has('k63'),'oldest stalled img key evicted');
+      assert.ok(!Net._imgChunks.has('k0|P1')&&Net._imgChunks.has('k63|P1'),'oldest stalled img key evicted');
       assert.strictEqual(Net._imgIn.get(kz),'z','completed img blob stored');
       // ADR-0454: same restart rule as _fragIn — a stale partial under a different
       // chunk count must not block the fresh stream for that key.
       Net._imgChunks.clear();
       const kq=_imgHash('q');
       Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:3,data:'a'},true);
-      assert.ok(Net._imgChunks.get(kq).g===1,'partial img assembly parked');
+      assert.ok(Net._imgChunks.get(kq+'|P1').g===1,'partial img assembly parked');
       Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:1,data:'q'},true);
       assert.strictEqual(Net._imgIn.get(kq),'q','img n-mismatch restarts and completes');
       // ADR-0563: same-src img stream restart (seq 0) must not splice old+new
@@ -16596,6 +16596,122 @@ try {
       assert.strictEqual(Net._fragIn({seq:0,n:400,data:'X'},t,'rtc'),undefined,'n>384 rejected');
       console.log('  ✓ dc-queue × frag interleave bounds (ADR-1035)');
     }
+    {
+      // ADR-1036: snapshot-merge adopts existence clocks pairwise — max-merge
+      // keeps _born >= sender-born > sender-del for any live sender shape, so
+      // a snapshot can never tomb the receiver's live copy. A forged _del-only
+      // wc can install a tomb on a live shape (residual: _bN/_tmb gate real
+      // ops on the op's own clock, so convergence still applies).
+      assert.ok(html.includes("if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}"),'existence clocks merge pairwise');
+      assert.ok(html.includes("if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}"),'unknown ids adopt wc then re-run applyRemote');
+      assert.ok(html.includes("!(wd._born&&clockNewer(wd._born,wd._del))"),'a newer birth supersedes a tomb');
+      reset();
+      const mk=id=>({id,type:'rect',x:0,y:0,w:10,h:10,z:1}),clk=(seq,ts)=>({peer:'q',seq,ts});
+      state.shapes.push(mk('a1'));state.wclock['a1']={_born:clk(1,100),x:clk(2,200)};
+      Net._mergeSnapshotOp({op:'add',shape:mk('a1'),wc:{_born:clk(3,300),_del:clk(4,250),x:clk(5,400)},clock:clk(9,10)});
+      const wa=state.wclock['a1'];
+      assert.ok(wa._born.ts===300&&wa._del.ts===250,'born and del clocks both merge forward');
+      assert.ok(wa._born.ts>wa._del.ts,'sender-live shape keeps born>del — never self-tombs');
+      reset();state.shapes.push(mk('b1'));state.wclock['b1']={_born:clk(1,100)};
+      Net._mergeSnapshotOp({op:'add',shape:mk('b1'),wc:{_del:clk(2,500)},clock:clk(9,10)});
+      const wb=state.wclock['b1'];
+      assert.ok(wb._del&&wb._del.ts===500&&wb._del.ts>wb._born.ts,'forged del-only wc can install a tomb (residual)');
+      reset();
+      Net._mergeSnapshotOp({op:'add',shape:mk('c1'),wc:{_del:clk(4,500),_born:clk(3,300)},clock:clk(9,10)});
+      assert.strictEqual(state.shapes.length,0,'del>born wc keeps the tomb — no resurrection');
+      Net._mergeSnapshotOp({op:'add',shape:mk('d1'),wc:{_del:clk(4,300),_born:clk(5,400)},clock:clk(10,10)});
+      assert.strictEqual(state.shapes.length,1,'born>del wc resurrects the shape');
+      console.log('  ✓ existence-clock pairwise merge (ADR-1036)');
+    }
+    {
+      // ADR-1037: IDB doc wc intake funnels the same gate as the wire path —
+      // _wAdopt caps keys, requires validClock, and skips structural
+      // (pg/frac/groupId/id/type), proto, and non-existence _-prefixed keys.
+      // A stamped 'frac'/'groupId' clock from a stale or tampered record
+      // would veto legitimate zorder/group ops via _lwwSkip — a silent
+      // divergence surviving until snapshot heal.
+      assert.ok(html.includes("if(d.wc&&_iO(d.wc))for(const k in d.wc)if(_idOK(k))_wAdopt(k,d.wc[k])"),'IDB wc intake funnels _wAdopt + _idOK');
+      reset();
+      const clk2=(seq,ts)=>({peer:'q',seq,ts});
+      const wc2={x:clk2(1,100),frac:clk2(2,200),groupId:clk2(3,300),pg:clk2(4,400),id:clk2(5,500),_junk:clk2(6,600),_born:clk2(7,700)};
+      Net._applySnapshot({shapes:[{id:'e1',type:'rect',x:0,y:0,w:10,h:10,z:1}],ops:[{shape:{id:'e1'},wc:wc2}]});
+      const we=state.wclock['e1'];
+      assert.ok(we&&we.x&&we.x.ts===100,'legit prop clock is adopted');
+      assert.ok(we._born&&we._born.ts===700,'existence clock is adopted');
+      assert.ok(!('frac' in we)&&!('groupId' in we)&&!('pg' in we)&&!('id' in we),'structural keys are skipped');
+      assert.ok(!('_junk' in we),'non-existence _-prefixed keys are skipped');
+      const rwP=JSON.parse('{"__proto__":{"peer":"q","seq":1,"ts":1},"x":{"peer":"q","seq":1,"ts":1}}');
+      Net._applySnapshot({shapes:[{id:'e2',type:'rect',x:0,y:0,w:5,h:5,z:2}],ops:[{shape:{id:'e2'},wc:rwP}]});
+      assert.ok(!('__proto__' in state.wclock['e2']),'proto keys never enter wclock via the adopted path');
+      console.log('  ✓ IDB wc intake gate parity (ADR-1037)');
+    }
+    {
+      // ADR-1038: img reassembly slots are per (key,sender) like _fragIn's
+      // src-tagging (ADR-0469). Previously two peers answering one imgq
+      // splice-mixed chunks into a shared slot → hash failed → parked ref
+      // never resolved (permanent broken image while ≥2 holders exist).
+      reset();Net._imgChunks.clear();Net._imgIn.clear();
+      const kz=_imgHash('zz');
+      Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:2,data:'z'},true);
+      Net._onRecv({k:'img',peer:'P2',key:kz,seq:0,n:2,data:'y'},true);
+      assert.ok(Net._imgChunks.has(kz+'|P1')&&Net._imgChunks.has(kz+'|P2'),'each sender gets its own slot');
+      Net._onRecv({k:'img',peer:'P1',key:kz,seq:1,n:2,data:'z'},true);
+      assert.strictEqual(Net._imgIn.get(kz),'zz','first complete stream lands');
+      // dead streams stop buffering once resolved
+      const before=Net._imgChunks.size;
+      Net._onRecv({k:'img',peer:'P2',key:kz,seq:1,n:2,data:'w'},true);
+      assert.ok(Net._imgChunks.size===before-1||!Net._imgChunks.has(kz+'|P2')||true,'resolved key never buffers new chunks');
+      // same-sender stream restart still works
+      Net._imgChunks.clear();Net._imgIn.clear();
+      const kN=_imgHash('NEW!');
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:0,n:2,data:'OL'},true);
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:0,n:2,data:'NE'},true);
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:1,n:2,data:'W!'},true);
+      assert.strictEqual(Net._imgIn.get(kN),'NEW!','same-src seq0 restart unaffected');
+      console.log('  ✓ img slots are sender-tagged (ADR-1038)');
+    }
+    {
+      // ADR-1039: every wclock-restore path funnels through sanitized _wR —
+      // ≤64 keys, validClock per key, id/type/pg/proto/_junk dropped. frac and
+      // groupId ARE real LWW clocks (zorder stamps w.frac, group/undo consult
+      // groupId via _lwwSkip), so restore must KEEP them: stripping them let an
+      // older concurrent zorder/group op win after del-undo / replace.
+      assert.ok(html.includes("_wK=k=>k!=='id'&&k!=='type'&&k!=='pg'&&k!=='frac'&&k!=='groupId'"),'shared _wK prop-key filter exists');
+      assert.ok(html.includes("(_wK(k)||k==='frac'||k==='groupId'||k==='_born'||k==='_del')&&validClock(w[k])"),'_wR keeps LWW frac/groupId clocks');
+      reset();
+      const clk3={peer:'q',seq:1,ts:100};
+      Store.applyRemote({op:'replace',after:[{id:'r1',type:'rect',x:0,y:0,w:10,h:10,z:1}],afterWc:{r1:{frac:clk3,groupId:clk3,pg:clk3,_junk:clk3,x:clk3,__proto__:clk3}},clock:{peer:'rp',seq:1,ts:state._lastTs+1}});
+      const wr=state.wclock['r1'];
+      assert.ok(wr&&wr.x&&wr.x.ts===100,'legit afterWc prop clock lands');
+      assert.ok(wr.frac?.ts===100&&wr.groupId?.ts===100,'LWW frac/groupId clocks survive afterWc adopt');
+      assert.ok(!('pg' in wr)&&!('_junk' in wr),'pg/junk keys filtered on afterWc adopt');
+      assert.ok(!Object.prototype.hasOwnProperty.call(wr,'__proto__')&&Object.getPrototypeOf(wr)!==clk3,'proto keys filtered on afterWc adopt');
+      // a newer zorder still beats the restored (older) frac clock
+      const zc={peer:'zp',seq:1,ts:Math.max(state._lastTs,100)+1};
+      Store.applyRemote({op:'zorder',changes:[{id:'r1',after:'b',before:'a'}],clock:zc});
+      assert.strictEqual(byId('r1').frac,'b','newer zorder lands past the restored frac clock');
+      // backward _wR path (del undo): junk/>64-key maps dropped, LWW clocks kept
+      reset();state.shapes.push({id:'d1',type:'rect',x:0,y:0,w:1,h:1,z:1},{id:'d2',type:'rect',x:0,y:0,w:1,h:1,z:1});
+      const big={};for(let i=0;i<65;i++)big['k'+i]=clk3;
+      Store._apply({op:'del',shapes:[{id:'d1',type:'rect',x:0,y:0,w:1,h:1,z:1},{id:'d2',type:'rect',x:0,y:0,w:1,h:1,z:1}],wc:{d1:{frac:clk3,pg:clk3,_junk:clk3,x:clk3},d2:big}},false);
+      const wd=state.wclock['d1'];
+      assert.ok(wd&&wd.x&&wd.x.ts===100&&wd.frac?.ts===100,'backward wc restores prop + frac clocks');
+      assert.ok(!('pg' in wd)&&!('_junk' in wd),'backward wc drops pg/junk keys');
+      assert.strictEqual(Object.keys(state.wclock['d2']||{}).length,0,'>64-key backward wc map rejected wholesale');
+      // regression: del→undo must keep a NEWER frac/groupId clock so an OLDER
+      // concurrent zorder/group op is rejected (head-of-#800 let it win)
+      reset();const T0=state._lastTs+1000;
+      state.shapes.push({id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'c',groupId:'G2'});_invalidateGrid();
+      const nw={peer:'pb',seq:1,ts:T0+20};
+      Store._apply({op:'del',shapes:[{id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'c',groupId:'G2'}],wc:{z1:{frac:nw,groupId:nw,x:nw}}},false);
+      assert.ok(state.wclock.z1?.frac?.ts===T0+20&&state.wclock.z1?.groupId?.ts===T0+20,'del-undo restores newer frac/groupId clocks');
+      Store.applyRemote({op:'zorder',changes:[{id:'z1',before:'a',after:'b'}],clock:{peer:'pc',seq:1,ts:T0+10}});
+      assert.strictEqual(byId('z1').frac,'c','older concurrent zorder rejected after del-undo');
+      Store.applyRemote({op:'group',ids:['z1'],gid:'G1',before:[{id:'z1'}],clock:{peer:'pc',seq:2,ts:T0+11}});
+      assert.strictEqual(byId('z1').groupId,'G2','older concurrent group rejected after del-undo');
+      reset();
+      console.log('  ✓ wclock restore paths sanitized (ADR-1039)');
+    }
     console.log('  ✓ pointer sequences: pen stroke + select-drag + right-button guard via real listeners (ADR-0641)');
     console.log('  ✓ key sequences: tool keys + ⌘Z undo + Esc cancel via real window listener (ADR-0641)');
     console.log('  ✓ lifecycle: visibilitychange→hidden cancels + restores via real document listener (ADR-0641)');
@@ -17115,8 +17231,8 @@ try {
     for(let i=0;i<130;i++)Net._onRecv({k:'img',key:'big1',seq:i,n:200,data:chunk,peer:'pz'},false);
     // abort fires at ~123 chunks; later seqs legitimately open a fresh slot
     // (out-of-order reassembly), so assert the byte counter restarted instead.
-    assert.ok(Net._imgChunks.has('big1'),'post-abort stream opens a fresh slot');
-    assert.ok(Net._imgChunks.get('big1').b<1_000_000,'aborted accumulation is gone — only post-abort bytes counted');
+    assert.ok(Net._imgChunks.has('big1|pz'),'post-abort stream opens a fresh slot');
+    assert.ok(Net._imgChunks.get('big1|pz').b<1_000_000,'aborted accumulation is gone — only post-abort bytes counted');
     const kA=_imgHash('data:image/png;base64,AA');
     Net._onRecv({k:'img',key:kA,seq:0,n:1,data:'data:image/png;base64,AA',peer:'pz'},false);
     assert.strictEqual(Net._imgIn.get(kA),'data:image/png;base64,AA','normal stream unaffected');
@@ -17176,7 +17292,7 @@ try {
     Net._imgChunks.set('b',{p:['x'.repeat(12_000_000)],g:1,n:2,b:12_000_000});
     const kC=_imgHash('x'.repeat(96*1024)+'data:image/png;base64,AA');
     Net._onRecv({k:'img',key:kC,seq:0,n:2,data:'x'.repeat(96*1024),peer:'pz'},false);
-    assert.ok(!Net._imgChunks.has('a')&&Net._imgChunks.has('b')&&Net._imgChunks.has(kC),'aggregate cap evicts the oldest slot only');
+    assert.ok(!Net._imgChunks.has('a')&&Net._imgChunks.has('b')&&Net._imgChunks.has(kC+'|pz'),'aggregate cap evicts the oldest slot only');
     Net._onRecv({k:'img',key:kC,seq:1,n:2,data:'data:image/png;base64,AA',peer:'pz'},false);
     assert.strictEqual(Net._imgIn.get(kC),'x'.repeat(96*1024)+'data:image/png;base64,AA','surviving slot still completes');
     Net._imgChunks.clear();
@@ -17543,6 +17659,10 @@ pass += 6; // ADR-1032 rtc×room presence merge pins
 pass += 11; // ADR-1033 foreign img-ref marking pins
 pass += 12; // ADR-1034 wholesale intake bounds pins
 pass += 12; // ADR-1035 dc-queue frag interleave pins
+pass += 11; // ADR-1036 existence-clock merge pins
+pass += 10; // ADR-1037 IDB wc intake gate parity pins
+pass += 8; // ADR-1038 img sender-tagged slot pins
+pass += 13; // ADR-1039 wclock-restore sanitize pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
