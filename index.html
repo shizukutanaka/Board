@@ -696,7 +696,7 @@ body{visibility:visible}
 
   <!-- ==== Status bar ==== -->
   <footer class="statusbar">
-    <div class="status-item"><span class="status-dot" id="sDot"></span><span id="sConn" aria-live="polite">offline</span></div>
+    <div class="status-item"><span class="status-dot" id="sDot"></span><span id="sConn" aria-live="polite">offline</span><span id="sSync" class="lbl" hidden></span></div>
     <div class="status-item optional"><span class="lbl" data-t="shapes">shapes</span><span id="sCount">0</span></div>
     <div class="status-item optional"><span class="lbl" aria-hidden="true">x,y</span><span id="sXY">0, 0</span></div>
     <div class="status-item optional" id="sSelWrap" hidden><span class="lbl" data-t="selDims">sel</span><span id="sSel"></span></div>
@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.075';   // ADR-1049
+const V='1.8.076';   // ADR-1050
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1019,7 +1019,7 @@ const I18N={
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
     backupRestoreFailed:'バックアップの復元に失敗しました',
-    peers:'人',you:'自分',peerJoined:'ピアが参加しました',peerLeft:'ピアが退出しました',
+    peers:'人',you:'自分',peerJoined:'ピアが参加しました',peerLeft:'ピアが退出しました',syncing:'同期中',
     k:{select:'選択',hand:'手のひら',pen:'ペン',rect:'矩形',ellipse:'楕円',
       arrow:'矢印',line:'線',text:'文字',sticky:'付箋',frame:'フレーム',eraser:'消しゴム',diamond:'ダイヤ',marker:'マーカー',eyedropper:'スポイト',image:'画像',
       undo:'元に戻す',redo:'やり直し',del:'削除',dup:'複製',fontSize:'フォントサイズ',boldItalic:'太字/斜体/下線/取消線',
@@ -1099,7 +1099,7 @@ const I18N={
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
     backupRestoreFailed:'Failed to restore backup',
-    peers:'peers',you:'You',peerJoined:'Peer joined',peerLeft:'Peer left',shapes:'Shapes',selDims:'Selection',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
+    peers:'peers',you:'You',peerJoined:'Peer joined',peerLeft:'Peer left',syncing:'Syncing',shapes:'Shapes',selDims:'Selection',on:'On',off:'Off',online:'Online',offline:'Offline',grid:'Grid',minimap:'Minimap',
     selCount:' selected',selNone:'Selection cleared',
     mirrorLabel:'Shapes on the board',mirrorMore:' more not listed',tagHidden:'(hidden)',tagGroup:'(grouped)',srBound:'bound',tagBold:'(bold)',tagItalic:'(italic)',tagUnder:'(underlined)',tagStrike:'(struck)',
     k:{select:'Select',hand:'Pan',pen:'Pen',rect:'Rectangle',ellipse:'Ellipse',
@@ -1204,7 +1204,7 @@ const G={
       let x=_min(e.x1,e.x2),y=_min(e.y1,e.y2),x2=_max(e.x1,e.x2),y2=_max(e.y1,e.y2);   // ADR-0090
       for(const w of _wayArr(s)){x=_min(x,w.x);y=_min(y,w.y);x2=_max(x2,w.x);y2=_max(y2,w.y)}
       // ADR-0376: off-box route points — a curve's
-      // chord and an elbow's trunk can leave the box — skipping them let inView cull a live curve.
+      // chord/elbow trunk leave the box — skipping culled a live curve.
       if(s.curve){const cc=_curveCtrl(e,s.cbend);x=_min(x,cc.x);y=_min(y,cc.y);x2=_max(x2,cc.x);y2=_max(y2,cc.y)}
       else if(_el(s))for(const q of _elbowPts(s)){x=_min(x,q.x);y=_min(y,q.y);x2=_max(x2,q.x);y2=_max(y2,q.y)}
       const p=(_szz(s)||1)/2+(_arw(s)?_szz(s)*3:0);
@@ -1229,9 +1229,9 @@ const G={
     const b=_bb(s);
     const tol=_max(6/_vp().zoom,(_szz(s)||0)/2);
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
-    // Rotation is box-only: un-rotate about the centre; the per-type check reads s.x/s.w.
-    // `_hb(s)` guards crafted non-box shapes carrying rot — their missing s.w
-    // would un-rotate p to {NaN,NaN} and kill hit-testing.
+    // Rotation is box-only: un-rotate about the centre; per-type check reads s.x/s.w.
+    // `_hb(s)` guards crafted non-box shapes carrying rot — missing s.w would
+    // un-rotate p to {NaN,NaN} and kill hit-testing.
     if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     switch(s.type){
       case 'rect':
@@ -1583,7 +1583,7 @@ const Store={
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
     // ADR-0717: an undo is a NEW competing write — arbitrating on the original
-    // commit clock diverged (remote write between commit+undo won locally, lost on peers).
+    // commit clock diverged (remote write between commit+undo won locally).
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
     _pgFollow(op);   // ADR-0652
@@ -1780,7 +1780,7 @@ const Store={
         const p=_pgById(op.id);if(!p)break;
         const ts=forward?(op.clock&&_iN(op.clock.ts)?op.clock.ts:_now()):(op.bts!=null?op.bts:0);
         // ADR-0702: undo gate must compare the CURRENT name's write against OUR op's clock —
-        // bts>=p.nts could never hold (bts predates our own write), so undo was a local no-op
+        // bts>=p.nts can't hold (predates our write) — undo was a local no-op
         // while the inverse op still reverted peers -> divergence.
         const win=p.nts==null||(forward?clockNewer({ts,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0},{ts:p.nts,peer:_iS(p.ntp)?p.ntp:'',seq:0})
           :!clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:_iN(op.clock&&op.clock.ts)?op.clock.ts:0,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0}));
@@ -2072,7 +2072,7 @@ function getImg(dataUrl){
   if(!_iS(dataUrl)||!_sw(dataUrl,'data:'))return null;   // ADR-0035
   const k=_imgKey(dataUrl);
   let img=_imgCache.get(k);
-  if(img){_imgCache.delete(k);if(img._ik===dataUrl){_imgCache.set(k,img);return img}}   // ADR-1040: fingerprint hit must be the same bytes — a colliding key falls through to recache (no stale image)
+  if(img){_imgCache.delete(k);if(img._ik===dataUrl){_imgCache.set(k,img);return img}}   // ADR-1040: hit must be same bytes — colliding key recaches
   img=new Image();
   img._ik=dataUrl;
   img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap keys on _gridVer — img loads don't bump it
@@ -2441,7 +2441,7 @@ function frame(){
 // dimensions field). Signature-gated: the DOM write happens only when the
 // rendered text actually changes, so gesture frames cost one bboxAll + a
 // string compare. Hidden entirely when nothing is selected.
-let _selDimSig='';
+let _selDimSig='',_syncSig='';
 function _statusSel(){
   const el=_g('sSel');if(!el)return;
   let txt='';
@@ -3972,7 +3972,7 @@ function _sqAdvance(dir){
 }
 let ptr={down:false,x:0,y:0,x0:0,y0:0,wx:0,wy:0,wx0:0,wy0:0,
   panning:false,dragKind:null,dragStartShapes:null,
-  gOrig:null,gBox:null,gPad:null,rotA0:null,reborn:null};   // ADR-0056/0057/0970: group gesture state — reborn marks remote births that arrived while ptr.down
+  gOrig:null,gBox:null,gPad:null,rotA0:null,reborn:null};   // ADR-0056/0057/0970: group gesture state — reborn marks remote births
 let _longPressTimer=null;   // ADR-0006
 
 // Revert any in-progress single-pointer gesture without committing — used when
@@ -3984,7 +3984,7 @@ const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.drag
 
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
 // ADR-0964: orig-restore — cancel paths + the locked-mid-gesture gate.
-const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970: reborn = remote birth while this gesture was live (arrival order); own births still restore
+const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970: reborn = remote birth while gesture live (arrival order)
 const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&!_rb(id))_geoR(s,o)}};
 const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s&&!_rb(o.id)){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
 const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};
@@ -6273,7 +6273,7 @@ function doUngroup(){
 }
 function doClearAll(){
   if(!_nS())return;
-  if(_pgOn()){   // ADR-0646: clear is page-scoped when pages exist — a plain 'del' op converges the same way
+  if(_pgOn()){   // ADR-0646: clear is page-scoped when pages exist — 'del' converges too
     const mine=_sh().filter(_pgOk);if(!_ln(mine))return;
     if(!confirm(t('confirmClear')))return;
     const origSel=_selIds();
@@ -6732,7 +6732,7 @@ function excScene(shapes){
     roughness:0,opacity:100,angle:(_rt(s)||0)*_PI/180,seed:0,version:1,versionNonce:0,isDeleted:false,
     containerId:s.id,boundElements:null,updated:0,link:null,locked:false,groupIds:gids[s.id]||[]};};
   for(const s of shapes){
-    if(_hd(s))continue;   // ADR-0594: excalidraw has no hidden concept — exporting invisible content would render it
+    if(_hd(s))continue;   // ADR-0594: excalidraw has no hidden — invisible content must not export
     switch(s.type){
       case'rect':case'ellipse':case'diamond':{
         _pu(els,E(s,{type:s.type==='rect'?_REC:s.type,x:s.x,y:s.y,width:s.w||0,height:s.h||0,   // ADR-0223: excalidraw type is _REC not 'rect'
@@ -7571,7 +7571,7 @@ function importBoard(file){
       if(!_ln(shapes)){_wT(_EM);return}
       // Atomic whole-board swap (mirrors importFromHash):
       // one Ctrl+Z fully restores the previous board, and a
-      // clear+N-adds would overflow MAX_HISTORY on a big board; merge them into the one replace op
+      // clear+N-adds overflow MAX_HISTORY on big boards — merge into one replace
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
@@ -7968,7 +7968,7 @@ const Net={
     if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}   // ADR-0619/0695/0839
-    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;   // ADR-0464/0466/0836/1049
+    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;this._syncMsg=null;if(this._syncUI)this._syncUI(null);   // ADR-0464/0466/0836/1049/1050
     for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467: drop old-room presence
     clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat
     state.roomId=roomId||DOC_KEY;
@@ -7986,6 +7986,7 @@ const Net={
         // the ref still heals on any later blob or the 5-min _imgRescan re-ask.
         const _ipq=nowTs();for(const[id,e]of this._imgPending){if(_ipq-e.t0>60000)this._imgPending.delete(id);else if(_ipq-e.t0>NET_PRESENCE_INTERVAL*2)this._bcast(_mk('imgq',{key:e.k}))}
         if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}   // ADR-1049
+        this._syncTick();   // ADR-1050
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
       },NET_PRESENCE_INTERVAL);
@@ -7999,7 +8000,7 @@ const Net={
   _imgOuts:[], _imgChunks:_mP(),
   _slimShapes(shapes,sent){
     const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
-    for(const[k,d]of puts){_pu(this._imgOuts,[k,d]);if(sent)this._imgSent.set(k,d)}   // ADR-1045: snapshot puts join the answer store — a snapshot-carried ref must stay imgq-answerable
+    for(const[k,d]of puts){_pu(this._imgOuts,[k,d]);if(sent)this._imgSent.set(k,d)}   // ADR-1045: snapshot puts join the answer store (stay imgq-answerable)
     if(_ln(puts)){let _sb=0;for(const[,d]of this._imgSent)_sb+=_ln(d);   // ADR-0842: byte-bound the answer store
       while(_sb>64_000_000){const o=this._imgSent.keys().next().value;if(o==null)break;_sb-=_ln(this._imgSent.get(o));this._imgSent.delete(o)}}
     return slim;
@@ -8040,6 +8041,7 @@ const Net={
     if(!sn||sn.n!==n||sn.src!==src||seq===0){sn={p:new Array(n),g:0,n,src};this[key]=sn}
     if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data);sn.t=_now()}
     if(sn.b>24_000_000){this[key]=null;return}   // ADR-0782
+    if(key==='_snapIn')this._syncTick();   // ADR-1050
     if(sn.g<sn.n)return;
     this[key]=null;return sn.p.join('');
   },
@@ -8090,7 +8092,7 @@ const Net={
     this._lastCursorSend=now;
     this._bcast(_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg}));   // ADR-0647: page-scoped presence
   },
-  sendCursorHide(){   // ADR-0611: pointer left the canvas — peers must not keep a frozen cursor at the last position
+  sendCursorHide(){   // ADR-0611: pointer left — peers must not keep a frozen cursor
     if(_pr().size===0)return;
     this._lastCursorSend=0;   // let the next real cursor in immediately
     this._bcast(_mk('cursor',{x:0,y:0,h:1,pg:state.curPg}));
@@ -8107,6 +8109,17 @@ const Net={
     if(key===this._lastSelSent)return;
     this._lastSelSent=key;
     this._bcast(_mk('selection',{ids,pg:state.curPg}));   // ADR-0647
+  },
+  // ADR-1050: join-sync affordance — 'syncing' (frag progress when a 'snap'
+  // stream is in flight) while a snapshot is owed but unlanded; sig-gated.
+  _syncUI:null,_syncMsg:null,
+  _syncTick(){
+    let msg=null;
+    if(!this._snapRx&&_pr().size>0){
+      msg=t('syncing');const sn=this._snapIn;
+      if(sn&&sn.g<sn.n)msg+=' '+sn.g+'/'+sn.n;
+    }
+    if(msg!==this._syncMsg){this._syncMsg=msg;if(this._syncUI)this._syncUI(msg)}
   },
   _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buf
     if(_ln(m)>262144)return;   // ADR-0438: >SCTP max can never send — drop
@@ -8135,10 +8148,10 @@ const Net={
     if(!msg||!_iO(msg)||msg.peer===_pi())return;
     // Defensive intake: peer id feeds _touchPeer/_pr() directly.
     if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN||(!viaRtc&&_sw(msg.peer,'rtc:'))))return;   // ADR-0827
-    if(viaRtc&&(msg.k==='hello'||msg.k==='ping'||msg.k==='sync-req'))return;   // ADR-0986: BC-only kinds never legitimately ride the DC — a forged ping spoofed arbitrary presence rows under any peer id
+    if(viaRtc&&(msg.k==='hello'||msg.k==='ping'||msg.k==='sync-req'))return;   // ADR-0986: BC-only kinds can't ride the DC — forged ping spoofed presence
     switch(msg.k){
       case 'img':{
-        // ADR-0069/0379: capped blob chunks → _imgIn, then drain parked refs.
+        // ADR-0069/0379: capped chunks → _imgIn, drain parked refs.
         if(!_iS(msg.key)||_ln(msg.key)>64||!_iS(msg.data)||_ln(msg.data)>96*1024)break;
         const n=_iN(msg.n)&&msg.n>=1&&msg.n<=4096?_fl(msg.n):1;
         const seq=_iN(msg.seq)&&msg.seq>=0?_fl(msg.seq):0;
@@ -8165,7 +8178,7 @@ const Net={
           // ADR-0747
           if(e.k===msg.key){const sh=byId(id);if(sh&&sh.img===msg.key){delete sh.img;sh.dataUrl=data}this._imgPending.delete(id)}
         }
-        // ADR-0629: stragglers — resolve any shape still holding this ref.
+        // ADR-0629: stragglers — resolve shapes still holding this ref.
         for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}
         _iv();break;}
       case 'imgq':{   // ADR-0835: O(1) answer — wire refs only ever exist for
@@ -8176,8 +8189,8 @@ const Net={
         if(d0&&(!_qt||_t-_qt>10000)){this._imgqT.set(msg.key,_t);_pu(this._imgOuts,[msg.key,d0]);this._flushImgOuts()}
         break;}
       case 'snap':case 'opc':{
-        // ADR-0383/0431/0987: frag streams are DC-only — a BC-forged chunk
-        // ping-pongs the single reassembly slot vs a real RTC stream (wedge DoS).
+        // ADR-0383/0431/0987: frag streams are DC-only — a forged BC chunk
+        // wedges the single reassembly slot.
         if(!viaRtc)break;
         const joined=this._fragIn(msg,msg.k==='snap'?'_snapIn':'_opcIn','rtc');
         if(!joined||_ln(joined)>24_000_000)break;
@@ -8199,15 +8212,12 @@ const Net={
         if(this._loResp(msg.peer))this._sendSnapshot();
         break;
       case 'snapshot':
-        this._snapRx=true;   // ADR-0475
-        // ADR-0617: a snapshot predating our newest swap carries pre-swap shapes —
-        // merging it re-adds what the winning swap removed.
+        this._snapRx=true;this._syncTick();   // ADR-0475/1050
+        // ADR-0617: a predating snapshot carries pre-swap shapes — merging re-adds them.
         if(msg.rep&&validClock(msg.rep)&&state._lastRep&&clockNewer(state._lastRep,msg.rep))break;
         if(_nS()===0)this._applySnapshot(msg);
-        // Already have shapes: merge — adopt only shapes we don't have yet.
-        // Restrict to 'add' ops: _snapshotMsg() only
-        // op types here would let a malicious peer embed 'clear'/'del' inside a
-        // snapshot message and execute them under the snapshot path.
+        // Already have shapes: merge 'add' ops only — embedded
+        // 'clear'/'del' would execute under the snapshot path.
         else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){if(op.clock?.peer===msg.peer)this._mergeSnapshotOp(op)}   // ADR-0474/0932
         if(_iA(msg.pages)){   // ADR-0773: union-heal the page set+order, keep local curPg
           if(!_pgs())_pgAdopt(msg.pages,state.curPg);   // ADR-0672: curPg is a local view filter — a re-sync must not yank the view
@@ -8219,7 +8229,7 @@ const Net={
       case 'name':   // ADR-0402/0581: rename is LWW — a stale slower rename can't clobber a newer one
         if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)&&_tsOK(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}   // ADR-0701/0791
         break;
-      case 'bye':{   // ADR-0456/0986: peer left — drop presence now (viaRtc keeps _rtcPeerId until onclose)
+      case 'bye':{   // ADR-0456/0986: peer left — drop presence now
         const pk=this._pk(msg,viaRtc);
         if(pk&&_pr().delete(pk)){_ivO();if(this._onConnChange)this._onConnChange()}
         break;}
@@ -8229,7 +8239,7 @@ const Net={
       case 'cursor':{
         if(!_iN(msg.x)||!_fin(msg.x)||!_iN(msg.y)||!_fin(msg.y))break;   // ADR-0010/0986
         const peerKey=this._pk(msg,viaRtc);
-        if(viaRtc&&peerKey&&!_pr().has(peerKey))this._touchPeer(peerKey);   // ADR-0986: live-link presence resurrect (bye-then-active, bfcache); BC stays enrich-only
+        if(viaRtc&&peerKey&&!_pr().has(peerKey))this._touchPeer(peerKey);   // ADR-0986: live-link presence resurrect; BC stays enrich-only
         const p=peerKey&&_pr().get(peerKey);
         if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.cursor=msg.h===1?null:{x:msg.x,y:msg.y};p.pg=npg;_ivO();if(ch)UI.refreshPeers()}   // ADR-0611/0647/0769: pg change repaints the '· page' tooltip
         break;}
@@ -8275,7 +8285,7 @@ const Net={
       const rc=rw[k];
       if(!validClock(rc))continue;
       if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}   // ADR-0927: existence clocks merge too
-      // ADR-0372: gate the merged value — a stale field must not LWW-merge {x:NaN,pts:'bad',__proto__}
+      // ADR-0372: gate merged values — a stale field can't merge junk
       const v=op.shape[k];
       if(v===_ud||k==='id'||k==='pg'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;   // ADR-0919
       if(k==='type'&&!_typOK(v,null,ex))continue;   // ADR-0990
@@ -8336,6 +8346,7 @@ const Net={
       this._lastSelSent=null;_iv();
       if(this._onConnChange)this._onConnChange();
     }
+    this._syncTick();   // ADR-1050
   },
   _reapFrags(){   // ADR-0786
     const now=_now(),T=60e3;
@@ -8388,13 +8399,13 @@ const Net={
     // ADR-0017: a channel that never opens fires
     // failure would be invisible. 'disconnected'
     // only 'failed' is worth telling the user about.
-    const pcRef=this.rtc;   // ADR-0822: a closed pc still fires — its handler reads its own state, not the link's
+    const pcRef=this.rtc;   // ADR-0822: a closed pc still fires — handler reads own state
     pcRef.onconnectionstatechange=()=>{
       if(this.rtc!==pcRef||pcRef.connectionState!=='failed')return;
       this._rtcConnFailed=true;
       _wT('connectFailed');
       if(this._rtcPeerId){_pr().delete(this._rtcPeerId);this._rtcPeerId=null;_ivO();}
-      this._snapIn=null;this._opcIn=null;this._dcQ=null;this._dcQB=0;   // ADR-0385/0431/0432
+      this._snapIn=null;this._opcIn=null;this._dcQ=null;this._dcQB=0;this._syncTick();   // ADR-0385/0431/0432/1050
       if(this._onConnChange)this._onConnChange();
     };
   },
@@ -8413,9 +8424,7 @@ const Net={
     dcRef.onopen=()=>{
       if(this.dc!==dcRef)return;
       _oT('connected');
-      // WebRTC peers don't ride the BroadcastChannel
-      // the DataChannel lifecycle (added here, removed on close) —
-      // 15s reaper — else a live idle connection's presence lingers
+      // WebRTC peers don't ride the BroadcastChannel — presence follows the DataChannel lifecycle.
       dcRef._pid='rtc:'+uid().slice(0,4);
       this._rtcPeerId=dcRef._pid;
       this._touchPeer(dcRef._pid);
@@ -8432,7 +8441,7 @@ const Net={
     dcRef.onclose=()=>{
       if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}   // purge THIS channel's row even when superseded
       if(this.dc!==dcRef)return;   // stale close must not clobber the live link's state
-      this._dcQ=null;this._snapIn=null;this._opcIn=null;this._dcQB=0;   // ADR-0446/0448
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;this._dcQB=0;this._syncTick();   // ADR-0446/0448/1050
       if(!this._rtcConnFailed)_wT('disconnected');
       if(this._onConnChange)this._onConnChange();
     };
@@ -8730,7 +8739,7 @@ const Persist={
         _vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _docN(d);
-      if(d.wc&&_iO(d.wc))for(const k in d.wc)if(_idOK(k))_wAdopt(k,d.wc[k]);   // ADR-0460/1037: IDB wc intake shares the wire-adopt gate — structural/proto/junk keys can't stamp veto clocks
+      if(d.wc&&_iO(d.wc))for(const k in d.wc)if(_idOK(k))_wAdopt(k,d.wc[k]);   // ADR-0460/1037: IDB wc intake shares the wire-adopt gate
       if(validClock(d.rep))state._lastRep=d.rep;if(_tsOK(d.nts))_nameTs=d.nts;if(_idOK(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701/0780/0791
       state.lastSaveAt=d.savedAt||0;
       _sz();
@@ -8821,7 +8830,7 @@ function _imgSlim(shapes,stored,fmark){
       if(stored.get(k)===_ud){stored.set(k,_du(s));_pu(puts,[k,_du(s)])}
       const{dataUrl:_x,...rest}=s;
       _pu(slim,{...rest,img:k});
-    }else _pu(slim,s&&fmark&&_iS(s.img)&&/:\d+$/.test(s.img)&&!_sw(s.img,'@')?{...s,img:'@'+s.img}:s);   // ADR-1033: ':N' is a per-store ordinal — mark foreign refs so _imgAttach heals via imgq, never a local :N hit
+    }else _pu(slim,s&&fmark&&_iS(s.img)&&/:\d+$/.test(s.img)&&!_sw(s.img,'@')?{...s,img:'@'+s.img}:s);   // ADR-1033: ':N' is store-local — mark foreign refs for imgq heal
   }
   return{slim,puts};
 }
@@ -8839,7 +8848,7 @@ function _imgAttach(shapes,imgs){
 }
 function reqDone(rq){return new Promise((r,j)=>{rq.onsuccess=()=>r(rq.result);rq.onerror=()=>j(rq.error)})}
 _on(window,'beforeunload',e=>{
-  _nugEnd();_cxO();   // ADR-0959/1022: commit a pending nudge + fold open editors so the dirty check sees them
+  _nugEnd();_cxO();   // ADR-0959/1022: commit pending nudge + fold open editors for dirty
   if(_dt()){Persist.save();_pd(e);e.returnValue=''}
 });
 // Mobile-reliable durability flush — see Persist.flushIfHidden for context.
@@ -9135,6 +9144,7 @@ const UI={
     if(navigator.onLine){dot.classList.remove('offline');_tC(lbl,t('online'))}
     else{dot.classList.add('offline');_tC(lbl,t('offline'))}
   },
+  _setSync(txt){const el=_g('sSync');if(!el)return;txt=txt||'';if(txt!==_syncSig){_syncSig=txt;_hdn(el,!txt);_tC(el,txt)}},   // ADR-1050
   applyI18n(){
     // Sync the page language to the detected locale.
     // <html lang> is authored "ja" (primary audience) but the
@@ -9454,6 +9464,7 @@ function wire(){
   }
   // Net presence → UI
   Net._onConnChange=()=>{UI.refreshPeers();const n=_pr().size;if(n!==(Net._pCt|0))_ann(t(n>(Net._pCt|0)?'peerJoined':'peerLeft'));Net._pCt=n};   // ADR-0463: join/leave was SR-silent
+  Net._syncUI=m=>UI._setSync(m);   // ADR-1050
 }
 // ADR-0059: reflect the selection's style in the panel — a property is adopted
 // into _st() + its control only when EVERY unlocked selected shape shares it;
@@ -9502,7 +9513,7 @@ function applyStyleToSelection(patch){
     const b={id},a={id},eff={};let ch=0;
     for(const k of _ok(patch)){
       const ek=_stk(sh)&&k==='fill'?'color':k;   // ADR-0082: sticky recolors via color
-      b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];if(b[ek]!==a[ek])ch=1;   // ADR-0082/0961: ??null keeps before JSON-safe; skip no-change shapes so held digit keys never emit noise ops
+      b[ek]=sh[ek]??null;a[ek]=patch[k]??null;eff[ek]=patch[k];if(b[ek]!==a[ek])ch=1;   // ADR-0082/0961: ??null keeps before JSON-safe; skip no-change shapes
     }
     _oa(sh,eff);
     if(ch){_pu(before,b);_pu(after,a)}
@@ -9834,7 +9845,7 @@ function _undoWire(op){
         for(const g in reg)_pu(o,{op:'group',ids:reg[g],gid:g,before:reg[g].map(id=>({id}))});return o})():null;
     case 'zorder':
       return op.changes?[{op:'zorder',changes:op.changes.map(c=>({id:c.id,before:c.after,after:c.before}))}]:null;   // ADR-0744: history holds {changes} only — the legacy form was rejected
-    case 'replace':   // ADR-0615: swap undo must reach peers — rebroadcast the pre-swap board (newest wins)
+    case 'replace':   // ADR-0615: swap undo reaches peers — rebroadcast pre-swap board
       return _iA(op.before)?[{op:'replace',after:op.before,afterWc:op.wc,pages:op.beforePages,curPg:op.beforeCurPg}]:null;   // ADR-0720: backward wire carries the landing page — peers fell back to page 1
     case 'pageAdd':{const o={op:'pageDel',id:op.id,name:op.name,unpage:_pgs()?0:1};if(o.unpage){o.shapes=op.shapes}else o.firstId=_pgs()[0].id;return[o]}   // ADR-0724/0725: emptied set → unpage; else carry the undoer's rehome target
     case 'pageDel':  {const o=[{op:'pageAdd',id:op.id,name:op.name,i:op.i},{op:'addMany',shapes:op.shapes||[],wc:op.wc}];   // ADR-0721/0722: member clocks ride too
@@ -10163,7 +10174,7 @@ const Presentation=(()=>{
   function next(){if(_active&&_idx<_ln(_frames)-1)_goto(_idx+1)}
   function prev(){if(_active&&_idx>0)_goto(_idx-1)}
   function isActive(){return _active}
-  function refit(){if(_active)_goto(_idx)}   // ADR-0606: window/visualViewport resize during presentation re-fits the current frame
+  function refit(){if(_active)_goto(_idx)}   // ADR-0606: resize during presentation re-fits the current frame
 
   return{enter,leave,next,prev,isActive,refit,_acquireWakeLock,_releaseWakeLock,
     _setTestState:(active,trigger)=>{_active=active;_focusTrigger=trigger;}};
@@ -10235,7 +10246,7 @@ const Minimap=(()=>{
   const _mmGo=e=>{
     const r=mc.getBoundingClientRect();
     const mx2=(e.clientX-r.left)/r.width,my2=(e.clientY-r.top)/r.height;
-    if(!_sc)return;   // ADR-0668: reuse the rendered scene transform (page-scoped) — a board bbox lands taps wrong
+    if(!_sc)return;   // ADR-0668: reuse the rendered scene transform (page-scoped)
     const wx=(mc.width*mx2-_ox)/_sc,wy=(mc.height*my2-_oy)/_sc;
     const _r=_cbr();
     _vp().x=wx-_r.width/_vp().zoom/2;

@@ -1,3 +1,14 @@
+## [1.8.076]
+- **Fix: join-sync progress affordance (ADR-1050)** — a joiner staring at
+  an empty board had zero feedback while the snapshot was owed: the
+  3×5s `sync-req` retries ticked silently and a chunked `snap` stream
+  reassembled invisibly, so a large board's initial sync looked like a
+  hang. `Net._syncTick` now drives a `#sSync` statusbar span (signature-
+  gated DOM write): 'syncing' while `!_snapRx && peers>0`, plus `g/n`
+  fragment progress while a `snap` stream is in flight. Solo boards show
+  nothing (no peers ⇒ nothing is owed); the indicator clears on snapshot
+  adoption, peer loss, link close, or `Net.init` reset.
+
 ## [1.8.075]
 - **Fix: slow re-park for expired img refs (ADR-1049)** — the 60s
   `_imgPending` expiry stopped the imgq retry loop while the shape kept

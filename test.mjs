@@ -1813,7 +1813,7 @@ try {
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa, _imgRescan,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
-          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd } = api;
+          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd, _getT } = api;
 
   console.log('\n-- behavioural --');
 
@@ -17849,6 +17849,30 @@ pass += 2; // ADR-1048 audit-doc pins
 pass += 3; // ADR-1049 imgRescan pins
 assert.ok(html.includes('if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}'),'presence sweep runs the slow rescan');
 pass += 1;
+// ADR-1050: _syncTick surfaces 'syncing' (with frag progress) while a
+// snapshot is owed but unlanded — a join's empty board no longer reads
+// as a hang. Peers==0 stays silent (nothing is owed on a solo board).
+{
+  let got=null;Net._syncUI=m=>{got=m};Net._syncMsg=null;
+  Net._snapRx=false;Net._snapIn=null;state.peers.clear();
+  Net._syncTick();
+  assert.strictEqual(got,null,'no peers → silent (solo board owes nothing)');
+  state.peers.set('p9',{color:'#000',lastSeen:nowTs()});
+  Net._syncTick();
+  assert.strictEqual(got,_getT().syncing,'peer present + no snapshot → syncing');
+  Net._snapIn={p:['a','b'],g:2,n:5};
+  Net._syncTick();
+  assert.strictEqual(got,_getT().syncing+' 2/5','in-flight snap stream reports frag progress');
+  Net._snapRx=true;Net._snapIn=null;
+  Net._syncTick();
+  assert.strictEqual(got,null,'snapshot landed → indicator clears');
+  Net._syncUI=null;Net._syncMsg=null;
+  console.log('  ✓ ADR-1050 join-sync affordance (4 asserts)');
+}
+pass += 4; // ADR-1050 join-sync pins
+assert.ok(html.includes('id="sSync"')&&html.includes('Net._syncUI=m=>UI._setSync(m)'),'statusbar carries the sync surface + wiring');
+assert.ok(html.includes("syncing:'同期中'")&&html.includes("syncing:'Syncing'"),'syncing is localized');
+pass += 2;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
