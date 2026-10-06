@@ -18443,6 +18443,23 @@ assert.ok((html.match(/_dcKey=null/g)||[]).length>=3,'_dcKey resets on init/hand
 assert.ok(!html.includes("rs:state.roomSecret,shapes")&&!html.includes("data.rs="),'no rs in export payloads');
 pass += 6;
 
+{
+  // ADR-1071: a doc-switch _rs swap replaces every live object — a gesture
+  // armed on the old doc must not commit (same class as ADR-0664 page
+  // switches). Remote 'replace' intentionally differs: keep-survivors stay
+  // the same live objects and the gesture survives with reborn marks (0984).
+  ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map();
+  Net._applySnapshot({shapes:[Shape.make('rect',{x:1,y:1,w:9,h:9})]});
+  assert.strictEqual(ptr.down,false,'_applySnapshot (_rs path) cancels a live pointer gesture');
+  ptr.down=true;ptr.dragKind='move';ptr.dragStartShapes=new Map();
+  Store.applyRemote({op:'replace',after:[Shape.make('rect',{x:0,y:0,w:5,h:5})],afterWc:{},clock:{peer:'pgs',seq:1,ts:Date.now()}});
+  assert.strictEqual(ptr.down,true,"remote 'replace' keeps a live gesture — keep survivors stay draggable");
+  _cancelPointerGesture();
+  pass += 2;
+}
+assert.ok(/if\(ptr\.down\)_cancelPointerGesture\(\);_eraseBatch=\[\]/.test(html),'_rs cancels a live gesture before the swap');
+pass += 1;
+
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

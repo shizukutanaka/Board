@@ -1,3 +1,18 @@
+## [1.8.094]
+- **Fix: doc-switch swaps cancel a live pointer gesture (ADR-1071)** — `_rs`
+  cleared `_eraseBatch`/`state.measure` but left a live gesture armed on the
+  pre-swap doc: `dragStartShapes`/orig then pointed at detached objects, and
+  the pointerup commit resolved `byId` to the new same-id clones and wrote
+  stale drag geometry into them (or emitted ops for swapped-out ids) — silent
+  divergence, the same class as ADR-0664 page switches. One `if(ptr.down)
+  _cancelPointerGesture()` at the head of `_rs` covers every doc-switch path
+  (snapshot adopt, `importBoard`, `importFromHash`, `loadDoc`, `restoreBackup`)
+  in the correct order: `_gRst` restores arm-time geometry into the old
+  objects before they're discarded. Remote `'replace'` deliberately keeps
+  the gesture: its keep-survivors are the same live objects and reborn marks
+  (ADR-0984) already exclude swapped ids from orig-restore — cancelling there
+  would let a noisy peer abort everyone's drags.
+
 ## [1.8.093]
 - **Fix: RTC invite-token codec reached Share-only helpers — manual signaling threw TypeError (ADR-1070)** —
   ADR-0160 moved `_encodeToken`/`_decodeToken` onto `_b64uEnc`/`_b64uDec`,
