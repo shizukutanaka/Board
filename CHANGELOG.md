@@ -1,3 +1,15 @@
+## [1.8.087]
+- **Fix: dedup imgq re-requests per key within a sweep (ADR-1064)** —
+  `_imgPending` entries are per shape id, but the blob answer is per
+  content-hash key: N parked shapes sharing one `img:K` ref (duplicate a
+  pasted image, two copies of the same photo) each broadcast an
+  identical `imgq{key:K}` every presence sweep — pure amplification on
+  both transports. The 5s sweep loop is extracted into
+  `Net._imgqSweep(now)` and now tracks a per-sweep `asked` Set: the
+  first entry past the 10s grace window asks, later same-key entries
+  skip. 60s expiry and ADR-1049 re-park semantics unchanged.
+  8 asserts; `node test.mjs` 3726 pass.
+
 ## [1.8.086]
 - **Fix: imgq answers consult the durable blob store (ADR-1063)** —
   `_imgSent`/`_imgIn` are per-session in-memory maps cleared on room

@@ -18197,6 +18197,30 @@ pass += 9;
 }
 console.log('  ✓ ADR-1063 durable imgq fallback (9 asserts)');
 pass += 9;
+// ---- ADR-1064: imgq re-request dedups per key within a sweep ----
+{
+  // Content-hash refs make shared keys common (duplicate a pasted image, two
+  // copies of the same photo): N parked shapes on one key emitted N identical
+  // imgq broadcasts every presence sweep. The answer is per-key, so one ask
+  // suffices. Behavioural: stub _imgPending + _bcast, run Net._imgqSweep.
+  const sent=[];
+  const pend=new Map([['s1',{k:'kA',t0:30000}],['s2',{k:'kA',t0:25000}],
+                      ['s3',{k:'kB',t0:20000}],['s4',{k:'kC',t0:45000}],
+                      ['s5',{k:'kX',t0:-20000}],['s6',{k:'kD',t0:35000}]]);
+  const net={_imgPending:pend,_bcast:m=>sent.push(m),_imgqSweep:Net._imgqSweep};
+  Net._imgqSweep.call(net,50000);
+  assert.strictEqual(sent.length,3,'one imgq per distinct key');
+  const keys=sent.map(m=>m.key).sort();
+  assert.deepStrictEqual(keys,['kA','kB','kD'],'shared key asked once, expiry deletes');
+  assert.ok(!pend.has('s5'),'entry older than 60s expires');
+  assert.ok(pend.has('s1')&&pend.has('s2')&&pend.has('s3')&&pend.has('s4')&&pend.has('s6'),'live entries stay parked');
+  assert.ok(sent.every(m=>m.k==='imgq'),'requests carry the imgq kind');
+  assert.ok(pend.has('s4'),'fresh entry under the grace window asks nothing');
+  assert.ok(html.includes('!asked.has(e.k)'),'sweep dedups by key');
+  assert.ok(html.includes('this._imgqSweep(nowTs())'),'presence sweep rides the dedup');
+}
+console.log('  ✓ ADR-1064 per-key imgq dedup (8 asserts)');
+pass += 8;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

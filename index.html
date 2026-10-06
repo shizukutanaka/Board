@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.086';   // ADR-1063
+const V='1.8.087';   // ADR-1064
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8057,7 +8057,7 @@ const Net={
         this._reapPeers();this._reapFrags();
         // ADR-0835/1049: aged parked refs re-request via imgq; park drops at 60s —
         // the ref still heals on any later blob or the 5-min _imgRescan re-ask.
-        const _ipq=nowTs();for(const[id,e]of this._imgPending){if(_ipq-e.t0>60000)this._imgPending.delete(id);else if(_ipq-e.t0>NET_PRESENCE_INTERVAL*2)this._bcast(_mk('imgq',{key:e.k}))}
+        this._imgqSweep(nowTs());
         if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}   // ADR-1049
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req',{wc:this._syncReqWc()}));   // ADR-1055
@@ -8069,6 +8069,13 @@ const Net={
   // re-emit every key (fresh `sent` set, late joiners). Inbound shapes whose
   // blob hasn't landed park in _imgPending.
   _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(), _imgqT:_mP(),
+  _imgqSweep(now){   // ADR-1064: one imgq per key per sweep — N shapes sharing
+    const asked=_sT();   // a content-hash ref used to broadcast N identical asks
+    for(const[id,e]of this._imgPending){
+      if(now-e.t0>60000)this._imgPending.delete(id);
+      else if(now-e.t0>NET_PRESENCE_INTERVAL*2&&!asked.has(e.k)){asked.add(e.k);this._bcast(_mk('imgq',{key:e.k}))}
+    }
+  },
   _imgOuts:[], _fragOuts:[], _imgChunks:_mP(),
   _stgOK(outs,b){let s=_ln(b)||0;for(const e of outs)s+=_ln(e[1]);return s<=67108864},   // ADR-1062: staged outflow shares the answer store's byte bound
   _imgDbGet(k){   // ADR-1063: durable fallback — a reloaded holder's _imgSent is empty,
