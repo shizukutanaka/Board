@@ -454,7 +454,7 @@ const checks = [
   ['pan repaints only exposed strips + damage', html.includes("_pu(clipRects,{x:Ox1") && html.includes("if(dmg)_pu(clipRects,dmg)")],
   ['pan records effective viewport, subpixel pans skip scene', html.includes("_lastVp={x:ev.x,y:ev.y,zoom:v.zoom}") && html.includes("const _skipScene=panned&&")],
   // v1.7.87: ADR-0029 draft-pen incremental ink stamping
-  ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}")],
+  ['draft pen stamps committed segments to bitmap', html.includes("function drawPenDraft(") && html.includes("while(d.c<n-9){d.c++;_inkSegDraw(d.c2,sp,d.w,d.c);}")],
   ['draft pen blits committed bitmap 1:1 snapped to device grid', html.includes("ctx.drawImage(d.cv,_rnd((d.bx-_vp().x)*_z)")],
   ['draft pen rebuilds stamp on pressure-mode flip/extrema growth', html.includes("usePr!==d.usePr||(usePr&&extGrew)") && html.includes("_inkRebuild(s,d)")],
   // v1.7.88: ADR-0030 pinch-zoom scaled preview
@@ -1784,7 +1784,7 @@ try {
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa, _imgRescan,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
-             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
+             _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
              _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec,
              _getLang: () => LANG, _getT: () => T };
@@ -1812,7 +1812,7 @@ try {
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa, _imgRescan,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
-          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
+          _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
           _s256, _hmac, _eqs, _sec, Share } = api;
 
@@ -18033,6 +18033,32 @@ assert.ok(html.includes("readOnlyMode:'閲覧のみです")&&html.includes("read
 assert.ok(html.includes("shareRoLabel:'👁 閲覧のみリンク'")&&html.includes("shareRoLabel:'👁 View-only link'"),'shareRoLabel key in ja+en');
 assert.ok(html.includes("if(state.ro){_roNo();return}Store._recordCommitted({op:'replace'"),'_repC funnel guarded');
 pass += 13;
+
+// ---- ADR-1058: pen skeleton smoothing (_penSm) ----
+{
+  const two=[[0,0],[10,10]];
+  assert.strictEqual(_penSm(two),two,'penSm: n<3 returns the same array (no alloc)');
+  const pts=[[0,0],[10,20,0.5],[20,0,0.9],[30,20]];
+  const sm=_penSm(pts);
+  assert.strictEqual(sm.length,4,'penSm: same length as input');
+  assert.strictEqual(sm[0],pts[0],'penSm: start endpoint stays anchored (same object)');
+  assert.strictEqual(sm[3],pts[3],'penSm: end endpoint stays anchored (same object)');
+  assert.ok(sm[1][0]===(0+2*10+20)/4&&sm[1][1]===(0+2*20+0)/4,'penSm: interior blends (prev+2·cur+next)/4');
+  assert.ok(sm[2][0]===(10+2*20+30)/4&&sm[2][1]===(20+2*0+20)/4,'penSm: blend holds for every interior point');
+  assert.ok(sm[1][2]===0.5&&sm[2][2]===0.9,'penSm: pressure passes through by index');
+  assert.ok(pts[1][0]===10&&pts[1][1]===20,'penSm: input pts are not mutated');
+  // a jittered stroke's extreme outliers pull toward the neighborhood mean —
+  // the middle spike at x=200 dampens to 110 (bounded, no overshoot).
+  const jig=[[0,0],[50,0],[200,0],[150,0],[300,0]];
+  assert.strictEqual(_penSm(jig)[2][0],(50+2*200+150)/4,'penSm: outlier is dampened by the blend');
+  assert.ok(html.includes('function _penSm(p){'),'penSm helper is defined');
+  assert.ok(html.includes('const p=_penSm(s.pts),n=_ln(p);'),'drawPen smooths the skeleton');
+  assert.ok(html.includes('const sp=_penSm(p);   // ADR-1058: draft/stamp/tail ride the smoothed skeleton'),'draft rides the smoothed skeleton');
+  assert.ok(html.includes('d.w=penWidths(sp,_szz(s));')&&html.includes('_inkSegDraw(d.c2,sp,d.w,d.c)'),'stamp widths+primitives ride sp');
+  assert.ok(html.includes('const P=_penSm(s.pts.map('),'SVG export smooths the mapped skeleton');
+}
+console.log('  ✓ ADR-1058 pen skeleton smoothing (14 asserts)');
+pass += 14;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

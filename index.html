@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.080';   // ADR-1057
+const V='1.8.081';   // ADR-1058
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2319,6 +2319,18 @@ function _penQuad(c,p,ra,rb,i){
   _lT(c,p[i-1][0]-nx*ra,p[i-1][1]-ny*ra);
 }
 function _penDisc(c,x,y,r){_mT(c,x+r,y);c.arc(x,y,r,0,PI2,true)}
+// ADR-1058: light skeleton fairing — endpoints stay anchored, interior points
+// take a (prev+2·cur+next)/4 blend so single-sample pointer jitter melts out.
+// Pressure passes through by index so widths/taper stay aligned.
+function _penSm(p){
+  const n=_ln(p);if(n<3)return p;
+  const r=new Array(n);r[0]=p[0];r[n-1]=p[n-1];
+  for(let i=1;i<n-1;i++){
+    const a=p[i-1],b=p[i],c=p[i+1];
+    r[i]=[(a[0]+2*b[0]+c[0])/4,(a[1]+2*b[1]+c[1])/4,b[2]];
+  }
+  return r;
+}
 // Fill the union covering vertices lo..hi: quads lo+1..hi, discs lo..hi.
 // Committed strokes call this on the whole range; the draft splits it at the
 // stamped boundary — the partition is exact, so draft and committed render
@@ -2346,7 +2358,7 @@ function _inkSegDraw(cc,p,w,i){
 // crossing or a shrink). Commits indices 1..n-9 (each bakes disc(i-1)+
 // quad(i-1→i); end-taper primitives never settle).
 function _inkRebuild(s,d){
-  const p=s.pts,n=_ln(p),R=_penRes();
+  const p=s.pts,n=_ln(p),R=_penRes(),sp=_penSm(p);   // ADR-1058
   let mnx=Infinity,mny=Infinity,mxx=-Infinity,mxy=-Infinity;
   for(const q of p){if(q[0]<mnx)mnx=q[0];if(q[1]<mny)mny=q[1];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
   const pad=(_szz(s)||2)*2+64;   // stroke reach + headroom before the next grow
@@ -2364,9 +2376,9 @@ function _inkRebuild(s,d){
   d.c2.setTransform(R,0,0,R,-d.bx*R,-d.by*R);
   d.c2.fillStyle=_sk(s);
   d.R=R;
-  d.w=penWidths(p,_szz(s));
+  d.w=penWidths(sp,_szz(s));   // ADR-1058: widths ride the smoothed skeleton
   const stop=_max(0,n-9);   // stampable indices: i<=n-9 (see drawPenDraft)
-  for(let i=1;i<=stop;i++)_inkSegDraw(d.c2,p,d.w,i);
+  for(let i=1;i<=stop;i++)_inkSegDraw(d.c2,sp,d.w,i);   // ADR-1058
   d.c=stop;
 }
 // Grow the stamp canvas when the stroke exits the allocated world rect.
@@ -2391,6 +2403,7 @@ function _inkGrow(d,pad){
 function drawPenDraft(s){
   const p=s.pts,n=_ln(p);
   if(n<2){drawPen(s);return}
+  const sp=_penSm(p);   // ADR-1058: draft/stamp/tail ride the smoothed skeleton
   const R=_penRes();
   let d=_inkD;
   if(!d||d.pts!==p||d.stroke!==_sk(s)||d.size!==_szz(s)||!d.R||R>d.R*1.5||R<d.R/1.5||n<d.n){
@@ -2415,9 +2428,9 @@ function drawPenDraft(s){
     if(!usePr){
       for(let i=_max(0,n-4);i<n;i++){
         let dd=0,cn=0;
-        if(i>0){dd+=_hp(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);cn++}
-        if(i<n-1){dd+=_hp(p[i+1][0]-p[i][0],p[i+1][1]-p[i][1]);cn++}
-        const sp=cn?dd/cn:0,t=_min(1,sp/REF);
+        if(i>0){dd+=_hp(sp[i][0]-sp[i-1][0],sp[i][1]-sp[i-1][1]);cn++}
+        if(i<n-1){dd+=_hp(sp[i+1][0]-sp[i][0],sp[i+1][1]-sp[i][1]);cn++}
+        const vel=cn?dd/cn:0,t=_min(1,vel/REF);   // ADR-1058
         d.raw[i]=base*(1-(1-LO)*t);
       }
     }else{
@@ -2430,7 +2443,7 @@ function drawPenDraft(s){
     if(q[0]<d.bx||q[0]>d.bx+d.bw||q[1]<d.by||q[1]>d.by+d.bh)_inkGrow(d,pad);
     // Commit newly-stable segments: segment i bakes
     // raw[i+2]; velocity-mode raw[i+2] needs pts[i+3]
-    while(d.c<n-9){d.c++;_inkSegDraw(d.c2,p,d.w,d.c);}
+    while(d.c<n-9){d.c++;_inkSegDraw(d.c2,sp,d.w,d.c);}   // ADR-1058
   }
   // Frame: blit committed bitmap + live tail (
   const _z=_vp().zoom*DPR;
@@ -2444,7 +2457,7 @@ function drawPenDraft(s){
   else ctx.drawImage(d.cv,d.bx,d.by,d.bw,d.bh);
   // ADR-0046: live tail = unstamped primitives
   ctx.fillStyle=_sk(s);
-  _penFillRange(ctx,p,d.w,n,_max(0,d.c),n-1);
+  _penFillRange(ctx,sp,d.w,n,_max(0,d.c),n-1);   // ADR-1058
 }
 
 // ====================== RENDER ======================
@@ -3494,7 +3507,7 @@ function penWidths(pts,size){
 }
 function drawPen(s,c){
   c=c||ctx;
-  const p=s.pts,n=_ln(p);
+  const p=_penSm(s.pts),n=_ln(p);   // ADR-1058
   if(n<2){
     c.fillStyle=_sk(s)||_gC('--brand');   // ADR-0857
     _bp(c);c.arc(p[0][0],p[0][1],(_szz(s)||2)/2,0,PI2);_fil(c);
@@ -7840,7 +7853,7 @@ function buildSVG(shapes,paper){
         // ADR-0046 display=output parity: same union
         // as canvas. Circles need no winding-directi
         // the primitives as a true union.
-        const P=s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]]),n=_ln(P),W=penWidths(P,SZ);
+        const P=_penSm(s.pts.map(p=>[_num(p&&p[0])+ox,_num(p&&p[1])+oy,p&&p[2]])),n=_ln(P),W=penWidths(P,SZ);   // ADR-1058
         const r=v=>_rnd(v*10)/10;
         const Rr=i=>W[i]*0.5*_penTaperI(i)*_penTaperE(n-1-i);
         let d='',circles='';

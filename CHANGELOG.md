@@ -1,3 +1,22 @@
+## [1.8.081]
+- **Feat: pen-stroke skeleton smoothing (ADR-1058, ADR-1048 W37)** —
+  freehand ink was drawn as the literal polyline the pointer sampled:
+  shaky or aliased input (mouse, touch jitter, low-rate digitizers)
+  rendered as visible angular segments. `_penSm` now applies a light
+  `(prev+2·cur+next)/4` fairing to the skeleton before the ADR-0046
+  trapezoid+disc union is emitted — endpoints stay anchored, single-sample
+  jitter melts out, pressure passes through by index so widths/taper stay
+  aligned. Applied at the three render surfaces with one helper so
+  draft/stamp/commit/export can never diverge: `drawPen` (canvas, bitmap
+  cache, minimap, PNG), `drawPenDraft`/`_inkRebuild` (live draft stamps
+  `sp` and tail widths ride `sp`), and the SVG exporter (`_penSm` after
+  the `P` map). Raw `s.pts` are untouched — data, hit-test, bbox, undo
+  and wire payloads all keep the samples the pointer actually produced.
+- Tests: behavioural pins — endpoint identity, `(1,2,1)/4` blend, pressure
+  passthrough, n<3 passthrough, no-alloc small-stroke path; source pins —
+  `_penSm` sites on drawPen/draft/rebuild/SVG, widths-on-sp parity (14
+  asserts, 3675 pass total).
+
 ## [1.8.080]
 - **Feat: read-only share links (ADR-1057, ADR-1048 P3-a)** — the share
   modal gains a `👁 閲覧のみリンク` checkbox next to the encryption one.
