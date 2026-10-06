@@ -817,7 +817,7 @@ const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: 
 // child's id as a shape (unlocked only), idempotent across callers.
 const _xFS=(sel,frameOf)=>{for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)_pu(sel,ch);}}}
 const _inR=(b,f)=>b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h;   // ADR-0767: rect containment (frame membership)
-// ADR-0423: childId→frameId map — frame-containment expansion in del/move/flip/rot.
+// ADR-0423: childId→frameId map for frame-containment expansion.
 // ADR-0767
 const _frameOf=(sel,ok)=>{const m=_mP();
   const fs=sel.filter(f=>f.type==='frame');
@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.096';   // ADR-1073
+const V='1.8.097';   // ADR-1054
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1063,6 +1063,7 @@ const I18N={
     rtcOfferPh:'相手の招待コードを貼り付け',rtcAnswerPh:'相手の応答コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
+    importMerge:'読み込んだ内容を現在のボードにマージしますか?(キャンセル=置き換えまたは中止)',
     imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',dioExported:'.drawioファイルを保存しました',textPasted:'テキストを貼り付けました',peerReplaced:'相手が盤面を丸ごと置き換えました (再起動時に復元できます)',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
@@ -1144,6 +1145,7 @@ const I18N={
     rtcOfferPh:'Paste the invite code from your peer',rtcAnswerPh:'Paste the answer code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
+    importMerge:'Merge the imported content onto the current board? (Cancel = replace or abort)',
     imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',dioExported:'.drawio file saved',textPasted:'Text pasted',peerReplaced:'Peer replaced the whole board (recoverable on restart)',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
@@ -1827,9 +1829,7 @@ const Store={
       case 'pageName':{   // ADR-0646/0698/0702
         const p=_pgById(op.id);if(!p)break;
         const ts=forward?(op.clock&&_iN(op.clock.ts)?op.clock.ts:_now()):(op.bts!=null?op.bts:0);
-        // ADR-0702: undo gate must compare the CURRENT name's write against OUR op's clock —
-        // bts>=p.nts could never hold (bts predates our own write), so undo was a local no-op
-        // while the inverse op still reverted peers -> divergence.
+        // ADR-0702: gate on CURRENT name's write vs our clock — newer-vs-snapshot loses a field.
         const win=p.nts==null||(forward?clockNewer({ts,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0},{ts:p.nts,peer:_iS(p.ntp)?p.ntp:'',seq:0})
           :!clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:_iN(op.clock&&op.clock.ts)?op.clock.ts:0,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0}));
         // ADR-0727: undo-wire renames carry nts/ntp — the RESTORED clock, not the undo
@@ -2191,8 +2191,7 @@ function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646
   _unB();   // ADR-0953
-  // ADR-0707: 'del' parity — locked members survive + rehome to firstId. ADR-0724:
-  // `only` caps the kill set (unpage). ADR-0725: members rehome to the wire's choice.
+  // ADR-0707/0724/0725: 'del' parity — locked survive; `only` caps the kill set; wire rehome.
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722
   for(const id of dead){_wc()[id]=_wM({_del:op.clock});_sdl(id)}   // ADR-0679/0734/0954
@@ -2848,8 +2847,7 @@ function drawPeerSelections(c){
     _sD(c,[]);
   }
 }
-// ADR-0010: ephemeral, never persisted — _pr().cursor is set only by Net's 'cursor'
-// message handler and cleared implicitly when a peer is reaped/disconnected.
+// ADR-0010: ephemeral, never persisted — cleared implicitly on peer reap/disconnect.
 function drawPeerCursors(c){
   if(_pA())return;   // presence is for co-editing, not solo frame review
   for(const p of _pr().values()){
@@ -3520,7 +3518,7 @@ function drawPen(s,c){
   _penFillRange(c,p,w,n,0,n-1);
   _fsS(c,oldFill);
 }
-// ADR-0078: shared font declaration — bold/italic flags prepend weight/posture.
+// ADR-0078: shared font declaration.
 // ADR-0173: _ftt(s) selects the family stack — 'mono'|'serif'|absent(system).
 // Offline-safe stacks only (no web fonts; Board must never fetch a font).
 function _fontFam(s){
@@ -3828,8 +3826,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   const _rb=_bb(sh);
   state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${_rnd(_abs(_rb.w))} × ${_rnd(_abs(_rb.h))}`};
 }
-// ADR-0056: group-resize drag step / commit as named functions so the gesture is
-// testable without driving the DOM listeners (precedent: abortGesture v1.6.88).
+// ADR-0056: named drag-step/commit functions keep the gesture testable headless.
 // Drag: the shared handle math runs on a virtual box (snap/Shift/Alt all reuse),
 // then _mapToBox affine-maps every member's geometry orig→result each frame.
 function _gresizeDrag(wp,shift,alt){
@@ -4001,9 +3998,7 @@ const _sqNav={idx:-1,lastQ:''};  // step-through navigation state (exported for 
 // instead of assigning _sq directly). Also resets navigation state, mirroring the
 // search input's `input` event handler.
 function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
-// ADR-0048: ordered match list keyed on {_gridVer, _sq} — membership can't change
-// otherwise (text edits go through ops; _sq only via the input handler). The
-// current-match index (_sqNav.idx) styles per frame and stays out of the key.
+// ADR-0048: ordered match list keyed on {_gridVer,_sq} — _sqNav.idx stays out.
 let _sqVer=-1,_sqQ='',_sqList=null;
 function _sqMatches(){
   const q=_lc(_sq);
@@ -4652,8 +4647,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
 // ADR-0182: same viewport-signature follow as _teFollow (ADR-0053), for the
 // label input — it used to stay glued to the glass while the board panned.
 let _lblTa=null,_lblVp='';
-// ADR-0560: commit a still-open overlay before a new editor opens — else its blur
-// fires mid-open and clobbers state.editing (kills _teFollow + the draw-loop skip).
+// ADR-0560: commit a still-open overlay first — its blur clobbers state.editing mid-open.
 const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()};
 function _lblFollow(){
   if(!_lblTa)return;
@@ -4966,8 +4960,7 @@ function zoomReset(){
   _rZ();_iv();_ps();
   _ann('100%');
 }
-// ADR-0049: shared viewport-fit math — was duplicated in fitToContent/_mirrorGo.
-// Callers announce their own message (zoom % vs shape name).
+// ADR-0049: shared viewport-fit math; callers announce their own message.
 function _fitViewport(b,pad,cap){
   const r=_cbr();
   const z=clampZoom(_min((r.width-pad*2)/b.w,(r.height-pad*2)/b.h,cap));
@@ -5010,8 +5003,7 @@ function zoomToSelection(){
 // a `big` list always returned; query covers the 3×3 cell neighbourhood (tol<200wu).
 const _GCELL=200;let _grid=null,_gridVer=0;
 function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: id index shares this choke point
-// ADR-0047: group-halo membership map — grouping only changes via group/ungroup
-// ops (every commit bumps _gridVer), so drawOverlay doesn't rebuild it per frame.
+// ADR-0047: group-halo map keyed on _gridVer — skip the per-frame rebuild.
 let _grpMapVer=-1,_grpMap=null;
 function _grpMapGet(){
   if(_grpMapVer===_gridVer)return _grpMap;
@@ -5395,9 +5387,7 @@ function contPen(wp,e){
   _iD({x:_min(wp.x,last[0])-_m,y:_min(wp.y,last[1])-_m,w:_abs(wp.x-last[0])+2*_m,h:_abs(wp.y-last[1])+2*_m});
 }
 // RDP decimation for pen pts [[x,y,p?],…]; keeps pressure, eps in world units.
-// ADR-0034: iterative index-range version — the recursive pts.slice() form made
-// O(n log n) array copies on long strokes; this walks [lo,hi) ranges on a stack
-// and emits kept points in order.
+// ADR-0034: iterative [lo,hi) range stack — the recursive slice copied O(n log n).
 function _rdp(pts,eps){
   if(_ln(pts)<=2)return pts;
   const keep=new Uint8Array(_ln(pts));keep[0]=keep[_ln(pts)-1]=1;
@@ -5582,8 +5572,7 @@ function _endPointBind(sh,handle,alt){
   }else sh[fk]=null;
 }
 // Topmost non-connector shape whose bbox contains (x,y), for connector binding.
-// ADR-0214: same _queryGrid acceleration as pickTop — endpoint drags call this
-// per pointermove, so the full-board scan was the dominant cost on big boards.
+// ADR-0214: _queryGrid like pickTop — endpoint drags call this per pointermove.
 function _bindAt(x,y){
   const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&_sv(s)&&_pgOk(s)};   // ADR-0150/0646
   const has=s=>{const b=_bb(s);return b&&x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h};
@@ -6101,8 +6090,7 @@ function doPasteInPlace(){
   _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
-// ADR-0103: paste centred at the context-menu point (right-click «paste here»).
-// No cascade — the user picked the spot, so _pasteCount is left alone.
+// ADR-0103: paste centred at the ctx point — no cascade (_pasteCount untouched).
 function doPasteAt(wx,wy){
   if(!_cl())return;
   const bb=_bA(_cl().shapes);
@@ -6145,6 +6133,12 @@ function _placeCopies(srcShapes,dx,dy){
   state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
   _iv();
   return added;
+}
+// ADR-1054: merge-mode import — add onto the board via the paste machinery
+// (fresh ids + a/b/groupId remaps + one undoable addMany), not the swap.
+function _mergeImport(shapes){
+  const added=_placeCopies(shapes,0,0);
+  if(_ln(added))_o(t('imported')+' '+_ln(added));
 }
 function doDuplicate(){
   if(!_selN())return;
@@ -6637,8 +6631,7 @@ function exportScale(w,h,desired){
   if(!(w>0&&h>0))return desired;
   return _min(desired, EXPORT_MAX_DIM/w, EXPORT_MAX_DIM/h, _sqr(EXPORT_MAX_AREA/(w*h)));
 }
-// ADR-0050: the render-to-blob path shared by exportPNG (download) and copyPNG
-// (clipboard). cb receives the PNG blob or null on failure.
+// ADR-0050: shared render-to-blob for export/copy; cb gets the PNG blob or null.
 function _renderPngBlob(shapes,cb,desired){
   const b=_bA(shapes.filter(_sv));   // ADR-0593
   if(!b){_wT(_EM);return}
@@ -7184,7 +7177,7 @@ function _dioCells(shapes){
     else if(t==='text')sty+='text;';
     else if(t==='sticky')sty+='shape=note;';
     else if(t==='frame')sty+='swimlane;';
-    else if(t==='image')sty+='shape=image;';   // ADR-1067: image= stays byte-gated — its absence renders drawio's own image placeholder
+    else if(t==='image')sty+='shape=image;';   // ADR-1067: image= stays byte-gated
     else sty+='rounded='+(s.r>0?1:0)+';';
     if(s.r>0&&(t==='diamond'||t==='image'))sty+='rounded=1;';          // ADR-0332
     if(s.fill==='none')sty+='fillColor=none;';                            // ADR-0290
@@ -7645,6 +7638,11 @@ function importBoard(file){
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
       const shapes=(d.shapes||[]).filter(validShape);
       if(!_ln(shapes)){_wT(_EM);return}
+      // ADR-1054: non-empty board gets a merge-or-replace choice.
+      if(_ln(_sh())){
+        if(confirm(t('importMerge'))){_mergeImport(shapes);return}
+        if(!confirm(t('importConfirm')))return;
+      }
       // Atomic whole-board swap (mirrors importFromHash):
       // one Ctrl+Z fully restores the previous board, and a
       // clear+N-adds would overflow MAX_HISTORY on a big board; merge them into the one replace op
@@ -8746,7 +8744,10 @@ const Share={
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
       if(!_ln(valid)){_eT(_IB);clearHash();return false}
-      if(_nS()&&!confirm(t('importConfirm')))return false;
+      if(_nS()){
+        if(confirm(t('importMerge'))){_mergeImport(valid);clearHash();return true}   // ADR-1054
+        if(!confirm(t('importConfirm')))return false;
+      }
       // Reversible whole-board swap: a mistaken import or a hostile
       // shared link can't silently destroy the board —
       const before=clone(_sh());
@@ -9637,8 +9638,7 @@ function wire(){
   // Net presence → UI
   Net._onConnChange=()=>{UI.refreshPeers();const n=_pr().size;if(n!==(Net._pCt|0))_ann(t(n>(Net._pCt|0)?'peerJoined':'peerLeft'));Net._pCt=n};   // ADR-0463: join/leave was SR-silent
 }
-// ADR-0059: reflect the selection's style in the panel — a property is adopted
-// into _st() + its control only when EVERY unlocked selected shape shares it;
+// ADR-0059: a prop is adopted only when EVERY unlocked selected shape shares it.
 // a mixed prop is left alone rather than showing a misleading value. Selection
 // changes are detected by a sorted-id signature compared once per frame.
 let _selSig=null;
