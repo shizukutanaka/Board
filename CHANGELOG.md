@@ -1,3 +1,13 @@
+## [1.8.077]
+- **Feature: merge-mode import (ADR-1054)** — `.board` file import and
+  share-link import previously replaced the whole board unconditionally
+  (file path had no prompt at all; the hash path offered only
+  replace-or-abort). A non-empty board now first offers
+  `confirm(t('importMerge'))`: merge lands the payload on the current page
+  via `_placeCopies` — fresh ids, intra-import `a`/`b`/`groupId` remaps,
+  one undoable `addMany` — while Cancel falls through to the existing
+  replace gate. Empty boards still swap silently (merge ≡ replace).
+
 ## [1.8.076]
 - **Feature: peer display names on presence (ADR-1053)** — presence
   carriers (`ping`/`cursor`/`selection`) now ride an `n` field with the
