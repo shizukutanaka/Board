@@ -1,3 +1,13 @@
+## [1.8.078]
+- **Perf: delta snapshot sync on join (ADR-1055, ADR-1048 P1-b)** — a
+  rejoining peer used to receive the whole board again. `sync-req` now
+  carries the asker's causal horizon (per-id newest wclock); the
+  responder sends only ops newer than it, plus `dels` tomb deltas for
+  asker-held ids it deleted (del parity: locked survives, the clock
+  still lands). No horizon or a malformed one falls back to the full
+  snapshot — a lying asker only starves itself. Backward compatible:
+  old peers either side just get the full snapshot.
+
 ## [1.8.076]
 - **Feature: peer display names on presence (ADR-1053)** — presence
   carriers (`ping`/`cursor`/`selection`) now ride an `n` field with the

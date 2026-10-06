@@ -1095,6 +1095,11 @@ Board/
 │   └── ADR-1044-pending-nudge-remote-lifecycle.md  # `_nug` coalescer の flush 網羅監査 — 全ローカル変異は `_recordCommitted` で flush、remote は `_gTouch` fold + `n.reborn` で整合、clean 完走
 │   └── ADR-1045-snapshot-img-answer-store.md  # snapshot の `sent` 使い捨てマップで img 参照キーが `_imgSent` 不達 → imgq 応答不能の実害を解消 (snapshot puts も応答ストアへ登録)
 │   └── ADR-1046-img-pending-waitlist-bound.md  # `_park` 待機リスト 256上限+FIFO 監査 — 追い出しでも straggler スキャンで自己治癒、再 park は挿入位置維持、clean 完走
+│   └── ADR-1047-minimap-img-ik-verify.md  # minimap 描画の `_ik` バイト検証 — getImg parity で指紋衝突の誤ビットマップを解消
+│   └── ADR-1048-5050-audit.md  # 長所50/短所50 + ソクラテス式仮定監査 + P0–P4 改善候補リスト
+│   └── ADR-1049-img-rescan-repark.md  # presence sweep 内の 5分 `_imgRescan` — 60s 期限切れ parked ref の永久プレースホルダー化を解消
+│   └── ADR-1053-peer-display-names.md  # presence (`ping`/`cursor`/`selection`) に `n` フィールドでピア表示名 — カーソルマーカー+アバター tooltip に表示
+│   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

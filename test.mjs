@@ -484,7 +484,7 @@ const checks = [
   ['op frag reassembly re-enters _onRecv so intake gates apply (ADR-0933)', html.includes("this._onRecv(_JP(joined),viaRtc)")],
   ['wire move requires absolute after-patches; delta path is local-undo only (ADR-0934)', html.includes("patches(op.after)&&(op.before==null||patches(op.before))")],
   // v1.7.116: ADR-0058 snapshot LWW merge
-  ['snapshot ops carry per-shape wclock', html.includes("wc:clone(_wc()[s.id]||{})")],
+  ['snapshot ops carry per-shape wclock', html.includes("wc:clone(w||{})")],
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
   // v1.7.117: ADR-0059 style panel ← selection sync
   ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_JS(_selIds().sort())")],
@@ -1161,7 +1161,7 @@ const checks = [
     && html.includes('if(_pr().size>=MAX_PEERS)return;')
     && html.includes("!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN")],
   ['snapshot amplification: _sendSnapshot throttled',
-    html.includes('_lastSnapAt:0,_snapT:0') && html.includes('if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot()},w);return}')],
+    html.includes('_lastSnapAt:0,_snapT:0') && html.includes('if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot(req)},w);return}')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
     html.includes("r.onerror=()=>_eT(_IB);")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
@@ -16320,7 +16320,7 @@ try {
       assert.ok(html.includes("const _shWB=()=>_ln(_eraseBatch)?_sh().concat(_eraseBatch):_sh();"),'whole-board union helper exists');
       assert.ok(html.includes("_imgSlim(_shWB(),stored,1)"),'doc save unions the erase batch');
       assert.ok(html.includes("_imgSlim(shapes.concat(_eraseBatch),stored,1)"),':prev backup unions the erase batch');
-      assert.ok(html.includes("const ops=_shWB().map(s=>({"),'snapshot ops include the batch');
+      assert.ok(html.includes("for(const s of _shWB()){")&&html.includes("if(send)ops.push({op:'add',shape:clone(s)"),'snapshot ops include the batch');
       assert.ok(html.includes("shapes=_shWB()"),'board/clipboard export defaults union the batch');
       flushErase();   // drain via the real commit path; the next block reset()s anyway
       console.log('  ✓ mid-erase members still serialize (ADR-1021)');
@@ -17867,6 +17867,38 @@ pass += 3;
 assert.ok(html.includes("_mk('ping',_nm())"),'ping carries the display name');
 assert.ok(html.includes('_nIn(_pr().get(msg.peer),msg)'),'ping intake lands the name');
 assert.ok(html.includes('p.n?p.n+'),'avatar tooltip shows the peer name');
+pass += 3;
+
+// ADR-1055: delta snapshot — the responder sends only ops newer than the
+// asker's per-id horizon, plus tomb deltas for asker-held ids it deleted.
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+  const s1=Shape.make('box',{x:0,y:0,w:10,h:10}),s2=Shape.make('ellipse',{x:20,y:0,w:10,h:10});
+  state.shapes.push(s1,s2);
+  const wc=state.wclock;
+  wc[s1.id]={x:{peer:'p',seq:1,ts:1000}};
+  wc[s2.id]={x:{peer:'p',seq:1,ts:2000}};
+  let msg=Net._snapshotMsg();
+  assert.strictEqual(msg.ops.length,2,'no horizon → all ops sent');
+  msg=Net._snapshotMsg({[s1.id]:{peer:'p',seq:2,ts:5000}});
+  assert.deepStrictEqual(msg.ops.map(o=>o.shape.id),[s2.id],'delta sends only newer-than-horizon ops');
+  wc.gone1={_del:{peer:'p',seq:1,ts:3000}};
+  msg=Net._snapshotMsg({gone1:{peer:'p',seq:1,ts:2000}});
+  assert.ok(msg.dels&&msg.dels.gone1&&msg.dels.gone1.ts===3000,'dels carries a newer tomb for an asker-held id');
+  const hz=Net._syncReqWc();
+  assert.strictEqual(hz[s1.id].ts,1000,'horizon picks the per-id newest clock');
+  assert.strictEqual(Net._reqWc({wc:{bad:{ts:'x'}}}),null,'malformed horizon → full snapshot');
+  const d1=Shape.make('box',{x:99,y:99,w:5,h:5});state.shapes.push(d1);
+  wc[d1.id]={_born:{peer:'p',seq:1,ts:100}};
+  Net._onRecv({k:'snapshot',peer:'px',shapes:[],ops:[],dels:{[d1.id]:{peer:'px',seq:1,ts:6000}}},false);
+  assert.ok(!byId(d1.id),'dels removes the asker-held shape at a newer del clock');
+  assert.ok(wc[d1.id]._del.ts===6000,'del clock lands for future arbitration');
+  console.log('  ✓ ADR-1055 delta snapshot (7 asserts)');
+}
+pass += 7;
+assert.ok(html.includes("_mk('sync-req',{wc:this._syncReqWc()})"),'sync-req carries the causal horizon');
+assert.ok(html.includes('_sendSnapshot(this._reqWc(msg))'),'responder threads the asker horizon');
+assert.ok(html.includes('msg.dels'),'tomb deltas ride the snapshot');
 pass += 3;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
