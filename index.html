@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.095';   // ADR-1072
+const V='1.8.096';   // ADR-1073
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6089,7 +6089,7 @@ function doPaste(){
   const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,vCx-srcCx+co,vCy-srcCy+co);
   _keepSel(origSel);
-  _tst(t(_PA)+' '+_ln(added));
+  if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0115: paste in place — ⌘⇧V restores shapes at their original coordinates
 // (Figma's Paste-in-place). No offset at all: dx=dy=0 keeps source coords.
@@ -6099,7 +6099,7 @@ function doPasteInPlace(){
   const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,0,0);
   _keepSel(origSel);
-  _tst(t(_PA)+' '+_ln(added));
+  if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0103: paste centred at the context-menu point (right-click «paste here»).
 // No cascade — the user picked the spot, so _pasteCount is left alone.
@@ -6110,7 +6110,7 @@ function doPasteAt(wx,wy){
   const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,wx-srcCx,wy-srcCy);
   _keepSel(origSel);
-  _tst(t(_PA)+' '+_ln(added));
+  if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // Clone shapes onto the board with fresh ids/group ids, offset by (dx,dy), and
 // select the copies. Shared by paste and duplicate. Duplicate must NOT route
@@ -6118,6 +6118,7 @@ function doPasteAt(wx,wy){
 // wrongly pastes B). dx/dy default 20/zoom; paste supplies centering offsets.
 function _placeCopies(srcShapes,dx,dy){
   if(dx===_ud){const o=20/_vp().zoom;dx=o;dy=o;}
+  if(state.ro){_roNo();return[]}   // ADR-1057/1073: gate before dup reseed
   const added=[];
   const built=[];
   const gidMap=_mP();
@@ -6128,7 +6129,7 @@ function _placeCopies(srcShapes,dx,dy){
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;   // ADR-0646/1072: land on the viewed page — a foreign pg on a page-less doc invisibilizes the copy
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;   // ADR-0646/1072: foreign pg on a page-less doc hides the copy
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
@@ -6154,7 +6155,7 @@ function doDuplicate(){
   const smart=state.dupIds.size&&_dd()&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()
   _keepSel(origSel);
-  _tst(t(_PA)+' '+_ln(added));
+  if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 function doDelete(){
   const sel=_selUL();
@@ -6844,7 +6845,7 @@ function excScene(shapes){
         if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();_pu(els,_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
-        const _du2=_du(s)||Net._imgIn.get(s.img)||'';   // ADR-1067: unresolved img ref → dangling fileId (excalidraw renders its missing-image placeholder); never .match() on undefined
+        const _du2=_du(s)||Net._imgIn.get(s.img)||'';   // ADR-1067: dangling fileId stands for the unresolved img ref
         const fid='f'+s.id;
         if(_du2)files[fid]={id:fid,mimeType:(_du2.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:_du2,created:0,lastRetrieved:0};
         _pu(els,E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
@@ -7603,6 +7604,7 @@ function importExcText(txt,wp){
 // of copyBoardJSON). _placeCopies remaps ids/groupIds/bindings so the same
 // JSON can paste repeatedly onto the same board without id collisions.
 function importBoardText(txt,wp){
+  if(state.ro){_roNo();return true}   // ADR-1057/1073
   let data=null;
   try{data=_JP(txt)}catch(_){return false}
   if(!data||!_iA(data.shapes))return false;
@@ -7890,7 +7892,7 @@ function buildSVG(shapes,paper){
           _pu(els,`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(_du(s))}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}${_sh}/>`);
           if(_sk(s)&&_szz(s))_pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(_sk(s))}" stroke-width="${_num(_szz(s))}"${dA}${a}${rT}/>`);   // ADR-0176/0178
         }
-        else _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" fill="none" stroke="${_esc(_sk(s)||'#CBD5E1')}" stroke-width="1"${a}${rT}/>`);   // ADR-1067: canvas parity — an unresolved img ref draws the placeholder box, not nothing
+        else _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" fill="none" stroke="${_esc(_sk(s)||'#CBD5E1')}" stroke-width="1"${a}${rT}/>`);   // ADR-1067: canvas parity — the unresolved ref draws the placeholder box
         if(_lb(s))_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -8277,7 +8279,7 @@ const Net={
         this._imgChunks.delete(kk);
         const data=st.p.join('');
         if(_ln(data)>12_000_000)break;
-        if(_imgHash(data)!==msg.key.replace(/:\d+$/,'')||!_sw(data,'data:image/'))break;   // ADR-0864/1068: hash-matched AND image-typed — junk blobs would plant a dataUrl validShape can never carry
+        if(_imgHash(data)!==msg.key.replace(/:\d+$/,'')||!_sw(data,'data:image/'))break;   // ADR-0864/1068: hash+type gate — junk can't plant a dataUrl
         if(this._imgIn.has(msg.key))this._imgInB-=_ln(this._imgIn.get(msg.key));
         this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
         while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784
@@ -8991,7 +8993,7 @@ function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+
 function _imgSlim(shapes,stored,fmark){
   const slim=[],puts=[];
   for(const s of shapes){
-    if(s&&_im(s)&&_iS(s.dataUrl)&&_sw(_du(s),'data:image/')&&_du(s).length>128){   // ADR-1068: a non-image dataUrl fails validShape — never slim it into a "blob" that hash-matches junk into _imgIn
+    if(s&&_im(s)&&_iS(s.dataUrl)&&_sw(_du(s),'data:image/')&&_du(s).length>128){   // ADR-1068: never slim a non-image dataUrl — it would fail validShapen
       let k=_imgHash(_du(s));
       while(stored.get(k)!==_ud&&stored.get(k)!==_du(s))k=_imgNextKey(k);
       if(stored.get(k)===_ud){stored.set(k,_du(s));_pu(puts,[k,_du(s)])}
