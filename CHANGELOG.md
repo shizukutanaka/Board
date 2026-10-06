@@ -1,3 +1,11 @@
+## [1.8.111] - 2026-10-01
+
+### Fixed
+- **round837 / ADR-1087 — patch ops require a complete `before` baseline**: closing the hole ADR-1086 left open — `_chg` reads a key missing from the matching `before` entry as *changed*, so a forged `before:[{id}]` (or a key-sparse entry) made every prop in `after` stamp and apply exactly like a before-less op, stomping a peer's concurrent writes. Every emit site already produces key-equivalent before/after pairs for the patch families — `move`, `style`, `resize`, `align` — so intake now requires identical key sets per id (`cov()` both directions). `zorder` changes require `before` AND `after` frac strings; `group` requires a `before` entry per member id. `upd` (changed-keys-only finalize op) and `beautify` (a retype legitimately introduces props — x,y,w,h have no baseline) are exempt by design. Fixtures asserting the old sparse contract migrated.
+
+### Docs
+- `docs/ADR-1087-complete-before-baseline.md`.
+
 ## [1.8.110] - 2026-10-01
 
 ### Fixed
