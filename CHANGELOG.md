@@ -1,3 +1,12 @@
+## [1.8.074]
+- **Audit: 50/50 — strengths, weaknesses, improvement surface** — a
+  first-principles/Socratic pass over the whole product: 7 founding
+  assumptions challenged (single-file, op-log+LWW, dual transport,
+  in-memory dedup, fingerprint addressing, manual signaling, docs-not-
+  types), 50 grounded strengths and 50 grounded weaknesses each citing
+  the mechanism, and a ranked P0–P4 improvement list. Docs + pins only
+  (ADR-1048).
+
 ## [1.8.073]
 - **Fix: minimap image render verifies `_ik` like `getImg`** — the minimap
   scene branch was the only `_imgCache` reader bypassing `getImg`'s byte

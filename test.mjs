@@ -17820,6 +17820,14 @@ pass += 4; // ADR-1043 local add img-attach pins
 pass += 7; // ADR-1044 pending-nudge × remote-apply lifecycle pins
 pass += 2; // ADR-1045 snapshot img-answer-store pins
 pass += 3; // ADR-1046 img-pending waitlist bound/FIFO pins
+// ADR-1048: 50/50 audit doc exists with both inventories + ranked improvements
+{
+  const a=(()=>{try{return readFileSync('docs/ADR-1048-5050-audit.md','utf8')}catch(_){return''}})();
+  assert.ok(a.includes('## Strengths (50)')&&a.includes('## Weaknesses (50)'),'ADR-1048 carries both 50-item inventories');
+  assert.ok(a.includes('Improvement candidates (ranked)')&&a.includes('Socratic challenge'),'ADR-1048 carries ranked improvements + assumption challenge');
+  console.log('  ✓ ADR-1048 audit-doc pins (2 asserts)');
+}
+pass += 2; // ADR-1048 audit-doc pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
