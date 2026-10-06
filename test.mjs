@@ -18274,6 +18274,21 @@ pass += 4;
 }
 console.log('  ✓ ADR-1078 _park intake bounds (4 asserts)');
 pass += 4;
+// ---- ADR-1079: incremental adds share the wholesale ceiling ----
+{
+  const keep=state.shapes.slice();
+  state.shapes.length=0;
+  for(let i=0;i<200000;i++)state.shapes.push({id:'f'+i,type:'rect',x:0,y:0,w:1,h:1});
+  Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:{id:'over1',type:'rect',x:0,y:0,w:10,h:10,z:1},clock:{peer:'p9',seq:1,ts:1}}},false);
+  assert.strictEqual(state.shapes.length,200000,'add op cannot grow past SHARE_MAX_SHAPES');
+  state.shapes.length=199999;
+  Net._onRecv({k:'op',peer:'p9',op:{op:'addMany',shapes:[{id:'m1',type:'rect',x:0,y:0,w:1,h:1,z:1},{id:'m2',type:'rect',x:0,y:0,w:1,h:1,z:1},{id:'m3',type:'rect',x:0,y:0,w:1,h:1,z:1}],clock:{peer:'p9',seq:2,ts:2}}},false);
+  assert.strictEqual(state.shapes.length,200000,'addMany fills to the ceiling then stops');
+  state.shapes.length=0;for(const s of keep)state.shapes.push(s);_invalidateGrid();
+  assert.ok(html.includes('const _shCap=()=>_ln(_sh())<SHARE_MAX_SHAPES'),'the ceiling helper exists');
+}
+console.log('  ✓ ADR-1079 incremental-add ceiling (3 asserts)');
+pass += 3;
 // ---- ADR-1065: img-ref × dataUrl coexistence — the patch's written prop wins ----
 {
   state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
