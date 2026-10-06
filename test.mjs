@@ -2525,8 +2525,10 @@ try {
     Net._rtcPeerId='rtc:m1';state.peers.set('rtc:m1',{color:'#abc'});
     Net._onRecv({k:'cursor',peer:'z',x:1,y:2},true);
     assert.deepStrictEqual(state.peers.get('rtc:m1').cursor,{x:1,y:2},'DC cursor enriches the rtc row');
+    state.shapes.push({id:'a'});   // ADR-1080: sel ids must resolve now
     Net._onRecv({k:'selection',peer:'z',ids:['a']},true);
     assert.deepStrictEqual(state.peers.get('rtc:m1').sel,['a'],'DC selection enriches the rtc row');
+    state.shapes.length=state.shapes.length-1;
     Net._onRecv({k:'name',name:'dc-doc',ts:nowTs()+4000,peer:'z'},true);
     assert.strictEqual(state.docName,'dc-doc','DC name applies via LWW');
     Net._onRecv({k:'bye',peer:'z'},true);
@@ -7562,6 +7564,7 @@ try {
       A.state.peers.set('peerB',{color:'#111',lastSeen:Date.now()});
       B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
       A.Net._lastSelSent='';
+      const _bs=B.state.shapes.length;for(const id of['s1','s2','s3','s4','sX','ok','ok2'])B.state.shapes.push({id,type:'rect'});   // ADR-1080: sel ids must resolve
 
       // (a) BC path: A's selection reaches B, keyed by A's real peerId; deselect propagates
       A.state.selection=new Set(['s1','s2']);
@@ -7609,6 +7612,7 @@ try {
       assert.doesNotThrow(()=>B.Net._onRecv({k:'selection',peer:'ghost',ids:['x']}),'ADR-0011e: selection for an unknown peer does not throw');
       assert.strictEqual(B.state.peers.has('ghost'),false,'ADR-0011e: selection for an unknown peer does not create a new entry');
 
+      B.state.shapes.length=_bs;
       console.log('  ✓ ADR-0011 peer selection presence: change-detect send, deselect clear, join resend, viaRtc→_rtcPeerId, defensive intake');
     }
 
@@ -18274,6 +18278,19 @@ pass += 4;
 }
 console.log('  ✓ ADR-1078 _park intake bounds (4 asserts)');
 pass += 4;
+// ---- ADR-1080: peer-selection ids resolve against live shapes ----
+{
+  Net._onRecv({k:'ping',peer:'p9'},false);
+  const p9=state.peers.get('p9');
+  Net._onRecv({k:'selection',peer:'p9',ids:['dead1','dead2','dead3']},false);
+  assert.strictEqual(p9.sel.length,0,'nonexistent ids are never stored');
+  state.shapes.push({id:'live1',type:'rect',x:0,y:0,w:10,h:10,z:1});_invalidateGrid();
+  Net._onRecv({k:'selection',peer:'p9',ids:['live1','dead9']},false);
+  assert.deepStrictEqual(p9.sel,['live1'],'only live ids are kept');
+  assert.ok(html.includes('p.sel=_s0(ids.filter(byId),4096)'),'sel storage is existence-filtered + capped');
+}
+console.log('  ✓ ADR-1080 peer-selection dead-id filter (3 asserts)');
+pass += 3;
 // ---- ADR-1079: incremental adds share the wholesale ceiling ----
 {
   const keep=state.shapes.slice();

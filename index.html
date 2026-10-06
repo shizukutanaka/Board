@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.103';   // ADR-1076
+const V='1.8.104';   // ADR-1076
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8376,7 +8376,7 @@ const Net={
         const peerKey=this._pk(msg,viaRtc);
         if(viaRtc&&peerKey&&!_pr().has(peerKey))this._touchPeer(peerKey);   // ADR-0986
         const p=peerKey&&_pr().get(peerKey);
-        if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.sel=ids;p.pg=npg;_nIn(p,msg);_ivO();if(ch)UI.refreshPeers()}   // ADR-1053   // ADR-0647/0769
+        if(p){const npg=_iS(msg.pg)?_s0(msg.pg,64):null,ch=p.pg!==npg;p.sel=_s0(ids.filter(byId),4096);p.pg=npg;_nIn(p,msg);_ivO();if(ch)UI.refreshPeers()}   // ADR-1053/1080   // ADR-0647/0769
         break;}
     }
   },

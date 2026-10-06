@@ -1,3 +1,8 @@
+## [1.8.104] - 2026-10-01
+
+### Fixed
+- ピア `selection` presence が dead id を最大20万件格納し、`drawPeerSelections` で毎オーバーレイ再描画ごとに全件 `byId` 走査していた CPU 増幅残穴 — intake で `ids.filter(byId)` の存在フィルタ + 4096 表示上限 (ADR-1080)
+
 ## [1.8.103] - 2026-10-01
 
 ### Fixed
