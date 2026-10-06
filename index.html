@@ -881,7 +881,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.074';   // ADR-1048
+const V='1.8.075';   // ADR-1049
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1973,7 +1973,7 @@ function computeConnClears(delIds){
   return connClears;
 }
 // ---- fractional z-index (ADR-0001 Step 1) ----------------------------------
-// keyBetween(a,b): strictly-ordered string key between a and b; null = open end. Keys derive from array order (reindexFrac).
+// keyBetween(a,b): strictly-ordered string key; null = open end (reindexFrac)
 const FRAC_DIGITS='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 function keyBetween(a,b){
   const N=_ln(FRAC_DIGITS), di=c=>{const k=_ix(FRAC_DIGITS,c);return k<0?0:k};
@@ -2065,7 +2065,7 @@ const Shape={
 // insertion order): on access we re-insert to mark recent, and evict the oldest
 // past the cap so a board with many pasted images can't leak memory.
 const _imgCache=_mP(),IMG_CACHE_MAX=60;
-// O(1) key — a dataUrl can be ~4MB, keying hashes MB/frame. ADR-0035: mime+len +48c head/mid/tail fingerprint — a colliding image must match three distant byte ranges (same-tail alone rendered the WRONG image).
+// O(1) key — ADR-0035: mime+len +48c head/mid/tail fingerprint; byte-verify on hit (1040)
 function _imgKey(u){if(!_iS(u))return'';
   const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
@@ -2191,6 +2191,7 @@ const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
 const _park=(P,id,k)=>{if(P.size>=256&&!P.has(id))P.delete(P.keys().next().value);P.set(id,{k,t0:nowTs()})};   // ADR-0842
+const _imgRescan=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s)&&!Net._imgPending.has(s.id))_park(Net._imgPending,s.id,s.img)};   // ADR-1049: slow re-park of expired refs
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive …
 // wasted pixels), clamped 0.25..2 so extreme zoom-outs still rasterize tiny.
@@ -2254,7 +2255,7 @@ function drawPenMaybeCached(s,c){
 }
 
 // ====================== DRAFT INK STAMP (ADR-0029) ======================
-// ADR-0046: variable-width ink = trapezoid-per-segment + disc-per-vertex union fill; ends taper over PEN_TAPER samples (live tail keeps them).
+// ADR-0046: variable-width ink = trapezoid/segment + disc/vertex union; ends taper over PEN_TAPER
 const PEN_TAPER=8,PEN_TAPER_LO=0.15;
 function _penTaperI(i){return i>=PEN_TAPER?1:PEN_TAPER_LO+(1-PEN_TAPER_LO)*i/PEN_TAPER}
 function _penTaperE(d){return d>=PEN_TAPER?1:PEN_TAPER_LO+(1-PEN_TAPER_LO)*d/PEN_TAPER}
@@ -2398,7 +2399,7 @@ function drawPenDraft(s){
 }
 
 // ====================== RENDER ======================
-// On-demand RAF: _iv() schedules a frame only when needed; frame() clears the pending id so mid-frame _iv() reschedules once.
+// On-demand RAF: _iv() schedules; frame() clears pending id so mid-frame _iv() reschedules
 let needsRender=true,needOverlay=true,_rafId=0;
 let _damage=null;   // ADR-0026: accumulated world-space dirty rect
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030: pinch-start canvas copy + viewport for scaled preview
@@ -7967,7 +7968,7 @@ const Net={
     if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}   // ADR-0619/0695/0839
-    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();   // ADR-0464/0466/0836
+    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;   // ADR-0464/0466/0836/1049
     for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467: drop old-room presence
     clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat
     state.roomId=roomId||DOC_KEY;
@@ -7981,9 +7982,10 @@ const Net={
       this._presenceTimer=setInterval(()=>{
         this._send(_mk('ping'));   // ADR-0740
         this._reapPeers();this._reapFrags();
-        // ADR-0835: aged parked refs re-request via imgq; park drops at 60s —
-        // the shape's `img:` ref still heals from any later blob with the key.
+        // ADR-0835/1049: aged parked refs re-request via imgq; park drops at 60s —
+        // the ref still heals on any later blob or the 5-min _imgRescan re-ask.
         const _ipq=nowTs();for(const[id,e]of this._imgPending){if(_ipq-e.t0>60000)this._imgPending.delete(id);else if(_ipq-e.t0>NET_PRESENCE_INTERVAL*2)this._bcast(_mk('imgq',{key:e.k}))}
+        if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}   // ADR-1049
         // ADR-0475
         if(!this._snapRx&&this._snapRetry++<3)this._send(_mk('sync-req'));
       },NET_PRESENCE_INTERVAL);
@@ -8217,7 +8219,7 @@ const Net={
       case 'name':   // ADR-0402/0581: rename is LWW — a stale slower rename can't clobber a newer one
         if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)&&_tsOK(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}   // ADR-0701/0791
         break;
-      case 'bye':{   // ADR-0456/0986: peer left — drop presence now. viaRtc keeps _rtcPeerId: onclose clears it; the peer's own next msg resurrects the row
+      case 'bye':{   // ADR-0456/0986: peer left — drop presence now (viaRtc keeps _rtcPeerId until onclose)
         const pk=this._pk(msg,viaRtc);
         if(pk&&_pr().delete(pk)){_ivO();if(this._onConnChange)this._onConnChange()}
         break;}
