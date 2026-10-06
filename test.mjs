@@ -5626,12 +5626,12 @@ try {
     Net._imgIn.set(slim.shape.img,big);
     const att=Net._attachOp(slim);
     assert.ok(att.shape.dataUrl===big&&!att.shape.img,'attach resolves dataUrl');
-    const kX=_imgHash('DATA');
+    const kX=_imgHash('data:image/png;base64,DT');
     const miss={op:'add',shape:{id:'zz',type:'image',img:kX,x:0,y:0,w:1,h:1}};
     Net._attachOp(miss);
     assert.ok(Net._imgPending.get('zz')?.k===kX,'missing blob parks');
-    Net._onRecv({k:'img',key:kX,seq:0,n:1,data:'DATA'},false);
-    assert.ok(Net._imgIn.get(kX)==='DATA','chunk reassembles into _imgIn');
+    Net._onRecv({k:'img',key:kX,seq:0,n:1,data:'data:image/png;base64,DT'},false);
+    assert.ok(Net._imgIn.get(kX)==='data:image/png;base64,DT','chunk reassembles into _imgIn');
     assert.ok(!Net._imgPending.has('zz'),'pending drained on blob arrival');
     console.log('  ✓ wire image refs: slim/dedup/re-emit/attach/pending (7 asserts)');
     // ADR-0379: an oversized msg.data must be rejected before buffering —
@@ -5774,30 +5774,30 @@ try {
       // the received-blob store is capped (refs re-resolve on the next snapshot).
       Net._imgChunks.clear();
       for(let i=0;i<64;i++)Net._onRecv({k:'img',peer:'P1',key:'k'+i,seq:0,n:2,data:'a'},true);
-      const kz=_imgHash('z');
-      Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:1,data:'z'},true);
+      const kz=_imgHash('data:image/png;base64,Z');
+      Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:1,data:'data:image/png;base64,Z'},true);
       assert.ok(!Net._imgChunks.has('k0|P1')&&Net._imgChunks.has('k63|P1'),'oldest stalled img key evicted');
-      assert.strictEqual(Net._imgIn.get(kz),'z','completed img blob stored');
+      assert.strictEqual(Net._imgIn.get(kz),'data:image/png;base64,Z','completed img blob stored');
       // ADR-0454: same restart rule as _fragIn — a stale partial under a different
       // chunk count must not block the fresh stream for that key.
       Net._imgChunks.clear();
-      const kq=_imgHash('q');
+      const kq=_imgHash('data:image/png;base64,Q');
       Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:3,data:'a'},true);
       assert.ok(Net._imgChunks.get(kq+'|P1').g===1,'partial img assembly parked');
-      Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:1,data:'q'},true);
-      assert.strictEqual(Net._imgIn.get(kq),'q','img n-mismatch restarts and completes');
+      Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:1,data:'data:image/png;base64,Q'},true);
+      assert.strictEqual(Net._imgIn.get(kq),'data:image/png;base64,Q','img n-mismatch restarts and completes');
       // ADR-0563: same-src img stream restart (seq 0) must not splice old+new
       Net._imgChunks.clear();Net._imgIn.clear();
-      const kN2=_imgHash('NEW!');
+      const kN2=_imgHash('data:image/png;base64,NW');
       Net._onRecv({k:'img',peer:'P1',key:kN2,seq:0,n:2,data:'OL'},true);
-      Net._onRecv({k:'img',peer:'P1',key:kN2,seq:0,n:2,data:'NE'},true);
-      Net._onRecv({k:'img',peer:'P1',key:kN2,seq:1,n:2,data:'W!'},true);
-      assert.strictEqual(Net._imgIn.get(kN2),'NEW!','img seq 0 restarts a stale assembly');
+      Net._onRecv({k:'img',peer:'P1',key:kN2,seq:0,n:2,data:'data:image/png;base64,N'},true);
+      Net._onRecv({k:'img',peer:'P1',key:kN2,seq:1,n:2,data:'W'},true);
+      assert.strictEqual(Net._imgIn.get(kN2),'data:image/png;base64,NW','img seq 0 restarts a stale assembly');
       Net._imgIn.clear();
       for(let i=0;i<258;i++)Net._imgIn.set('b'+i,'d');
       assert.ok(Net._imgIn.size>=256,'pre-cap store setup');
-      Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:1,data:'q'},true);
-      assert.strictEqual(Net._imgIn.get(kq),'q','imgIn accepts new blob under cap');
+      Net._onRecv({k:'img',peer:'P1',key:kq,seq:0,n:1,data:'data:image/png;base64,Q'},true);
+      assert.strictEqual(Net._imgIn.get(kq),'data:image/png;base64,Q','imgIn accepts new blob under cap');
       assert.ok(Net._imgIn.size<=258,'imgIn stays bounded');
       console.log('  ✓ ADR-0443..0449: undo-wire + del slim + purge + frag restart + img bounds (27 asserts)');
     }
@@ -16629,7 +16629,7 @@ try {
       assert.ok(html.includes("case 'snap':case 'opc':{")&&html.includes("if(!viaRtc)break;"),'frag streams are DC-only');
       assert.ok(html.includes("if(!sn||sn.n!==n||sn.src!==src||seq===0){sn={p:new Array(n),g:0,n,src};this[key]=sn}"),'slot restarts on n/src/seq0');
       assert.ok(html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m)"),'dcQ is count+byte capped');
-      assert.ok(html.includes("if(_imgHash(data)!==msg.key.replace(/:\\d+$/,''))break;"),'img join is hash-verified');
+      assert.ok(html.includes("if(_imgHash(data)!==msg.key.replace(/:\\d+$/,'')||!_sw(data,'data:image/'))break;"),'img join is hash+type verified');
       const t='_tF';
       assert.strictEqual(Net._fragIn({seq:1,n:2,data:'B'},t,'rtc'),undefined,'mid-stream chunk buffers');
       assert.strictEqual(Net._fragIn({seq:0,n:2,data:'A'},t,'rtc'),undefined,'seq0 restarts the slot');
@@ -16697,23 +16697,23 @@ try {
       // splice-mixed chunks into a shared slot → hash failed → parked ref
       // never resolved (permanent broken image while ≥2 holders exist).
       reset();Net._imgChunks.clear();Net._imgIn.clear();
-      const kz=_imgHash('zz');
-      Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:2,data:'z'},true);
+      const kz=_imgHash('data:image/png;base64,Zz');
+      Net._onRecv({k:'img',peer:'P1',key:kz,seq:0,n:2,data:'data:image/png;base64,Z'},true);
       Net._onRecv({k:'img',peer:'P2',key:kz,seq:0,n:2,data:'y'},true);
       assert.ok(Net._imgChunks.has(kz+'|P1')&&Net._imgChunks.has(kz+'|P2'),'each sender gets its own slot');
       Net._onRecv({k:'img',peer:'P1',key:kz,seq:1,n:2,data:'z'},true);
-      assert.strictEqual(Net._imgIn.get(kz),'zz','first complete stream lands');
+      assert.strictEqual(Net._imgIn.get(kz),'data:image/png;base64,Zz','first complete stream lands');
       // dead streams stop buffering once resolved
       const before=Net._imgChunks.size;
       Net._onRecv({k:'img',peer:'P2',key:kz,seq:1,n:2,data:'w'},true);
       assert.ok(Net._imgChunks.size===before-1||!Net._imgChunks.has(kz+'|P2')||true,'resolved key never buffers new chunks');
       // same-sender stream restart still works
       Net._imgChunks.clear();Net._imgIn.clear();
-      const kN=_imgHash('NEW!');
+      const kN=_imgHash('data:image/png;base64,NW');
       Net._onRecv({k:'img',peer:'P1',key:kN,seq:0,n:2,data:'OL'},true);
-      Net._onRecv({k:'img',peer:'P1',key:kN,seq:0,n:2,data:'NE'},true);
-      Net._onRecv({k:'img',peer:'P1',key:kN,seq:1,n:2,data:'W!'},true);
-      assert.strictEqual(Net._imgIn.get(kN),'NEW!','same-src seq0 restart unaffected');
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:0,n:2,data:'data:image/png;base64,N'},true);
+      Net._onRecv({k:'img',peer:'P1',key:kN,seq:1,n:2,data:'W'},true);
+      assert.strictEqual(Net._imgIn.get(kN),'data:image/png;base64,NW','same-src seq0 restart unaffected');
       console.log('  ✓ img slots are sender-tagged (ADR-1038)');
     }
     {
@@ -17452,11 +17452,11 @@ try {
     Net._imgChunks.clear();
     Net._imgChunks.set('a',{p:['x'.repeat(12_000_000)],g:1,n:2,b:12_000_000});
     Net._imgChunks.set('b',{p:['x'.repeat(12_000_000)],g:1,n:2,b:12_000_000});
-    const kC=_imgHash('x'.repeat(96*1024)+'data:image/png;base64,AA');
-    Net._onRecv({k:'img',key:kC,seq:0,n:2,data:'x'.repeat(96*1024),peer:'pz'},false);
+    const kC=_imgHash('data:image/png;base64,'+'x'.repeat(90*1024)+'AA');
+    Net._onRecv({k:'img',key:kC,seq:0,n:2,data:'data:image/png;base64,'+'x'.repeat(90*1024),peer:'pz'},false);
     assert.ok(!Net._imgChunks.has('a')&&Net._imgChunks.has('b')&&Net._imgChunks.has(kC+'|pz'),'aggregate cap evicts the oldest slot only');
-    Net._onRecv({k:'img',key:kC,seq:1,n:2,data:'data:image/png;base64,AA',peer:'pz'},false);
-    assert.strictEqual(Net._imgIn.get(kC),'x'.repeat(96*1024)+'data:image/png;base64,AA','surviving slot still completes');
+    Net._onRecv({k:'img',key:kC,seq:1,n:2,data:'AA',peer:'pz'},false);
+    assert.strictEqual(Net._imgIn.get(kC),'data:image/png;base64,'+'x'.repeat(90*1024)+'AA','surviving slot still completes');
     Net._imgChunks.clear();
     console.log('  ✓ img reassembly bounded by aggregate bytes too (ADR-0785)');
   }
@@ -17630,12 +17630,12 @@ try {
     // ADR-0842: _imgSent gets the same byte bound as _imgIn — a long session of
     // pasting + deleting images must not retain dead dataUrls unboundedly.
     assert.ok(html.includes("_sb>64_000_000"),'_imgSent is byte-bounded like _imgIn');
-    {Net._imgSent.clear();const _im={id:'i1',type:'image',dataUrl:'x'.repeat(200)};
+    {Net._imgSent.clear();const _im={id:'i1',type:'image',dataUrl:'data:image/png;base64,'+'x'.repeat(200)};
      const _sl5=Net._slimShapes([_im]);
      assert.ok(_sl5[0].img&&Net._imgSent.has(_sl5[0].img),'sent blob registered for imgq answers');
      Net._imgSent.clear();Net._imgOuts.length=0;}
     {Net._imgSent.clear();Net._imgSent.set('k1','x'.repeat(33e6));Net._imgSent.set('k2','y'.repeat(33e6));
-     Net._slimShapes([{id:'i9',type:'image',dataUrl:'z'.repeat(200)}]);
+     Net._slimShapes([{id:'i9',type:'image',dataUrl:'data:image/png;base64,'+'z'.repeat(200)}]);
      assert.ok(!Net._imgSent.has('k1')&&Net._imgSent.has('k2'),'byte bound evicts oldest entry first');
      Net._imgSent.clear();Net._imgOuts.length=0;}
     // ADR-1045: the snapshot path passed a throwaway `sent` map, so its puts
@@ -18235,12 +18235,12 @@ pass += 8;
   // an img patch parks over surviving stale dataUrl — the adopted ref is the
   // sender's intent; the blob arrival replaces dataUrl (converges)
   const b={id:'o2',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:OLD'};state.shapes.push(b);
-  const kH=_imgHash('data:HEALED');
+  const kH=_imgHash('data:image/png;base64,HEALED');
   _oa(b,{img:kH});
   assert.strictEqual(b.img,kH,'adopted ref kept');
   assert.ok(Net._imgPending.get('o2')?.k===kH,'adopted ref parks for imgq heal');
-  Net._onRecv({k:'img',key:kH,data:'data:HEALED',n:1,seq:0,peer:'A'},false);
-  assert.strictEqual(b.dataUrl,'data:HEALED','blob arrival converges the stale dataUrl');
+  Net._onRecv({k:'img',key:kH,data:'data:image/png;base64,HEALED',n:1,seq:0,peer:'A'},false);
+  assert.strictEqual(b.dataUrl,'data:image/png;base64,HEALED','blob arrival converges the stale dataUrl');
   assert.strictEqual(b.img,undefined,'resolved ref dropped');
   // a ref-only shape stays parked across an unrelated patch
   const c={id:'o3',type:'image',x:0,y:0,w:10,h:10,z:1,img:'K3'};state.shapes.push(c);
@@ -18322,6 +18322,27 @@ pass += 10;
 }
 console.log('  ✓ ADR-1067 export placeholder parity (11 asserts)');
 pass += 11;
+
+// ---- ADR-1068: image payload intake stays inside the dataUrl model ----
+{
+  const httpImg={id:'i1',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'https://t.example/x.png?'+'p'.repeat(200)};
+  const{slim,puts}=_imgSlim([httpImg],new Map());
+  assert.ok(slim[0].dataUrl&&!slim[0].img,'non-image dataUrl is not slimmed into a ref');
+  assert.strictEqual(puts.length,0,'junk never enters the blob store');
+  const kJ=_imgHash('https://t.example/junk.bin');
+  Net._imgPending.clear();Net._imgIn.clear();
+  Net._onRecv({k:'img',key:kJ,seq:0,n:1,data:'https://t.example/junk.bin',peer:'peerZ'},false);
+  assert.ok(!Net._imgIn.has(kJ),'hash-matched non-image blob rejected at intake');
+  const kO=_imgHash('data:image/png;base64,OK');
+  Net._onRecv({k:'img',key:kO,seq:0,n:1,data:'data:image/png;base64,OK',peer:'peerZ'},false);
+  assert.strictEqual(Net._imgIn.get(kO),'data:image/png;base64,OK','real image blob still lands');
+  const{slim:sl2}=_imgSlim([{id:'i2',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:image/png;base64,'+'A'.repeat(200)}],new Map());
+  assert.ok(sl2[0].img&&!sl2[0].dataUrl,'image dataUrl still slims to a ref');
+  assert.ok(html.includes("_sw(_du(s),'data:image/')")&&html.includes("||!_sw(data,'data:image/')")&&html.includes("match(/image=(data:image\\/[^;]*;base64"),'source pins');
+}
+console.log('  ✓ ADR-1068 image payload intake domain (7 asserts)');
+pass += 7;
+
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

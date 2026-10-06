@@ -1,3 +1,17 @@
+## [1.8.091]
+- **Fix: image payload intake stays inside the `dataUrl` model domain (ADR-1068)** —
+  `validShape` requires `dataUrl` to match `/^data:image\//`; three sites
+  manufactured values that could never converge on the wire. The drawio
+  importer's `image=` regex accepted `https?:` URLs and assigned them to
+  `s.dataUrl` (local-only shape — the `add` op is rejected on every peer);
+  `_imgSlim` hashed ANY long `dataUrl` into the blob store so an `https:`
+  URL became imgq-answerable and receivers installed the illegal value;
+  and img chunk intake verified `_imgHash` but not the payload format, so
+  a hash-matched non-image blob could materialize into `dataUrl`. All
+  three are now gated on `data:image/` — byte-less drawio image cells
+  emit an image placeholder (a legal shape), and forged non-image blobs
+  stay parked.
+
 ## [1.8.090]
 - **Fix: exports render unresolved img refs as placeholders, not crashes (ADR-1067)** —
   `.excalidraw` export called `_du(s).match()` on an image shape that
