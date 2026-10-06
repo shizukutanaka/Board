@@ -1,3 +1,22 @@
+## [1.8.082]
+- **Fix: superseded link's send backlog is reset before the next channel
+  (ADR-1059)** — a congested send parks messages in `_dcQ` and drains them
+  on `onbufferedamountlow`. Re-handshaking closed the old peer connection
+  but never the queue; `wrtcCreateOffer` then assigns `this.dc` to the new
+  channel in the same tick, so the old channel's `onclose` hits the
+  stale-close early return and never clears `_dcQ`. From then on every
+  `_sendDC` appended to the backlog and never sent — ops, presence, the
+  join snapshot, and imgq answers all silently vanished on the new link —
+  while a late `bufferedamountlow` on the old channel could instead drain
+  the stale queue INTO the new link (cross-peer op injection).
+  `_wrtcInit` now closes the channel and clears `_dcQ`/`_dcQB` before the
+  new rtc is created, `Net.init` clears the same pair on a room switch,
+  and the drain tolerates a queue cleared in between (`b||[]`).
+- Tests: behavioural pins — congested send leaves a byte-counted backlog,
+  drain tolerates the cleared queue, the fresh link sends immediately;
+  source pins — the reset on both supersede paths + stale-close guard
+  preserved (8 asserts, 3683 pass total).
+
 ## [1.8.081]
 - **Feat: pen-stroke skeleton smoothing (ADR-1058, ADR-1048 W37)** —
   freehand ink was drawn as the literal polyline the pointer sampled:

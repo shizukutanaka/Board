@@ -1103,6 +1103,7 @@ Board/
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
 │   └── ADR-1058-pen-skeleton-smoothing.md  # ペン描画のスケルトン平滑化 — `_penSm` (1,2,1)/4 加重で描画/スタンプ/SVG の3面を統一、端点保持・圧力 index 維持 (ADR-1048 W37)
+│   └── ADR-1059-superseded-link-backlog-reset.md  # 差替リンクの滞留送信キューを新チャンネル生成前にリセット — `_dcQ`/`_dcQB` 未クリアで新リンクが永久 wedge + 旧キューのクロスリンク注入を閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
