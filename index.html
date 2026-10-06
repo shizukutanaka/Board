@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.094';   // ADR-1071
+const V='1.8.095';   // ADR-1072
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6128,7 +6128,7 @@ function _placeCopies(srcShapes,dx,dy){
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;   // ADR-0646: paste lands on the current page
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;   // ADR-0646/1072: land on the viewed page — a foreign pg on a page-less doc invisibilizes the copy
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);

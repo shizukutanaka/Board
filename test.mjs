@@ -18460,7 +18460,23 @@ pass += 6;
 assert.ok(/if\(ptr\.down\)_cancelPointerGesture\(\);_eraseBatch=\[\]/.test(html),'_rs cancels a live gesture before the swap');
 pass += 1;
 
-pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
+{
+  // ADR-1072: a copied shape carrying a foreign s.pg pasted into a page-less
+  // doc kept the source pg — _pgOk hid the copy on every page forever.
+  state.pages=null;state.curPg=null;
+  const srcPg=Shape.make('rect',{x:0,y:0,w:10,h:10,pg:'foreignPg'});
+  const landed=byId(_placeCopies([srcPg],0,0)[0]);
+  assert.strictEqual(landed.pg,undefined,"single-page paste drops the foreign pg");
+  assert.ok(_pgOk(landed),"the pasted copy is visible");
+  state.pages=[{id:'pQ',name:'Q',nts:0}];state.curPg='pQ';
+  assert.strictEqual(byId(_placeCopies([srcPg],0,0)[0]).pg,'pQ',"multi-page paste lands on the viewed page");
+  state.pages=null;state.curPg=null;state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();state.dupIds=new Set();_invalidateGrid();
+  pass += 3;
+}
+assert.ok(html.includes("else delete sh.pg;"),"_placeCopies drops a foreign pg on a page-less doc");
+pass += 1;
+
+pass += 1926; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
