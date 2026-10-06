@@ -1,3 +1,16 @@
+## [1.8.079]
+- **Security: wire message authentication — room-secret HMAC tags
+  (ADR-1056, ADR-1048 P1-c)** — every wire message on both transports was
+  unauthenticated: any tab or link partner that could post on the channel
+  could inject ops into consensus. All messages now carry a deterministic
+  HMAC tag keyed by a doc-scoped 128-bit secret (`board.rs` in
+  localStorage — the only store same-origin tabs share — durable copy in
+  the IDB record's `rs`); the RTC link authenticates against a key the
+  SDP token hands to the answerer. `_onRecv` drops untagged or mismatched
+  messages before any state mutation. **Breaks wire compat with
+  pre-1.8.079 tabs** (untagged = dropped); same file, same version in
+  practice.
+
 ## [1.8.078]
 - **Perf: delta snapshot sync on join (ADR-1055, ADR-1048 P1-b)** — a
   rejoining peer used to receive the whole board again. `sync-req` now

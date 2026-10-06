@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1813,7 +1813,25 @@ try {
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa, _imgRescan,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
-          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd } = api;
+          switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
+          _s256, _hmac, _eqs, _sec } = api;
+
+  // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
+  // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
+  // the post-1056 intake. _recvRaw bypasses stamping for forged-tag tests.
+  const _patchRecv=W=>{
+    const _r=W.Net._onRecv.bind(W.Net);
+    W.Net._onRecv=(m,r)=>{
+      if(m&&typeof m==='object'){
+        const c={...m};
+        if(!c.mac&&!c.dmac){if(r)c.dmac=W.Net._dmac(c);else c.mac=W.Net._mac(c)}
+        m=c;
+      }
+      return _r(m,r);
+    };
+    W.Net._recvRaw=_r;
+  };
+  _patchRecv(api);
 
   console.log('\n-- behavioural --');
 
@@ -7405,6 +7423,7 @@ try {
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
       fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.BroadcastChannel
     );
+    _patchRecv(B);   // ADR-1056
     const cp = o => JSON.parse(JSON.stringify(o));
     A.state.peerId='peerA'; B.state.peerId='peerB';
     const reset = W => { _nugEnd(); W.state.shapes.length=0;_invalidateGrid(); W.state.history.length=0; W.state.histIdx=-1; W.state.seq=0; W.state.seenOps=new Set(); W.state.wclock={}; W.state._lastRep=null; };
@@ -7715,6 +7734,7 @@ try {
         const E=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel);
+        _patchRecv(E);   // ADR-1056
         assert.strictEqual(E.UI._themeMode(),'dark','boot restore: a persisted board.theme=dark is honoured at module load');
         delete ls._d['board.theme'];
 
@@ -7725,6 +7745,7 @@ try {
         const F=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel);
+        _patchRecv(F);   // ADR-1056
         F.UI.toggleTheme();
         assert.strictEqual(F.UI._themeMode(),'light','storage-throws: first toggle still advances to light in memory');
         assert.strictEqual(de.dataset.theme,'light','storage-throws: DOM actually reflects light');
@@ -7874,6 +7895,7 @@ try {
         D=fn(fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
           fakeWin.indexedDB,fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
           fakeWin.getComputedStyle,fakeWin.confirm,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel);
+        _patchRecv(D);   // ADR-1056
         assert.strictEqual(D._getLang(),'ja','boot restore: a persisted board.lang=ja is honoured at module load, before any toggle');
         assert.strictEqual(D._getT().k.select,D.I18N.ja.k.select,'boot restore: T is I18N.ja from the start, not just LANG');
       }finally{
@@ -8961,6 +8983,7 @@ try {
         fakeWin.getComputedStyle, ()=>true, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,
         fakeWin.location, fakeWin.history, fakeWin.screen, fakeWin.BroadcastChannel
       );
+      _patchRecv(C);   // ADR-1056
       reset(A); reset(C);
       const shared=A.Shape.make('rect',{x:3,y:4,w:7,h:8});
       A.Store.commit({op:'add',shape:shared});
@@ -13752,6 +13775,7 @@ try {
       fakeWin.indexedDB, fakeWin.URL, setTimeout, clearTimeout, setInterval, clearInterval,
       fakeWin.getComputedStyle, fakeWin.confirm, fakeWin.alert, Blob, fakeWin, fakeWin, fakeWin.localStorage,fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
     );
+    _patchRecv(C);   // ADR-1056
     C.state.showMinimap=false;
     // main() now completes its boot path (screen/BroadcastChannel params let wire() run
     // to Net.init + the RAF kick) → boot queued a Minimap.draw + a frame callback. Fire
@@ -17899,6 +17923,51 @@ pass += 7;
 assert.ok(html.includes("_mk('sync-req',{wc:this._syncReqWc()})"),'sync-req carries the causal horizon');
 assert.ok(html.includes('_sendSnapshot(this._reqWc(msg))'),'responder threads the asker horizon');
 assert.ok(html.includes('msg.dels'),'tomb deltas ride the snapshot');
+pass += 3;
+
+// ADR-1056: wire auth — every message carries an HMAC-SHA256 tag over its
+// canonical JSON (minus mac/dmac/data); unsigned or forged traffic drops at
+// intake. mac keys BC traffic by the doc secret; dmac keys DC traffic by the
+// link key carried inside the RTC offer/answer token.
+{
+  assert.strictEqual(_s256('abc'),'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad','sha256 vector');
+  assert.strictEqual(_hmac('key','The quick brown fox jumps over the lazy dog'),'f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8','hmac-sha256 vector');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
+  const sB=Shape.make('rect',{x:1,y:1,w:8,h:8});
+  const unmac={k:'op',peer:'p9',op:{op:'add',shape:sB,clock:{peer:'p9',seq:1,ts:1}}};
+  Net._recvRaw(unmac,false);
+  assert.ok(!byId(sB.id),'unsigned BC op is dropped');
+  const forged={k:'op',peer:'p9',op:{op:'add',shape:sB,clock:{peer:'p9',seq:2,ts:2}},mac:'0'.repeat(64)};
+  Net._recvRaw(forged,false);
+  assert.ok(!byId(sB.id),'forged mac is dropped');
+  const good={k:'op',peer:'p9',op:{op:'add',shape:sB,clock:{peer:'p9',seq:3,ts:3}}};
+  good.mac=Net._mac(good);
+  Net._recvRaw(good,false);
+  assert.ok(!!byId(sB.id),'a correctly tagged BC op applies');
+  const dc1=Shape.make('ellipse',{x:2,y:2,w:4,h:4});
+  const dm={k:'op',peer:'z',op:{op:'add',shape:dc1,clock:{peer:'z',seq:1,ts:1}}};
+  dm.dmac=Net._dmac(dm);
+  Net._recvRaw(dm,true);
+  assert.ok(!!byId(dc1.id),'a correctly dmac-tagged DC op applies');
+  const dc2=Shape.make('rect',{x:5,y:5,w:4,h:4});
+  const c2={k:'op',peer:'z3',op:{op:'add',shape:dc2,clock:{peer:'z3',seq:1,ts:1}}};
+  c2.mac=Net._mac(c2);
+  Net._recvRaw(c2,true);
+  assert.ok(!byId(dc2.id),'a BC tag does not authenticate the DC path');
+  const a={k:'img',key:'k',seq:0,n:1,data:'AAA'};
+  const b={k:'img',key:'k',seq:0,n:1,data:'BBB'};
+  assert.strictEqual(Net._dmac(a),Net._dmac(b),'the tag ignores bulk data (integrity rides the reassembled tag / content hash)');
+  const okd={k:'ping',peer:'okp'};
+  okd.dmac=Net._dmac(okd);
+  Net._dcKey='other-link-key';
+  assert.notStrictEqual(Net._dmac(okd),Net._mac(okd),'a foreign link key diverges the DC tag from the room tag');
+  Net._dcKey=null;
+  console.log('  ✓ ADR-1056 wire auth (9 asserts)');
+}
+pass += 9;
+assert.ok(html.includes('this._dcKey=_sec()'),'the offer token seeds the link key');
+assert.ok(html.includes('if(k)this._dcKey=k'),'the answerer adopts the token key');
+assert.ok(html.includes('rs:state.roomSecret'),'the doc secret persists with the record');
 pass += 3;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
