@@ -1,3 +1,8 @@
+## [1.8.105] - 2026-10-01
+
+### Added
+- Presence intake 契約の監査完走 + 挙動ピン (ADR-1081): `_touchPeer` self-skip/lastSeen/MAX_PEERS、cursor 有限・`h:1` クリア・`pg` ≤64、`name` ≤80 + LWW、`bye` 行除去、BC ping 登録 — 8 asserts
+
 ## [1.8.104] - 2026-10-01
 
 ### Fixed

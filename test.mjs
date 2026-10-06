@@ -18278,6 +18278,45 @@ pass += 4;
 }
 console.log('  ✓ ADR-1078 _park intake bounds (4 asserts)');
 pass += 4;
+// ---- ADR-1081: presence-intake contract pins ----
+{
+  // _touchPeer: self-id skipped, existing lastSeen refreshed, MAX_PEERS cap respected
+  const keep2=state.peers.size?new Map(state.peers):new Map();
+  state.peers.clear();
+  const selfId=Net._peerId||Net.peerId;
+  if(selfId){Net._touchPeer(selfId);assert.strictEqual(state.peers.size,0,'_touchPeer never rows the local peer');}
+  Net._touchPeer('tp1');const t0=state.peers.get('tp1').lastSeen;
+  Net._touchPeer('tp1');
+  assert.ok(state.peers.get('tp1').lastSeen>=t0,'re-touch only refreshes lastSeen');
+  for(let i=0;i<40;i++)Net._touchPeer('cap'+i);
+  assert.strictEqual(state.peers.size,32,'_touchPeer respects MAX_PEERS=32');
+  state.peers.clear();for(const[k,v]of keep2)state.peers.set(k,v);
+  // cursor: h===1 clears; non-finite coords rejected; pg capped
+  Net._onRecv({k:'ping',peer:'p9'},false);
+  const p9=state.peers.get('p9');
+  Net._onRecv({k:'cursor',peer:'p9',x:1,y:2},false);
+  Net._onRecv({k:'cursor',peer:'p9',x:1,y:NaN},false);
+  assert.deepStrictEqual(p9.cursor,{x:1,y:2},'non-finite cursor coords are rejected');
+  Net._onRecv({k:'cursor',peer:'p9',x:5,y:6,h:1},false);
+  assert.strictEqual(p9.cursor,null,'h:1 clears the cursor');
+  Net._onRecv({k:'cursor',peer:'p9',x:1,y:1,pg:'x'.repeat(100)},false);
+  assert.strictEqual(p9.pg.length,64,'cursor pg is sliced to 64');
+  // 'name': >80 rejected, ts-LWW applied
+  const dn0=state.docName;
+  Net._onRecv({k:'name',name:'x'.repeat(81),ts:nowTs()+9000,peer:'p9'},false);
+  assert.strictEqual(state.docName,dn0,'name >80 chars is rejected');
+  Net._onRecv({k:'name',name:'pin-doc',ts:nowTs()+10000,peer:'p9'},false);
+  assert.strictEqual(state.docName,'pin-doc','bounded name applies via LWW');
+  // 'bye': removes the peer row
+  Net._onRecv({k:'bye',peer:'p9'},false);
+  assert.ok(!state.peers.has('p9'),'bye drops the peer row');
+  // 'ping' for an unknown-but-valid id creates a row (BC legality)
+  Net._onRecv({k:'ping',peer:'np1'},false);
+  assert.ok(state.peers.has('np1'),'BC ping registers the peer');
+  state.peers.delete('np1');
+}
+console.log('  ✓ ADR-1081 presence-intake contract (8 asserts)');
+pass += 8;
 // ---- ADR-1080: peer-selection ids resolve against live shapes ----
 {
   Net._onRecv({k:'ping',peer:'p9'},false);
