@@ -18293,6 +18293,35 @@ pass += 12;
 }
 console.log('  ✓ ADR-1066 attach-path coexistence (10 asserts)');
 pass += 10;
+// ---- ADR-1067: export surfaces render unresolved img refs as placeholders ----
+{
+  const refImg={id:'e1',type:'image',x:0,y:0,w:10,h:10,z:1,img:'kNX'};
+  const byteImg={id:'e2',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:image/png;base64,BB'};
+  // .excalidraw — the ref-only case must not throw on _du().match
+  let sc=null,threw=false;try{sc=excScene([refImg])}catch(_){threw=true}
+  assert.ok(!threw&&sc,'excScene survives an unresolved img ref');
+  const el=sc.elements.find(e=>e.id==='e1');
+  assert.ok(el&&el.fileId==='fe1','element emitted with its fileId');
+  assert.ok(!('fe1' in sc.files),'dangling fileId — no empty file entry');
+  // blob already in _imgIn materializes into the files map
+  Net._imgIn.set('kNX','data:image/webp;base64,WW');
+  const sc2=excScene([refImg]);
+  assert.strictEqual(sc2.files.fe1.dataURL,'data:image/webp;base64,WW','_imgIn hit materializes into files');
+  Net._imgIn.delete('kNX');
+  const sc3=excScene([byteImg]);
+  assert.strictEqual(sc3.files.fe2.mimeType,'image/png','byte image keeps its mime');
+  // .drawio — shape=image emitted even without image= (drawio's placeholder)
+  const dioRef=boardToDrawio([refImg]);
+  assert.ok(dioRef.includes('shape=image')&&!dioRef.includes('image=data:'),'drawio ref-only keeps shape=image sans bytes');
+  assert.ok(boardToDrawio([byteImg]).includes('image=data:image/png'),'drawio bytes ride image=');
+  // SVG — canvas-parity gray box, not nothing
+  const svgRef=buildSVG([refImg],'#FFFFFF');
+  assert.ok(svgRef.includes('#CBD5E1')&&!svgRef.includes('<image'),'SVG ref-only draws the placeholder box');
+  assert.ok(buildSVG([byteImg],'#FFFFFF').includes('<image'),'SVG bytes emit <image>');
+  assert.ok(html.includes('Net._imgIn.get(s.img)')&&html.includes("t==='image')sty+='shape=image;'"),'source pins');
+}
+console.log('  ✓ ADR-1067 export placeholder parity (11 asserts)');
+pass += 11;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
