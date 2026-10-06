@@ -959,7 +959,7 @@ const checks = [
   ['conn label honours lineH canvas+SVG (ADR-0212)', html.includes('llh=fs*(s.lineH||1.25)')&&html.includes('lh2=fs*(s.lineH||1.25)')],
   ['pin/unpin anchor via ctx for touch/keyboard (ADR-0213)', html.includes('function pinAnchor()')&&html.includes("['ctxPinAnchor','',pinAnchor]")&&html.includes('px=k===\'a\'?e.x1:e.x2')],
   ["presence msgs carry curPg; peers on another page are not drawn (ADR-0647)",
-    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg})")&&html.includes("_mk('selection',{ids,pg:state.curPg})")&&html.includes("p.pg=npg")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_nugEnd();_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
+    html.includes("_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg")&&html.includes("_mk('selection',{ids,pg:state.curPg")&&html.includes("p.pg=npg")&&html.includes("if(_pgOn()&&p.pg&&p.pg!==state.curPg)continue")&&html.includes("return;_nugEnd();_cxO()")&&html.includes("state.curPg=id;Net.sendCursorHide()")],
   ['_bindAt grid-accelerated candidate scan (ADR-0214)', html.includes('const cands=[..._queryGrid(_grid,{x,y})]')&&html.includes('const ok=s=>{const t=s.type;return t!==\'line\'&&t!==\'arrow\'&&t!==\'pen\'&&_sv(s)&&_pgOk(s)}')],
   ['modal focus capture/restore + summary tabbable (ADR-0215)', html.includes('_captureFocus()')&&html.includes('this._restoreFocus()')&&html.includes('select,textarea,summary,[tabindex')],
   ['labelPos drag snaps to 0/.25/.5/.75/1 slots (ADR-0216)', html.includes('for(const slot of[0,0.25,0.5,0.75,1])')],
@@ -8453,7 +8453,7 @@ try {
     // ADR-0740: dead wire fields — hello/ping carried {seq:state.seq} no receiver
     // ever reads, and the snapshot carried the sender's curPg which _applySnapshot
     // intentionally ignores (0672: the view is local). Gone.
-    assert.ok(/_send\(_mk\('hello'\)\)/.test(html)&&/_send\(_mk\('ping'\)\)/.test(html),'ADR-0740: hello/ping carry no dead seq field');
+    assert.ok(/_send\(_mk\('hello'\)\)/.test(html)&&/_send\(_mk\('ping',_nm\(\)\)\)/.test(html),'ADR-0740: hello/ping carry no dead seq field');
     assert.ok(!/k:'snapshot'[^}]*curPg/.test(html),'ADR-0740: snapshot drops the sender-side curPg field');
     console.log('  ✓ ADR-0740: dead wire fields removed');
 
@@ -17237,7 +17237,7 @@ try {
     assert.ok(!byId(rX.id)&&state.shapes.length===0,'re-applied remote del is a no-op');
 
     // ADR-0656: peer avatar tooltip names the page a cross-page peer occupies
-    assert.ok(html.includes("el.title=id+((p.pg&&p.pg!==state.curPg&&_pgById(p.pg))?' · '+_pgById(p.pg).name:'')"),'peer avatar title annotates the page only when it differs');
+    assert.ok(html.includes("el.title=(p.n?p.n+' · ':'')+id+((p.pg&&p.pg!==state.curPg&&_pgById(p.pg))?' · '+_pgById(p.pg).name:'')"),'peer avatar title annotates the page only when it differs');
 
     // ADR-0657: page ops ride the same re-application guarantee (0655 extension)
     state.pages=null;state.curPg=null;
@@ -17849,6 +17849,25 @@ pass += 2; // ADR-1048 audit-doc pins
 pass += 3; // ADR-1049 imgRescan pins
 assert.ok(html.includes('if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}'),'presence sweep runs the slow rescan');
 pass += 1;
+// ADR-1053: peer display names ride presence msgs; intake lands on the
+// presence row, bounded ≤24 chars, empty clears.
+{
+  state.peers=new Map();
+  Net._onRecv({k:'ping',peer:'p9',n:' Abe '},false);
+  assert.strictEqual(state.peers.get('p9').n,'Abe','ping lands the trimmed name on the peer row');
+  Net._onRecv({k:'ping',peer:'p9',n:''},false);
+  assert.strictEqual(state.peers.get('p9').n,undefined,'empty name clears');
+  Net._onRecv({k:'ping',peer:'p8'},false);   // BC cursor enriches only existing rows
+  Net._onRecv({k:'cursor',peer:'p8',x:1,y:2,n:'LongerThanTwentyFourCharactersX'},false);
+  assert.strictEqual(state.peers.get('p8').n,'LongerThanTwentyFourChar','name bounded at 24');
+  state.peers.clear();
+  console.log('  ✓ ADR-1053 peer display names (3 asserts)');
+}
+pass += 3;
+assert.ok(html.includes("_mk('ping',_nm())"),'ping carries the display name');
+assert.ok(html.includes('_nIn(_pr().get(msg.peer),msg)'),'ping intake lands the name');
+assert.ok(html.includes('p.n?p.n+'),'avatar tooltip shows the peer name');
+pass += 3;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

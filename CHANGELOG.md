@@ -1,3 +1,12 @@
+## [1.8.076]
+- **Feature: peer display names on presence (ADR-1053)** — presence
+  carriers (`ping`/`cursor`/`selection`) now ride an `n` field with the
+  sender's display name. Ephemeral like the carrier: latest wins, no LWW,
+  never persisted to the doc. Intake lands it on the peer row (≤24 chars,
+  trimmed, empty clears); the cursor marker and the avatar tooltip render
+  it. Set your own name by clicking your avatar (`prompt`, stored in
+  `localStorage board.name` and re-broadcast on change).
+
 ## [1.8.075]
 - **Fix: slow re-park for expired img refs (ADR-1049)** — the 60s
   `_imgPending` expiry stopped the imgq retry loop while the shape kept
