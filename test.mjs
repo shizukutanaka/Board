@@ -1782,7 +1782,7 @@ try {
              _getPasteCount: () => _pasteCount, _resetPasteClipboard: () => { _lastClipboard = null; },
              endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
-             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
+             _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa, _imgRescan,
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
@@ -1810,7 +1810,7 @@ try {
           _onSwUpdate, _ctxMenuKeyNav,
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
-          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa,
+          _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa, _imgRescan,
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd } = api;
@@ -17828,6 +17828,27 @@ pass += 3; // ADR-1046 img-pending waitlist bound/FIFO pins
   console.log('  ✓ ADR-1048 audit-doc pins (2 asserts)');
 }
 pass += 2; // ADR-1048 audit-doc pins
+// ADR-1049: _imgRescan re-parks expired refs on a slow cadence — a parked ref
+// that outlived its 60s waitlist window re-asks via imgq instead of staying
+// an unhealed placeholder until some unrelated blob happens to carry the key.
+{
+  state.shapes.length=0;_invalidateGrid();Net._imgPending.clear();
+  const kk=_imgHash('data:image/png;base64,ZZ');
+  const sX=Shape.make('image',{x:0,y:0,w:10,h:10,img:kk});
+  const sY=Shape.make('image',{x:0,y:0,w:10,h:10,img:kk,dataUrl:'data:image/png;base64,ZZ'});
+  const sZ=Shape.make('rect',{x:0,y:0,w:10,h:10});
+  state.shapes.push(sX,sY,sZ);_invalidateGrid();
+  _imgRescan();
+  assert.strictEqual(Net._imgPending.get(sX.id).k,kk,'unresolved ref re-parks for imgq');
+  assert.ok(!Net._imgPending.has(sY.id)&&!Net._imgPending.has(sZ.id),'resolved/non-img shapes do not park');
+  const t0=nowTs()-40000;Net._imgPending.set(sX.id,{k:kk,t0});
+  _imgRescan();
+  assert.strictEqual(Net._imgPending.get(sX.id).t0,t0,'a live park keeps its window (no t0 refresh)');
+  console.log('  ✓ ADR-1049 _imgRescan re-parks expired refs (3 asserts)');
+}
+pass += 3; // ADR-1049 imgRescan pins
+assert.ok(html.includes('if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}'),'presence sweep runs the slow rescan');
+pass += 1;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

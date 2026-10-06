@@ -1,3 +1,13 @@
+## [1.8.075]
+- **Fix: slow re-park for expired img refs (ADR-1049)** — the 60s
+  `_imgPending` expiry stopped the imgq retry loop while the shape kept
+  its `img:` ref: in the quiet steady-state (every park expired, no new
+  joiner, no wholesale event) a blob that exists only in a peer's
+  `_imgSent`/`_imgIn` was never asked for again — a permanent placeholder.
+  A 5-minute `_imgRescan` inside the presence sweep re-parks shapes still
+  holding unresolved refs (256-cap, skips live parks so t0 windows are
+  untouched), re-asking on a bounded duty cycle until the blob lands.
+
 ## [1.8.074]
 - **Audit: 50/50 — strengths, weaknesses, improvement surface** — a
   first-principles/Socratic pass over the whole product: 7 founding
