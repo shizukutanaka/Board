@@ -18343,6 +18343,72 @@ pass += 11;
 console.log('  ✓ ADR-1068 image payload intake domain (7 asserts)');
 pass += 7;
 
+// ---- ADR-1069: doc-switch imports adopt `ro` before the swap's _repC ----
+{
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _z=async o=>{const cs=new CompressionStream('deflate-raw');const w=cs.writable.getWriter();
+    w.write(new TextEncoder().encode(JSON.stringify(o)));w.close();
+    const buf=new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    return '#b='+encodeURIComponent('z:'+btoa(String.fromCharCode(...buf)))};
+  const _r=(id,z)=>{return{id,type:'rect',x:0,y:0,w:10,h:10,z,stroke:'#000',fill:null,size:2,opacity:1}};
+  // (a) ro session + editable share link → ro adopted FIRST → repC records
+  //     (was: swap applied, op dropped under stale ro → no undo, no broadcast).
+  fakeWin.location.hash=await _z({v:1,shapes:[_r('imp9',0)]});
+  E.state.ro=true;
+  const h0=E.state.history.length;
+  assert.strictEqual(await E.Share.importFromHash(),true,'ro session: editable link imports');
+  assert.strictEqual(E.state.ro,false,'ro session: editable payload adopted');
+  assert.strictEqual(E.state.history.length,h0+1,'ro→editable import records the replace (was dropped)');
+  E.Store.undo();
+  assert.ok(!E.byId('imp9'),'ro→editable import swap is undoable');
+  E.Store.redo();
+  // (b) ro session + ro:1 link → swap applies, adopted ro keeps repC dropped.
+  fakeWin.location.hash=await _z({v:1,shapes:[_r('impR',0)],ro:1});
+  E.state.ro=true;
+  const h1=E.state.history.length;
+  assert.strictEqual(await E.Share.importFromHash(),true,'ro session: ro link imports');
+  assert.ok(E.byId('impR'),'ro→ro import swap applies');
+  assert.strictEqual(E.state.ro,true,'ro→ro import stays read-only');
+  assert.strictEqual(E.state.history.length,h1,'ro→ro records no op (doc load, not a mutation)');
+  fakeWin.location.hash='';
+  // (c) importBoard — FileReader stub fires onload synchronously.
+  const _hadFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR=globalThis.FileReader;
+  try{
+    globalThis.FileReader=class{readAsText(){this.result=JSON.stringify({v:1,shapes:[_r('impF',0)]});this.onload&&this.onload()}};
+    E.state.ro=true;
+    const h2=E.state.history.length;
+    E.importBoard({name:'x.board'});
+    assert.ok(E.byId('impF'),'ro→file swap applies');
+    assert.strictEqual(E.state.ro,false,'ro→file: absent ro → editable adopted');
+    assert.strictEqual(E.state.history.length,h2+1,'ro→file records the replace');
+  }finally{if(_hadFR)globalThis.FileReader=_prevFR;else delete globalThis.FileReader}
+  // (d) saveBackup carries ro; restoreBackup adopts it before repC.
+  const _prevDb=E.Persist.db;E.Persist.db=makeFakeIdb();
+  try{
+    E.state.ro=true;
+    await E.Persist.saveBackup([_r('bk1',1)],{x:0,y:0,zoom:1},'B');
+    E.state.shapes.length=0;E._invalidateGrid();
+    E.state.ro=false;
+    const h3=E.state.history.length;
+    assert.strictEqual(await E.Persist.restoreBackup(),true,'ro-backed backup restores');
+    assert.ok(E.byId('bk1'),'backup shapes restored');
+    assert.strictEqual(E.state.ro,true,'restore adopts the record ro');
+    assert.strictEqual(E.state.history.length,h3,'adopted ro → repC drops');
+  }finally{E.Persist.db=_prevDb}
+}
+console.log('  ✓ ADR-1069 doc-switch ro adoption (14 asserts)');
+pass += 14;
+assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069"),'hash import adopts ro before repC');
+assert.ok(html.includes("ro:state.ro?1:0,shapes:roundShapesForExport"),'.board export carries ro');
+assert.ok(html.includes("rs:state.roomSecret,ro:state.ro?1:0,savedAt"),'backup record carries ro');
+assert.ok((html.match(/state\.ro=d\.ro===1/g)||[]).length>=2,'importBoard+restoreBackup adopt ro');
+pass += 4;
+
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

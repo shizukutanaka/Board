@@ -1,3 +1,17 @@
+## [1.8.092]
+- **Fix: doc-switch imports adopt `ro` before the swap's `_repC` (ADR-1069)** —
+  `importFromHash` set `state.ro` AFTER recording the replace op, and
+  `importBoard`/`restoreBackup` never settled it at all: on a read-only
+  session the `_rs` swap applied locally while the op was ro-dropped —
+  a local-only mutation with no undo and no broadcast (silent divergence
+  from peers), and a ro-viewer's editable share-link/file import stayed
+  stuck read-only on the new doc. Every doc-switch now adopts the
+  payload's `ro` flag FIRST, then records the replace under the adopted
+  context — ro → editable import records + converges; editable → ro
+  import applies locally without pushing a mutation to the room.
+  `.board` files and the `:prev` backup record now carry `ro`
+  (absent = editable) for parity with the share payload and doc record.
+
 ## [1.8.091]
 - **Fix: image payload intake stays inside the `dataUrl` model domain (ADR-1068)** —
   `validShape` requires `dataUrl` to match `/^data:image\//`; three sites
