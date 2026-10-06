@@ -1113,6 +1113,7 @@ Board/
 │   └── ADR-1066-attach-path-coexistence.md  # 同居規則の install 面完結 — _attachShape が同居 shape を素通ししてた残穴を install 時 bytes-win strip で閉塞 (op/インポート/undo 全 attach 経路)。merge は raw=1 で時計仲裁を維持
 │   └── ADR-1067-export-unresolved-img-placeholder.md  # 未解決 img ref のエクスポート面完結 — .excalidraw の _du().match() TypeError を dangling fileId+_imgIn materialize で解消、.drawio は shape=image 無条件 (image= は bytes ゲート)、SVG は canvas の #CBD5E1 グレー枠に parity
 │   └── ADR-1068-img-payload-intake-domain.md  # dataUrl のモデル領域守備 — drawio image= が https?: を dataUrl に誤植 (peer の validShape 拒否→静黙発散)、_imgSlim が非 image dataUrl を blob 化 (imgq 経由で全 peer 感染)、chunk intake が hash のみ検証 — 3面を data:image/ ゲートで閉塞
+│   └── ADR-1069-doc-switch-ro-adoption.md  # doc-switch の ro 採用順序 — ro セッションで editable ドキュメントを開くと swap はローカル適用されるが _repC が旧 ro で drop → undo 不能+peer 非収束。採用→記録へ全3面統一 (.board/:prev に ro 同梱)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

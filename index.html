@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.091';   // ADR-1068
+const V='1.8.092';   // ADR-1069
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6775,7 +6775,7 @@ function exportSVG(shapes=_shV()){   // ADR-0658
 function exportBoard(shapes=_shWB()){                       // ADR-0114
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),pages:_pgs(),curPg:state.curPg,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
+  const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),pages:_pgs(),curPg:state.curPg,ro:state.ro?1:0,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393/1057
   a.href=_bu;a.download=(_dn()||'board')+'.board';
   _clk(a);_rO(_bu);
   _oT('exportedBoard');
@@ -7662,6 +7662,7 @@ function importBoard(file){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
+      state.ro=d.ro===1;_roBadge();   // ADR-1069: adopt the payload's context before recording
       _repC(before,beforeWc,origSel,_bpg,_bcp);
       _o(t('loadedBoard')+' ('+_ln(shapes)+')');
     }catch{_eT(_IB)}
@@ -8764,8 +8765,8 @@ const Share={
       }
       _scl();state.wclock=_wM();
       _sz();_iv();
+      state.ro=data.ro===1;_roBadge();   // ADR-1057/1069: adopt before the swap's repC
       _repC(before,beforeWc,origSel,_bpg,_bcp);
-      state.ro=data.ro===1;_roBadge();   // ADR-1057
       _g('docName').value=_dn();_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
@@ -8919,7 +8920,7 @@ const Persist={
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       const{slim,puts}=_imgSlim(shapes.concat(_eraseBatch),stored,1);
       for(const[k,d]of puts)imgs.put(d,k);
-      _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,pages:_pgs(),curPg:state.curPg,rs:state.roomSecret,savedAt:_now()},DOC_KEY+':prev');   // ADR-1056
+      _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,pages:_pgs(),curPg:state.curPg,rs:state.roomSecret,ro:state.ro?1:0,savedAt:_now()},DOC_KEY+':prev');   // ADR-1056/1069
       await txDone(tx);
     }catch(err){_e(this._saveErrMsg(err))}   // ADR-1028
   },
@@ -8972,6 +8973,7 @@ const Persist={
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
+      state.ro=d.ro===1;_roBadge();   // ADR-1069: adopt the record's context before recording
       _repC(before,beforeWc,origSel,_bpg,_bcp);
       await this.discardBackup();
       this.schedule();
