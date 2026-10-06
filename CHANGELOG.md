@@ -1,3 +1,14 @@
+## [1.8.110] - 2026-10-01
+
+### Fixed
+- **round836 / ADR-1086 — remote `move` requires the `before` baseline**: `validRemotePayload` accepted `move` ops with `before == null` (the delta-capable legacy form), but the receiver-side changed-props diff is what limits a move to the axis the sender actually touched — a before-less absolute `after` applies **both** axes, so a forged or stale peer's move stomps a concurrent single-axis move off the other peer. Intake now requires `patches(op.before)`, matching style/resize/align/beautify. Emitted ops already carry `before` (ADR-0729), so only forged/legacy producers are rejected. The ADR-1085 pin's move line and the v1.7.48c / ADR-0741 / ADR-0969 / _nugLock fixtures migrated to the new contract.
+
+### Docs
+- `docs/ADR-1086-move-requires-before.md`.
+
+### Tests
+- test.mjs: ADR-1086 pin — before-less / `before:null` / non-array `before` rejected; emitted move records the pre-move baseline; concurrent disjoint-axis moves converge (x=ours ∧ y=theirs) through the before→after diff.
+
 ## [1.8.109] - 2026-10-01
 
 ### Added

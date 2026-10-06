@@ -482,7 +482,7 @@ const checks = [
   ['snapshot ops get distinct, stable clock keys (id-based)', html.includes("seq:'snap:'+s.id")],
   ['snapshot merge accepts only add ops (non-add ops rejected at merge path)', html.includes("if(!op||op.op!=='add'||!op.shape)return 'skip'")&&html.includes("this._mergeSnapshotOp(op)")],
   ['op frag reassembly re-enters _onRecv so intake gates apply (ADR-0933)', html.includes("this._onRecv(_JP(joined),viaRtc)")],
-  ['wire move requires absolute after-patches; delta path is local-undo only (ADR-0934)', html.includes("patches(op.after)&&(op.before==null||patches(op.before))")],
+  ['wire move requires absolute after+before patches; delta path is local-only (ADR-1086)', html.includes("patches(op.after)&&patches(op.before)")],
   // v1.7.116: ADR-0058 snapshot LWW merge
   ['snapshot ops carry per-shape wclock', html.includes("wc:clone(w||{})")],
   ['_mergeSnapshotOp: LWW per-property merge on known shapes', html.includes("function _mergeSnapshotOp(op)")===false&&html.includes("_mergeSnapshotOp(op){") && html.includes("clockNewer(rc,lc)") && html.includes("return 'merge';")],
@@ -3465,7 +3465,7 @@ try {
   assert.strictEqual(state.shapes[0].x, mx0, 'remote move with non-finite dx is dropped');
   Store.applyRemote({op:'upd', id:123, after:'evil', clock:{peer:'attacker', seq:4, ts:1}});
   assert.ok(Number.isFinite(state.shapes[0].x), 'remote upd with bad id/after is dropped');
-  Store.applyRemote({op:'move', ids:[mvId], dx:5, dy:0, after:[{id:mvId, x:mx0+5, y:state.shapes[0].y}], clock:{peer:'peerB', seq:2, ts:1}});
+  Store.applyRemote({op:'move', ids:[mvId], dx:5, dy:0, after:[{id:mvId, x:mx0+5, y:state.shapes[0].y}], before:[{id:mvId, x:mx0, y:state.shapes[0].y}], clock:{peer:'peerB', seq:2, ts:1}});
   assert.strictEqual(state.shapes[0].x, mx0 + 5, 'well-formed remote move (absolute, ADR-0741) is applied');
   console.log('  ✓ applyRemote validates op payloads (move/upd) and applies valid move');
 
@@ -5049,9 +5049,12 @@ try {
     assert.ok(!validRemotePayload({op:'zorder',after:[{id:'a',z:1,frac:'Vz'}]}),'legacy entry rejected (ADR-0742)');
     // move: ids must be strings (consistent with group/ungroup fix); ADR-0741:
     // absolute `after` positions are required — the bare delta form is rejected.
-    assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3,after:[{id:'s1',x:5,y:3},{id:'s2',x:5,y:3}]}),'move with string ids + absolute after accepted');
+    // ADR-1086: `before` patches are required too — a before-less absolute move
+    // applies BOTH axes, stomping a peer's concurrent single-axis move.
+    assert.ok(validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3,after:[{id:'s1',x:5,y:3},{id:'s2',x:5,y:3}],before:[{id:'s1',x:0,y:0},{id:'s2',x:0,y:0}]}),'move with string ids + absolute before/after accepted');
+    assert.ok(!validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3,after:[{id:'s1',x:5,y:3},{id:'s2',x:5,y:3}]}),'before-less move rejected (ADR-1086)');
     assert.ok(!validRemotePayload({op:'move',ids:['s1','s2'],dx:5,dy:3}),'bare-delta move rejected (ADR-0741)');
-    assert.ok(!validRemotePayload({op:'move',ids:[{id:'s1'}],dx:5,dy:3,after:[{id:'s1',x:5,y:3}]}),'move with object ids rejected');
+    assert.ok(!validRemotePayload({op:'move',ids:[{id:'s1'}],dx:5,dy:3,after:[{id:'s1',x:5,y:3}],before:[{id:'s1',x:0,y:0}]}),'move with object ids rejected');
     console.log('  ✓ Step3 validRemotePayload: zorder legacy validates z/frac; move validates string ids');
   }
 
@@ -8491,8 +8494,8 @@ try {
     B.state.shapes.push({id:'mv1',type:'rect',x:100,y:100,w:10,h:10,z:1});B._invalidateGrid();B.sortZ();
     B.Net._onRecv({k:'op',op:{op:'move',ids:['mv1'],dx:5,dy:0,clock:{peer:'peerA',seq:1,ts:10}}});
     assert.ok(B.byId('mv1').x===100,'ADR-0741: bare-delta remote move dropped');
-    B.Net._onRecv({k:'op',op:{op:'move',ids:['mv1'],dx:5,dy:0,after:[{id:'mv1',x:105,y:100}],clock:{peer:'peerA',seq:2,ts:11}}});
-    assert.ok(B.byId('mv1').x===105,'ADR-0741: absolute remote move applies');
+    B.Net._onRecv({k:'op',op:{op:'move',ids:['mv1'],dx:5,dy:0,after:[{id:'mv1',x:105,y:100}],before:[{id:'mv1',x:100,y:100}],clock:{peer:'peerA',seq:2,ts:11}}});
+    assert.ok(B.byId('mv1').x===105,'ADR-0741: absolute remote move with before applies');
     console.log('  ✓ ADR-0741: remote move requires absolute positions');
 
     // ADR-0742: the legacy zorder {after:[{id,z,frac}]} wholesale form applied
@@ -11901,7 +11904,7 @@ try {
     assert.strictEqual(byId(RA.id).stroke,'#ff0000','cancel keeps the remote prop write');
     assert.strictEqual(byId(RA.id).x,RAorig.x,'cancel still rolls back the local drag delta');
     arm();   // remote 'move' absolute — the non-_oa write surface merges too
-    Net._onRecv({k:'op',op:{op:'move',ids:[RA.id],dx:1,dy:1,after:[{id:RA.id,x:777,y:333}],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'move',ids:[RA.id],dx:1,dy:1,after:[{id:RA.id,x:777,y:333}],before:[{id:RA.id,x:0,y:0}],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);
     _cancelPointerGesture();
     assert.deepStrictEqual([byId(RA.id).x,byId(RA.id).y],[777,333],'remote move survives cancel (orig merged)');
     arm();   // kill+resurrect mid-gesture: remote-born arrival marks reborn → restore must skip it
@@ -11943,7 +11946,7 @@ try {
     Store.commit({op:'addMany',shapes:[MA,MB]});
     state.selection=new Set([MA.id,MB.id]);
     nudgeSelection(5,0);                 // pending move; MA orig.x=100, live 105
-    Net._onRecv({k:'op',op:{op:'move',ids:[MA.id],dx:1,dy:1,after:[{id:MA.id,x:500,y:520}],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);   // remote move lands mid-run
+    Net._onRecv({k:'op',op:{op:'move',ids:[MA.id],dx:1,dy:1,after:[{id:MA.id,x:500,y:520}],before:[{id:MA.id,x:100,y:100}],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);   // remote move lands mid-run
     byId(MA.id).locked=true;             // a remote lock lands on the same member
     _nugEnd();
     assert.strictEqual(byId(MA.id).x,500,'_nugLock: remote move survives the locked-member restore');
@@ -13332,8 +13335,8 @@ try {
       'v1.7.48c: move with string dx rejected (was coerced via +op.dx)');
     assert.ok(!validRemotePayload({op:'move',ids:['s1'],dx:0,dy:'10',after:[{id:'s1',x:0,y:10}]}),
       'v1.7.48c: move with string dy rejected');
-    assert.ok(validRemotePayload({op:'move',ids:['s1'],dx:5,dy:3,after:[{id:'s1',x:5,y:3}]}),
-      'v1.7.48c: move with numeric dx/dy + absolute after still accepted');
+    assert.ok(validRemotePayload({op:'move',ids:['s1'],dx:5,dy:3,after:[{id:'s1',x:5,y:3}],before:[{id:'s1',x:0,y:0}]}),
+      'v1.7.48c: move with numeric dx/dy + absolute after + before still accepted');
     console.log('  ✓ validRemotePayload move: string dx/dy rejected (typeof check, v1.7.48c)');
   }
 
@@ -18414,10 +18417,37 @@ pass += 4;
   // without it can't pretend every prop in `after` was touched.
   assert.ok(!validRemotePayload({op:'style',after:[{id:'x',x:1}]}),'before-less style op rejected');
   assert.ok(!validRemotePayload({op:'align',dir:'left',after:[{id:'x',x:1}]}),'before-less align op rejected');
-  assert.ok(validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}]}),'move before stays optional on the wire (delta-capable)');
+  assert.ok(validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}],before:[{id:'x',x:0,y:0}]}),'move with before+after passes intake');
 }
 console.log('  \u2713 ADR-1085 wire before is a baseline (7 asserts)');
 pass += 7;
+
+// ---- ADR-1086: remote move requires the before baseline ----
+{
+  // A before-less move's absolute `after` applies BOTH axes — a forged op
+  // stomps a peer's concurrent single-axis move. before is required now.
+  assert.ok(!validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}]}),'before-less move rejected (ADR-1086)');
+  assert.ok(!validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}],before:null}),'before:null move rejected');
+  assert.ok(!validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}],before:'no'}),'non-array move before rejected');
+  // Two-peer concurrency: disjoint-axis moves commute only because each peer
+  // diffs before→after to stamp the touched axis.
+  state.shapes.push((()=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id='mvX';return s})());
+  const mAB=[];
+  const _ob=Net.broadcast;
+  Net.broadcast=o=>mAB.push(JSON.parse(JSON.stringify(Net._slimOp(o))));
+  Store.commit({op:'move',ids:['mvX'],dx:10,dy:0});
+  Net.broadcast=_ob;
+  const mop=mAB.find(o=>o.op==='move');
+  assert.ok(mop.before[0].x===0&&mop.before[0].y===0&&mop.after[0].x===10&&mop.after[0].y===0,'emitted move records the pre-move baseline');
+  const peer=JSON.parse(JSON.stringify({...mop,dx:0,dy:5,after:[{id:'mvX',x:mop.before[0].x,y:mop.before[0].y+5}],clock:{peer:'peerZ',seq:1,ts:nowTs()}}));
+  assert.ok(validRemotePayload(peer),'peer disjoint-axis move with before passes');
+  Store.applyRemote(peer);
+  const sx=byId('mvX');
+  assert.ok(sx.x===10&&sx.y===5,'concurrent disjoint-axis moves converge: x=10 ours / y=5 theirs');
+  state.shapes=state.shapes.filter(s=>s.id!=='mvX');
+}
+console.log('  \u2713 ADR-1086 move requires before (6 asserts)');
+pass += 6;
 
 // ---- ADR-1080: peer-selection ids resolve against live shapes ----
 {
