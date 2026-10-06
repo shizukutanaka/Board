@@ -490,7 +490,7 @@ const checks = [
   ['style panel syncs on selection signature change', html.includes("_syncStylePanelIfChanged();   // ADR-0059")&&html.includes("_JS(_selIds().sort())")],
   ['_syncStylePanel adopts only uniform props (mixed skipped)', html.includes("sel.every(s=>(s[k]??null)===v)")&&html.includes("if(v!==_ud){_st().fill")],
   // v1.7.118: ADR-0060 Alt+drag duplicate
-  ['alt+drag duplicates picked shape then drags copies', html.includes("if(_aK(e)&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
+  ['alt+drag duplicates picked shape then drags copies', html.includes("if(!state.ro&&_aK(e)&&!hit.locked){")&&html.includes("_placeCopies(srcShapes,0,0)")&&html.includes("dupSet=alreadySel")],
   // v1.7.118: ADR-0061 diamond shape
   ['diamond tool in KEYMAP + toolbar + help', html.includes("e:'eraser',d:'diamond'")&&html.includes('data-tool="diamond"')&&html.includes("['D',k.diamond]")],
   ['diamond draw/hit/svg/minimap paths', html.includes("case 'diamond':{")&&html.includes("case'diamond':s=_smk('diamond'")&&html.includes('_abs(d-1)<0.15')],
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec } = api;
+          _s256, _hmac, _eqs, _sec, Share } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -17969,6 +17969,70 @@ assert.ok(html.includes('this._dcKey=_sec()'),'the offer token seeds the link ke
 assert.ok(html.includes('if(k)this._dcKey=k'),'the answerer adopts the token key');
 assert.ok(html.includes('rs:state.roomSecret'),'the doc secret persists with the record');
 pass += 3;
+
+// ADR-1057: read-only share links — a 'ro' payload flag gates the whole
+// mutation funnel (commit/_recordCommitted/undo/redo/_repC), tool switching,
+// gesture arming (transform drags, Alt-dup, quick-connect), editor opens and
+// the docName input. Selection/marquee/lasso/pan/export/navigate all survive;
+// a 🔒 badge in the header unlocks.
+{
+  const r1={id:'ro1',type:'rect',x:0,y:0,w:10,h:10,stroke:'#000',fill:null,size:2,opacity:1};
+  state.shapes.length=0;_invalidateGrid();state.history.length=0;state.histIdx=-1;
+  Store.commit({op:'add',shape:JSON.parse(JSON.stringify(r1))});
+  assert.ok(byId('ro1'),'ro: precondition shape present');
+  state.history.length=0;state.histIdx=-1;state.ro=true;
+  Store._recordCommitted({op:'del',ids:['ro1']});
+  assert.ok(byId('ro1'),'ro: _recordCommitted drops the mutation');
+  assert.strictEqual(state.history.length,0,'ro: blocked op records no history');
+  state.tool='select';
+  pickTool('pen');assert.strictEqual(state.tool,'select','ro: pickTool refuses a draw tool');
+  pickTool('hand');assert.strictEqual(state.tool,'hand','ro: hand (pan) still picks');
+  assert.ok(Store.undo()===false,'ro: undo is a mutation → blocked');
+  assert.ok(Store.redo()===false,'ro: redo is a mutation → blocked');
+  state.ro=false;state.tool='select';
+
+  // wire level: a 'ro'-flagged share payload flips the board read-only. Fresh
+  // world D: fakeDoc element stubs are shared across worlds and the LAST-built
+  // world's wire() owns roBadge.onclick, so the unlock must ride D's world.
+  const D=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const src={v:1,shapes:[{id:'imp1',type:'rect',z:0,x:0,y:0,w:10,h:10,stroke:'#000',fill:null,size:2,opacity:1}],ro:1};
+  const cs=new CompressionStream('deflate-raw');
+  const w=cs.writable.getWriter();w.write(new TextEncoder().encode(JSON.stringify(src)));w.close();
+  const buf=new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  fakeWin.location.hash='#b='+encodeURIComponent('z:'+btoa(String.fromCharCode(...buf)));
+  D.state.shapes.length=0;
+  const okImp=await D.Share.importFromHash();
+  fakeWin.location.hash='';
+  assert.ok(okImp===true,'ro: share import succeeded');
+  assert.ok(D.byId('imp1'),'ro: imported shape landed');
+  assert.strictEqual(D.state.ro,true,'ro: ro-flagged payload flips the board read-only');
+  const badge=fakeDoc.getElementById('roBadge');
+  assert.strictEqual(badge.hidden,false,'ro: unlock badge is visible');
+  badge.onclick();
+  assert.strictEqual(D.state.ro,false,'ro: badge click unlocks the board');
+  assert.strictEqual(badge.hidden,true,'ro: badge re-hides after unlock');
+}
+console.log('  ✓ ADR-1057 read-only share links (14 asserts)');
+pass += 14;
+assert.ok(html.includes("if(ro)data.ro=1"),'exportToUrl rides the ro flag into the payload');
+assert.ok(html.includes('id="shareRo"')&&html.includes('data-t="shareRoLabel"'),'share modal carries the view-only checkbox');
+assert.ok(html.includes('id="roBadge"')&&html.includes('data-t="roBadge"'),'header carries the unlock badge');
+assert.ok(html.includes("Share.exportToUrl(enc,roc.checked)"),'modal passes the checkbox through');
+assert.ok(html.includes("ro:state.ro?1:0")&&html.includes("state.ro=d.ro===1"),'ro flag persists with the doc record');
+assert.ok(html.includes("state.ro=data.ro===1;_roBadge()"),'import adopts the ro flag');
+assert.ok(html.includes("_oT(state.ro?'readOnlyMode':'imported')"),'ro import announces view-only');
+assert.ok(html.includes("if(state.ro){_roNo();return true}")&&html.includes("function openTextEditor(s,isNew){\n  if(state.ro){_roNo();return}"),'editor opens are gated');
+assert.ok(html.includes("if(state.ro){_roNo();docNameEl.value=_dn();return}"),'docName input is gated + reverts');
+assert.ok(html.includes("if(state.ro&&tool!=='select'&&tool!=='hand'){_roNo();return}")&&html.includes("if(state.ro&&_tl()!=='select'){_roNo();return}"),'tool pick + pointerdown gated');
+assert.ok(html.includes("readOnlyMode:'閲覧のみです")&&html.includes("readOnlyMode:'View only"),'readOnlyMode key in ja+en');
+assert.ok(html.includes("shareRoLabel:'👁 閲覧のみリンク'")&&html.includes("shareRoLabel:'👁 View-only link'"),'shareRoLabel key in ja+en');
+assert.ok(html.includes("if(state.ro){_roNo();return}Store._recordCommitted({op:'replace'"),'_repC funnel guarded');
+pass += 13;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

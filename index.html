@@ -610,6 +610,9 @@ body{visibility:visible}
       <svg class="ic"><use href="#i13"/></svg>
       <span data-t="share">Share</span>
     </button>
+    <button class="btn" id="roBadge" data-t-title="roUnlock" hidden>
+      <span data-t="roBadge">🔒 閲覧のみ</span>
+    </button>
     <button class="btn" id="btnExport" title="Export PNG (⌘E)" data-t-title="expPng">
       <svg class="ic"><use href="#i14"/></svg>
       <span data-t="export">Export</span>
@@ -737,6 +740,7 @@ body{visibility:visible}
       <button class="btn primary" id="shareCopyBtn" data-t="shareCopyUrl">URLをコピー</button>
     </div>
     <label class="share-enc"><input type="checkbox" id="shareEnc"> <span data-t="shareEncLabel">🔒 暗号化リンク (推奨)</span></label>
+    <label class="share-enc"><input type="checkbox" id="shareRo"> <span data-t="shareRoLabel">👁 閲覧のみリンク</span></label>
     <p class="sub share-warn" id="shareWarnPlain" data-t="shareUrlWarn">⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
     <p class="sub" id="shareWarnEnc" hidden data-t="shareUrlNoteEnc">🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。</p>
     <p class="sub share-warn" id="shareWarnLong" hidden data-t="shareUrlTooLong">⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧E) の方が確実です。</p>
@@ -798,7 +802,7 @@ const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=1
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(_ul);
-const _repC=(before,beforeWc,origSel,bp,bc)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc});   // ADR-0646
+const _repC=(before,beforeWc,origSel,bp,bc)=>{if(state.ro){_roNo();return}Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc})};   // ADR-0646/1057
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel)};   // ADR-0309/0568: _ss drops missing/hidden ids
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
@@ -928,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.079';   // ADR-1056
+const V='1.8.080';   // ADR-1057
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1038,6 +1042,7 @@ const I18N={
     shareUrlWarn:'⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。',
     shareUrlTooLong:'⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧E) の方が確実です。',
     shareExportFailed:'共有リンクの生成に失敗しました',
+    shareRoLabel:'👁 閲覧のみリンク',roBadge:'🔒 閲覧のみ',roUnlock:'閲覧のみ — クリックで解除',readOnlyMode:'閲覧のみです — 🔒 ボタンで解除',roUnlocked:'編集できるようになりました',
     shareUrlNoteEnc:'🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。',
     shareNoKey:'このリンクには復号鍵がありません',shareBadKey:'復号できませんでした — リンクが壊れているか、鍵が一致しません',shareNoCrypto:'この環境では暗号化リンクを開けません(セキュアコンテキストが必要です)',
     shareCopyUrl:'URLをコピー',shareUrlCopied:'URLをコピーしました',copyFailed:'コピーできませんでした',copyUnsupported:'このブラウザは画像のコピーに対応していません',syncTooLarge:'変更が大きすぎて同期できません (分割して再実行してください)',
@@ -1118,6 +1123,7 @@ const I18N={
     shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted). Anyone with the link can read it.',
     shareUrlTooLong:'⚠ This URL is very long and may get truncated when shared over chat. For large boards, exporting .board (⌘⇧E) is more reliable.',
     shareExportFailed:'Failed to build the share link',
+    shareRoLabel:'👁 View-only link',roBadge:'🔒 View only',roUnlock:'View only — click to unlock',readOnlyMode:'View only — click 🔒 to unlock',roUnlocked:'Editing enabled',
     shareUrlNoteEnc:'🔒 Your board is encrypted inside the URL — the key travels in the link, so only people with the link can open it.',
     shareNoKey:'This link is missing its decryption key',shareBadKey:'Could not decrypt — the link is corrupt or the key does not match',shareNoCrypto:'Encrypted links cannot be opened in this context (a secure context is required)',
     shareCopyUrl:'Copy URL',shareUrlCopied:'URL copied',copyFailed:'Copy failed',copyUnsupported:'This browser cannot copy images to the clipboard',syncTooLarge:'Change too large to sync — try it in smaller steps',
@@ -1192,7 +1198,7 @@ const state={
   showGrid:true,
   showMinimap:MINIMAP_ON,
   snap:true,        // snap-to-grid when dragging shapes
-  docName:_UT,
+  docName:_UT,ro:false,   // ADR-1057
   dirty:false,
   pages:null,curPg:null,   // ADR-0646
   lastSaveAt:0,
@@ -1458,6 +1464,7 @@ const Store={
   // Op types + reversibility: see docs/architecture.md
   commit(op){
     _nugEnd();   // ADR-0958/0960
+    if(state.ro){_roNo();return}   // ADR-1057
     // Stamp CRDT clock; local-origin only — remote ops arrive stamped
     if(!op.clock)_fck(op);
     const k=_ck(op);
@@ -1601,6 +1608,7 @@ const Store={
   },
   _recordCommitted(op){
     _nugEnd();   // ADR-0958
+    if(state.ro){_roNo();return}   // ADR-1057
     _iG();
     if(!op.clock)_fck(op);
     const k=_ck(op);
@@ -1619,6 +1627,7 @@ const Store={
   undo(){
     if(ptr.down)_cancelPointerGesture();   // ADR-0948
     _nugEnd();   // ADR-0957: commit an in-flight nudge so undo lands
+    if(state.ro){_roNo();return false}   // ADR-1057
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
     // ADR-0717: an undo is a NEW competing write — arbitrating on the original
@@ -1636,6 +1645,7 @@ const Store={
   redo(){
     if(ptr.down)_cancelPointerGesture();   // ADR-0948
     _nugEnd();   // ADR-0957
+    if(state.ro){_roNo();return false}   // ADR-1057
     if(_hx()>=_hi().length-1)return false;
     state.histIdx++;
     const op=_hi()[_hx()];
@@ -2216,6 +2226,7 @@ const _mT=(c,x,y)=>c.moveTo(x,y),_lT=(c,x,y)=>c.lineTo(x,y);   // ADR-0511
 const _sv2=c=>c.save(),_rs2=c=>c.restore(),_cP=c=>c.closePath(),_qC=(c,x,y,cx,cy)=>c.quadraticCurveTo(x,y,cx,cy);   // ADR-0512
 const _sD=(c,d)=>c.setLineDash(d),_mTX=(c,s)=>c.measureText(s),_sR2=(c,x,y,w,h)=>c.strokeRect(x,y,w,h),_tr2=(c,x,y)=>c.translate(x,y),_sTF=(c,a,b,d,e,f,g)=>c.setTransform(a,b,d,e,f,g),_rstCtx=(c,z,v)=>{let i=64;while(i--)_rs2(c);_gaS(c,1);c.letterSpacing='0px';_sD(c,[]);_noSh(c);if(z)_sTF(c,z,0,0,z,-v.x*z,-v.y*z)},_dS=(s,c)=>{try{drawShape(s,c)}catch(_){_rstCtx(c)}};   // ADR-0513/0907/1001
 const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectURL(b),_oS=(tx,n)=>tx.objectStore(n),_pA=()=>Presentation.isActive();   // ADR-0513
+const _roNo=()=>_wT('readOnlyMode'),_roBadge=()=>_hdn(_g('roBadge'),!state.ro);   // ADR-1057
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
 const _fsS=(c,v)=>c.fillStyle=v,_ssS=(c,v)=>c.strokeStyle=v,_lnW=(c,v)=>c.lineWidth=v,_gaS=(c,v)=>c.globalAlpha=v,_taS=(c,v)=>c.textAlign=v,_tbS=(c,v)=>c.textBaseline=v;   // ADR-0520: canvas prop-assignment setters
@@ -4068,12 +4079,15 @@ _on(canvas,_PD,e=>{
   if(isPan||(_tl()==='hand')){
     ptr.panning=true;canvas.dataset.panning='true';return;
   }
+  if(state.ro&&_tl()!=='select'){_roNo();return}   // ADR-1057: pan/select survive, draw tools don't arm
   UI.closeCtxMenu();
   // ADR-0006: select tool only — that's where the ctx menu's
   // item target (a shape, or the board for clear-all) is meaningful and stable
   if(e.pointerType==='touch'&&_tl()==='select')_armLongPress(e.clientX,e.clientY);
   switch(_tl()){
     case 'select':
+      // ADR-1057: selection survives read-only — transform drags don't arm
+      if(!state.ro){
       // Resize handles take priority over pick
       if(_selN()===1){
         const onlySel=_sel0();
@@ -4193,6 +4207,7 @@ _on(canvas,_PD,e=>{
         _df().a=qd.id;
         ptr.dragKind='qline';
         break;
+      }
       }
       // ADR-0314: ⌘ on macOS / Ctrl elsewhere (Figma parity);
       // macOS is the context-menu chord, so the modifier is platform-split
@@ -4556,6 +4571,7 @@ function _lblAnchor(hit){
   return null;   // pen: no label to edit
 }
 function _openLabelEditorFor(hit){
+  if(state.ro){_roNo();return true}   // ADR-1057
   const a=_lblAnchor(hit);
   if(!a)return false;
   openLabelEditor(hit,a.left,a.top,a.bold);
@@ -5064,7 +5080,7 @@ function pickOrMarquee(wp,e){
     // ADR-0060: Alt+drag duplicates first — copi
     // move gesture drags them (Figma/Excalidraw/
     // locked members are excluded; frames bring their children.
-    if(_aK(e)&&!hit.locked){
+    if(!state.ro&&_aK(e)&&!hit.locked){   // ADR-1057
       const dupSet=alreadySel?_sT(_sl()):_sT(toSelect);
       const srcShapes=[...withFrameChildren(dupSet)].map(byId).filter(s=>s&&!_lk(s));
       if(_ln(srcShapes)){
@@ -5085,12 +5101,14 @@ function pickOrMarquee(wp,e){
       for(const id of toSelect)_sad(id);
       _aS();   // ADR-0037: click/group select was SR-silent
     }
+    if(!state.ro){   // ADR-1057: click-select survives; move doesn't arm
     ptr.dragKind='move';
     // When moving a frame, also move shapes fully contained in it
     const dragIds=withFrameChildren(_sl());
     ptr.dragStartShapes=new Map([...dragIds].map(id=>{
       const s=byId(id);return[id,clone(s)];
     }));
+    }
   }else{
     if(_aK(e)){                     // ADR-0158: ⌥+drag on empty canvas = lasso
       if(!_sK(e))_scl();
@@ -5573,6 +5591,7 @@ function _bindAt(x,y){
 
 // ---- text ----
 function beginText(wp){
+  if(state.ro){_roNo();return}   // ADR-1057
   const sp=snapPt(wp);
   const s=_smk('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:_st().fontSize||16});   // ADR-0180
   _cOp({op:'add',shape:s});
@@ -5666,6 +5685,7 @@ function _syncTextFinalize(s,before,deleted){
   Net.broadcast(op);
 }
 function openTextEditor(s,isNew){
+  if(state.ro){_roNo();return}   // ADR-1057
   _cxO();   // ADR-0560
   s=byId(s.id)||s;   // ADR-0533: add commits clone — bind the liv
   state.editing=s.id;_iv();
@@ -6015,6 +6035,7 @@ function toggleSq(){
   else{_setSq('');_ivO();}
 }
 function pickTool(tool,temporary){
+  if(state.ro&&tool!=='select'&&tool!=='hand'){_roNo();return}   // ADR-1057
   if(temporary&&!window._prevTool)window._prevTool=_tl();
   state._ehov=null;                                                     // ADR-0177
   if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;_iv()}   // ADR-0126
@@ -8573,9 +8594,10 @@ const Share={
     const all=new Uint8Array(12+_ln(ct));all.set(iv);all.set(ct,12);
     return{ct:Share._b64uEnc(all),k:Share._b64uEnc(raw)};
   },
-  async exportToUrl(enc){
+  async exportToUrl(enc,ro){
     const data={v:V,shapes:roundShapesForExport(_shWB()),name:_dn(),pages:_pgs(),curPg:state.curPg,
       viewport:_vpS()};   // ADR-0112: receiver opens at the sharer's view
+    if(ro)data.ro=1;   // ADR-1057
     const json=_JS(data);
     // CompressionStream if available, else base64
     let payload=json;
@@ -8683,10 +8705,11 @@ const Share={
       _scl();state.wclock=_wM();
       _sz();_iv();
       _repC(before,beforeWc,origSel,_bpg,_bcp);
+      state.ro=data.ro===1;_roBadge();   // ADR-1057
       _g('docName').value=_dn();_syncDocTitle();
       // clean URL
       history.replaceState(null,'',location.pathname);
-      _oT('imported');
+      _oT(state.ro?'readOnlyMode':'imported');
       _ps();
       return true;
     }catch{_eT(_IB);clearHash();return false}   // ADR-0038
@@ -8783,6 +8806,7 @@ const Persist={
         wc:_wc(),          // ADR-0460
         rep:state._lastRep,nts:_nameTs,ntp:_namePeer,   // ADR-0695/0699: causal markers ride the doc record too
         rs:state.roomSecret,   // ADR-1056: the wire auth key persists with the doc
+        ro:state.ro?1:0,   // ADR-1057
         savedAt:_now()
       },DOC_KEY);
       await txDone(tx);
@@ -8820,6 +8844,7 @@ const Persist={
       if(d.wc&&_iO(d.wc))for(const k in d.wc)if(_idOK(k))_wAdopt(k,d.wc[k]);   // ADR-0460/1037
       if(_iS(d.rs)&&_ln(d.rs)<=64)state.roomSecret=d.rs;   // ADR-1056
       if(validClock(d.rep))state._lastRep=d.rep;if(_tsOK(d.nts))_nameTs=d.nts;if(_idOK(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701/0780/0791
+      state.ro=d.ro===1;_roBadge();   // ADR-1057
       state.lastSaveAt=d.savedAt||0;
       _sz();
     }
@@ -9256,7 +9281,7 @@ const UI={
     m.dataset.open='true';
     // ADR-0015: encrypted by default where crypt
     // file:// counts, http:// non-localhost does not); the checkbox is the opt-out.
-    const chk=_g('shareEnc');
+    const chk=_g('shareEnc'),roc=_g('shareRo');
     const can=Share.canEncrypt();
     chk.disabled=!can;
     chk.checked=can;
@@ -9265,7 +9290,7 @@ const UI={
       const enc=!chk.disabled&&chk.checked;
       _hdn(_g('shareWarnPlain'),enc);
       _hdn(_g('shareWarnEnc'),!enc);
-      Share.exportToUrl(enc).then(url=>{
+      Share.exportToUrl(enc,roc.checked).then(url=>{
         _g('shareUrl').value=url;
         // ADR-0040
         _hdn(_g('shareWarnLong'),_ln(url)<=SHARE_URL_WARN);
@@ -9277,7 +9302,7 @@ const UI={
         _eT('shareExportFailed');
       });
     };
-    chk.onchange=refresh;
+    chk.onchange=refresh;roc.onchange=refresh;
     refresh();
     this._captureFocus();
     _fc(_g('shareClose'));
@@ -9386,10 +9411,10 @@ function wire(){
     // (Qiita: Rapls / Zenn: spacemarket). imeSho
     // mid-composition input events keep partial
     // a parallel compositionend listener picks up the tail
-    const _commitDocName=()=>{_setDocName(docNameEl.value);_md(!0);_ps();_bName()};   // ADR-0402
+    const _commitDocName=()=>{if(state.ro){_roNo();docNameEl.value=_dn();return}_setDocName(docNameEl.value);_md(!0);_ps();_bName()};   // ADR-0402/1057
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
-    _on(docNameEl,_CH,()=>{_setDocName(docNameEl.value);_ps()});
+    _on(docNameEl,_CH,()=>{if(state.ro){_roNo();docNameEl.value=_dn();return}_setDocName(docNameEl.value);_ps()});
     _on(docNameEl,'blur',()=>{docNameEl.value=_dn()});   // ADR-0609
   }
   _oC(_g('btnInstall'),_onBtnInstall);
@@ -9515,6 +9540,7 @@ function wire(){
 
   // ---- Share / Net (v1.1) ----
   _oC(_g('btnShare'),()=>UI.openShare());
+  _oC(_g('roBadge'),()=>{state.ro=false;_roBadge();_oT('roUnlocked');_ps()});   // ADR-1057
   _oC(_g('shareClose'),()=>UI.closeShare());
   _on(_g('share'),_CK,e=>{
     if(e.target.id==='share')UI.closeShare();
