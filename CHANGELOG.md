@@ -1,3 +1,8 @@
+## [1.8.108] - 2026-10-01
+
+### Added
+- op emit×intake 対称監査完走 + 挙動ピン (ADR-1084): 全ローカル emit 経路 (add/addMany/move/zorder/style/upd/align/group/ungroup/del+connClears/clear/replace/pageAdd/pageName/pageDel/beautify/undo-wire) の wire 化 op が `validRemotePayload` を通過 — 送受文法の対称性を4ピンで固定
+
 ## [1.8.107] - 2026-10-01
 
 ### Added
