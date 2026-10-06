@@ -1,3 +1,17 @@
+## [1.8.090]
+- **Fix: exports render unresolved img refs as placeholders, not crashes (ADR-1067)** —
+  `.excalidraw` export called `_du(s).match()` on an image shape that
+  carried a parked `img:` ref but no bytes — TypeError, the whole export
+  dead (ADR-1042 now intentionally exports the ref itself for park+heal,
+  so this state is routine). The emitter now materializes via
+  `Net._imgIn` first, and emits the element with a dangling `fileId`
+  when bytes are absent — excalidraw renders its own missing-image
+  placeholder. `.drawio` emits `shape=image` unconditionally (`image=`
+  stays byte-gated — its absence renders drawio's image placeholder),
+  and SVG export draws the canvas's gray placeholder box (`#CBD5E1`
+  1px outline) instead of emitting nothing. `.board`/share exports are
+  unchanged — they carry the ref through for import-side heal.
+
 ## [1.8.089]
 - **Fix: `_attachShape` closes the coexistence rule at install (ADR-1066)** —
   ADR-1065's *written prop wins* invariant covered the four writers that
