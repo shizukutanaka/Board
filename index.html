@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.082';   // ADR-1059
+const V='1.8.083';   // ADR-1060
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8117,15 +8117,18 @@ const Net={
     this[key]=null;return sn.p.join('');
   },
   _flushImgOuts(){
-    const outs=this._imgOuts;this._imgOuts=[];
-    const CH=65536;
+    const outs=this._imgOuts,CH=65536;   // ADR-1060
+    let i=0;
     for(const[key,d]of outs){
       const n=_max(1,_ceil(_ln(d)/CH));
-      for(let i=0;i<n;i++){
-        const m={k:'img',key,seq:i,n,data:d.slice(i*CH,(i+1)*CH)};
+      for(let s=0;s<n;s++){
+        const m={k:'img',key,seq:s,n,data:d.slice(s*CH,(s+1)*CH)};
+        if(this._dcQ&&(_ln(this._dcQ)>=4096||(this._dcQB||0)+_ln(m.data)+256>33554432)){this._imgOuts=outs.slice(i);return}
         this._bcast(m);
       }
+      i++;
     }
+    this._imgOuts=[];
   },
   _attachShape(s){
     if(s&&_iS(s.img)&&!_du(s)){
@@ -8187,7 +8190,7 @@ const Net={
     if(q){if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m),this._dcQB=(this._dcQB||0)+_ln(m);return}   // ADR-0783
     if(!d||d.readyState!=='open')return;
     try{d.send(m)}catch(_){this._dcQ=[m];this._dcQB=_ln(m);d.bufferedAmountLowThreshold=65536;
-      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b||[])this._sendDC(x)}}
+      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b||[])this._sendDC(x);if(_ln(this._imgOuts))this._flushImgOuts()}}   // ADR-1060: staged img chunks resume once the backlog drains
   },
   _canon(m){const c={...m};delete c.mac;delete c.dmac;delete c.data;return _JS(c)},   // ADR-1056
   _mac(m){return _hmac(_sec(),this._canon(m))},
