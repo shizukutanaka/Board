@@ -1,3 +1,12 @@
+## [1.8.101] - 2026-10-01
+### Fixed
+- **ADR-1077: imgq junk-key throttle-slot abuse** — `case 'imgq'` stored
+  `msg.key` into the `_imgqT` answer-throttle map without any validation; a
+  forged request could be an arbitrary multi-KB string, so a peer could
+  retain up to 4096 × attacker-sized strings in the map. The key is now
+  `_idOK`-gated (string ≤64 — the same bound every `img` chunk key takes at
+  intake) before the answer/throttle/IDB-miss paths run.
+
 ## [1.8.100] - 2026-10-01
 ### Fixed
 - ADR-1076: read-only (閲覧のみ) 変異漏斗の網羅性監査 (docs+pin、code 変更なし) — `Store.commit`/`_recordCommitted`/`undo`/`redo`/`_repC`/`_placeCopies`/`importBoardText`/draw arming/editor が全て `state.ro` ゲート済み、doc-switch swap は payload の `ro` 採用が `_repC` 記録に先行 (editable インポートは unlock 経路) として契約をピン化。
