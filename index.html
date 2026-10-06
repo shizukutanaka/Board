@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.097';   // ADR-1054
+const V='1.8.098';   // ADR-1074
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6145,8 +6145,9 @@ function doDuplicate(){
   const origSel=_selIds();
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
   if(!_ln(sel))return;
-  // ADR-0080
-  const smart=state.dupIds.size&&_dd()&&sel.every(s=>state.dupIds.has(s.id));
+  // ADR-0080/1074: a {0,0} seeded delta (paste-in-place, merge import) is no
+  // chain at all — repeat at the default offset instead of invisible stacking.
+  const smart=state.dupIds.size&&_dd()&&(_dd().x||_dd().y)&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()
   _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
