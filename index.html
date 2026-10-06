@@ -860,6 +860,50 @@ const _wAdopt=(id,rw)=>{   // ADR-0927
 };
 const _tAlive=(id,rw)=>{const w=_wc()[id];return!!(w&&w._del&&!(w._born&&clockNewer(w._born,w._del))&&!(rw&&rw._born&&validClock(rw._born)&&clockNewer(rw._born,w._del)))};   // ADR-0927
 const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_xC=v=>_max(-1e7,_min(1e7,v)),_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795/0798
+// ADR-1056: wire authentication — every message carries an HMAC-SHA256 tag
+// over its canonical JSON (mac: room secret / BC, dmac: link key / DC).
+// Bulk byte fields (`data` in frag/img chunks) are excluded from the tag;
+// their integrity rides the reassembled inner tag or the content hash.
+const _shaB=b=>{
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const l=_ln(b),nb=((l+9+63)>>6)<<6,a=new Uint8Array(nb);a.set(b);a[l]=0x80;
+  const dv=new DataView(a.buffer);dv.setUint32(nb-4,l*8>>>0);
+  const w=new Uint32Array(64),H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const rr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for(let o=0;o<nb;o+=64){
+    for(let i=0;i<16;i++)w[i]=dv.getUint32(o+i*4);
+    for(let i=16;i<64;i++){const s0=rr(w[i-15],7)^rr(w[i-15],18)^(w[i-15]>>>3),s1=rr(w[i-2],17)^rr(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)|0}
+    let A=H[0],B=H[1],C=H[2],D=H[3],E=H[4],F=H[5],G=H[6],I=H[7];
+    for(let i=0;i<64;i++){
+      const t1=(I+(rr(E,6)^rr(E,11)^rr(E,25))+((E&F)^(~E&G))+K[i]+w[i])|0,
+        t2=((rr(A,2)^rr(A,13)^rr(A,22))+((A&B)^(A&C)^(B&C)))|0;
+      I=G;G=F;F=E;E=(D+t1)|0;D=C;C=B;B=A;A=(t1+t2)|0;
+    }
+    H[0]=(H[0]+A)|0;H[1]=(H[1]+B)|0;H[2]=(H[2]+C)|0;H[3]=(H[3]+D)|0;
+    H[4]=(H[4]+E)|0;H[5]=(H[5]+F)|0;H[6]=(H[6]+G)|0;H[7]=(H[7]+I)|0;
+  }
+  const r=new Uint8Array(32);for(let i=0;i<8;i++)new DataView(r.buffer).setUint32(i*4,H[i]>>>0);
+  return r;
+};
+const _hexB=u=>{let s='';for(const b of u)s+=b.toString(16).padStart(2,'0');return s};
+const _TE=new TextEncoder(),_s256=s=>_hexB(_shaB(_TE.encode(s)));
+const _hmac=(k,m)=>{
+  let kd=new TextEncoder().encode(k);if(_ln(kd)>64)kd=_shaB(kd);
+  const ip=new Uint8Array(64),op=new Uint8Array(64);
+  for(let i=0;i<64;i++){const v=kd[i]||0;ip[i]=v^0x36;op[i]=v^0x5c}
+  const mb=_TE.encode(m),inn=new Uint8Array(64+_ln(mb));inn.set(ip);inn.set(mb,64);
+  const ih=_shaB(inn),out=new Uint8Array(96);out.set(op);out.set(ih,64);
+  return _hexB(_shaB(out));
+};
+const _eqs=(a,b)=>{if(_ln(a)!==_ln(b))return false;let d=0;for(let i=0;i<_ln(a);i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0};
+// The doc-scoped secret every wire tag is keyed by — generated once,
+// persisted in the doc record, never sent in the clear. RTC offer/answer
+// tokens carry it as `k` so a paired link authenticates against it.
+// ADR-1056: the room secret lives on localStorage so every tab on this origin
+// converges on one key — ls wins over the IDB record's `rs` (its durable copy).
+const _sec=()=>{try{const v=_lg('board.rs');if(_iS(v)&&_ln(v)<=64&&v!==state.roomSecret)return state.roomSecret=v}catch(_){}
+  if(!state.roomSecret){state.roomSecret=uid()+uid()+uid()+uid();try{_ls('board.rs',state.roomSecret)}catch(_){}}
+  return state.roomSecret};
 const _tl=()=>state.tool;
 const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
@@ -884,7 +928,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.078';   // ADR-1055
+const V='1.8.079';   // ADR-1056
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1160,7 +1204,8 @@ const state={
   seenOps:_sT(),        // "peer:seq" set for dedup
   wclock:_wM(),                // shapeId→{prop:clock} LWW (0002)
   peers:_mP(),          // peerId→{color,lastSeen,name,cursor?} (0010)
-  roomId:null               // doc room id (BroadcastChannel name suffix)
+  roomId:null,              // doc room id (BroadcastChannel name suffix)
+  roomSecret:null           // doc auth key — wire tags are HMAC'd against it (1056)
 };
 
 const canvas=_g('c');
@@ -7962,7 +8007,7 @@ const Net={
     if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}   // ADR-0619/0695/0839
-    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;   // ADR-0464/0466/0836/1049
+    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;this._dcKey=null;   // ADR-0464/0466/0836/1049/1056
     for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467: drop old-room presence
     clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat
     state.roomId=roomId||DOC_KEY;
@@ -8021,7 +8066,7 @@ const Net={
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
     const n=_ceil(_ln(buf)/65536);   // ADR-0603
     if(n>384){_wT('syncTooLarge');return}
-    for(let i=0;i<n;i++)this._sendDC(_JS({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)}))
+    for(let i=0;i<n;i++)this._sendDC(_JS(this._tagDc({k,seq:i,n,data:buf.slice(i*65536,(i+1)*65536)})))   // ADR-1056
   },
   _fragIn(msg,key,src){   // shared single-assembly intake for 'snap'/'
     if(!_iS(msg.data)||_ln(msg.data)>96*1024)return;
@@ -8069,7 +8114,7 @@ const Net={
     const s=this._slimOp(op);this._flushImgOuts();
     this._send(_mk('op',{op:s}));   // ADR-0499: same envelope as every other wire kind
     if(this.dc&&this.dc.readyState==='open'){
-      try{const _mo=_JS({k:'op',op:s,peer:_pi()});   // ADR-0431
+      try{const _mo=_JS(this._tagDc({k:'op',op:s,peer:_pi()}));   // ADR-0431/1056
         if(_ln(_mo)>200000)this._fragSend(_mo,'opc');else this._sendDC(_mo)
       }catch(_){}
     }
@@ -8110,8 +8155,12 @@ const Net={
     try{d.send(m)}catch(_){this._dcQ=[m];this._dcQB=_ln(m);d.bufferedAmountLowThreshold=65536;
       d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b)this._sendDC(x)}}
   },
+  _canon(m){const c={...m};delete c.mac;delete c.dmac;delete c.data;return _JS(c)},   // ADR-1056
+  _mac(m){return _hmac(_sec(),this._canon(m))},
+  _dmac(m){return _hmac(this._dcKey||_sec(),this._canon(m))},
+  _tagDc(m){m.dmac=this._dmac(m);return m},
   _send(msg){
-    if(this.bc){try{this.bc.postMessage(msg)}catch(_){}}
+    if(this.bc){if(!msg.mac)msg.mac=this._mac(msg);try{this.bc.postMessage(msg)}catch(_){}}   // ADR-1056
   },
   _pk(msg,viaRtc){   // ADR-0498: peer-key routing — RTC peers use
     if(!viaRtc)return msg.peer;
@@ -8123,12 +8172,15 @@ const Net={
   },
   _bcast(msg){   // ADR-0401
     this._send(msg);
+    if(!msg.dmac)msg.dmac=this._dmac(msg);   // ADR-1056: the same object rides the DC too
     this._sendDC(_JS(msg))
   },
   _onRecv(msg,viaRtc){
     if(!msg||!_iO(msg)||msg.peer===_pi())return;
     // Defensive intake: peer id feeds _touchPeer/_pr() directly.
     if(msg.peer!==_ud&&(!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN||(!viaRtc&&_sw(msg.peer,'rtc:'))))return;   // ADR-0827
+    const ex=viaRtc?msg.dmac:msg.mac;   // ADR-1056: every wire message must authenticate
+    if(!_iS(ex)||!_eqs(ex,viaRtc?this._dmac(msg):this._mac(msg)))return;
     if(viaRtc&&(msg.k==='hello'||msg.k==='ping'||msg.k==='sync-req'))return;   // ADR-0986
     switch(msg.k){
       case 'img':{
@@ -8387,6 +8439,7 @@ const Net={
   // ---- WebRTC manual signaling (no server):
   async wrtcCreateOffer(){
     this._wrtcInit();
+    this._dcKey=_sec();   // ADR-1056: the offer token carries the doc secret
     this.dc=this.rtc.createDataChannel('board',{ordered:true});
     this._wireDC();
     const offer=await this.rtc.createOffer();
@@ -8397,7 +8450,8 @@ const Net={
   async wrtcAcceptOffer(tokenA){
     this._wrtcInit();
     this.rtc.ondatachannel=e=>{this.dc=e.channel;this._wireDC()};
-    const sdp=this._decodeToken(tokenA);
+    const{sdp,k}=this._decodeToken(tokenA);
+    if(k)this._dcKey=k;   // ADR-1056: adopt the offerer's link key
     await this.rtc.setRemoteDescription(sdp);
     const answer=await this.rtc.createAnswer();
     await this.rtc.setLocalDescription(answer);
@@ -8405,13 +8459,14 @@ const Net={
     return this._encodeToken(this.rtc.localDescription);
   },
   async wrtcConsumeAnswer(tokenB){
-    const sdp=this._decodeToken(tokenB);
+    const{sdp,k}=this._decodeToken(tokenB);
+    if(k)this._dcKey=k;   // ADR-1056
     await this.rtc.setRemoteDescription(sdp);
   },
   _wrtcInit(){
     if(this.rtc){try{this.rtc.close()}catch(_){}}
     if(typeof RTCPeerConnection===_un)throw new Error('WebRTC not supported');
-    this._rtcConnFailed=false;
+    this._rtcConnFailed=false;this._dcKey=null;   // ADR-1056
     this.rtc=new RTCPeerConnection({iceServers:[
       {urls:'stun:stun.l.google.com:19302'},
       {urls:'stun:stun1.l.google.com:19302'}
@@ -8451,7 +8506,7 @@ const Net={
       this._rtcPeerId=dcRef._pid;
       this._touchPeer(dcRef._pid);
       // snapshot to new peer (ops for merge); ADR-0400
-      try{const _sm=_JS(this._snapshotMsg());
+      try{const _sm=_JS(this._tagDc(this._snapshotMsg()));   // ADR-1056
         if(_ln(_sm)>24e6){_wT('snapBig');this.dc.close();return} // ADR-0403/0843
         this._fragSend(_sm,'snap')
       }catch(_){}
@@ -8463,7 +8518,7 @@ const Net={
     dcRef.onclose=()=>{
       if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}   // purge THIS channel's row even when superseded
       if(this.dc!==dcRef)return;   // stale close must not clobber the live link's state
-      this._dcQ=null;this._snapIn=null;this._opcIn=null;this._dcQB=0;   // ADR-0446/0448
+      this._dcQ=null;this._snapIn=null;this._opcIn=null;this._dcQB=0;this._dcKey=null;   // ADR-0446/0448/1056
       if(!this._rtcConnFailed)_wT('disconnected');
       if(this._onConnChange)this._onConnChange();
     };
@@ -8472,13 +8527,13 @@ const Net={
   // path is deprecated and inflates any non-AS
   // old escape() format as a fallback so pre-1
   _encodeToken(sdp){
-    return this._b64uEnc(new TextEncoder().encode(_JS({type:sdp.type,sdp:sdp.sdp})));
+    return this._b64uEnc(new TextEncoder().encode(_JS({type:sdp.type,sdp:sdp.sdp,k:this._dcKey})));   // ADR-1056
   },
   _decodeToken(s){
     s=_trm(s);let j;
     try{j=_JP(new TextDecoder().decode(this._b64uDec(s)))}
     catch(_){j=_JP(_dU(escape(atob(s))))}   // legacy escape() token
-    return new RTCSessionDescription(j);
+    return{sdp:new RTCSessionDescription(j),k:_iS(j.k)?j.k:null};   // ADR-1056
   }};
 
 // ====================== SHARE (URL hash) =====
@@ -8727,6 +8782,7 @@ const Persist={
         pages:_pgs(),curPg:state.curPg,   // ADR-0646
         wc:_wc(),          // ADR-0460
         rep:state._lastRep,nts:_nameTs,ntp:_namePeer,   // ADR-0695/0699: causal markers ride the doc record too
+        rs:state.roomSecret,   // ADR-1056: the wire auth key persists with the doc
         savedAt:_now()
       },DOC_KEY);
       await txDone(tx);
@@ -8762,6 +8818,7 @@ const Persist={
       }
       _docN(d);
       if(d.wc&&_iO(d.wc))for(const k in d.wc)if(_idOK(k))_wAdopt(k,d.wc[k]);   // ADR-0460/1037
+      if(_iS(d.rs)&&_ln(d.rs)<=64)state.roomSecret=d.rs;   // ADR-1056
       if(validClock(d.rep))state._lastRep=d.rep;if(_tsOK(d.nts))_nameTs=d.nts;if(_idOK(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701/0780/0791
       state.lastSaveAt=d.savedAt||0;
       _sz();
@@ -8777,7 +8834,7 @@ const Persist={
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
       const{slim,puts}=_imgSlim(shapes.concat(_eraseBatch),stored,1);
       for(const[k,d]of puts)imgs.put(d,k);
-      _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,pages:_pgs(),curPg:state.curPg,savedAt:_now()},DOC_KEY+':prev');
+      _oS(tx,DB_STORE).put({v:V,shapes:slim,viewport,docName,pages:_pgs(),curPg:state.curPg,rs:state.roomSecret,savedAt:_now()},DOC_KEY+':prev');   // ADR-1056
       await txDone(tx);
     }catch(err){_e(this._saveErrMsg(err))}   // ADR-1028
   },
@@ -8825,6 +8882,7 @@ const Persist={
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
       _scl();state.wclock=_wM();
       _docN(d);_bName();
+      if(_iS(d.rs)&&_ln(d.rs)<=64)state.roomSecret=d.rs;   // ADR-1056: keep the same secret across restores
       if(_vpOK(d.viewport)){
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
