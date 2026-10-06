@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.084';   // ADR-1061
+const V='1.8.085';   // ADR-1062
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8070,9 +8070,10 @@ const Net={
   // blob hasn't landed park in _imgPending.
   _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(), _imgqT:_mP(),
   _imgOuts:[], _fragOuts:[], _imgChunks:_mP(),
+  _stgOK(outs,b){let s=_ln(b)||0;for(const e of outs)s+=_ln(e[1]);return s<=67108864},   // ADR-1062: staged outflow shares the answer store's byte bound
   _slimShapes(shapes,sent){
     const{slim,puts}=_imgSlim(shapes,sent||this._imgSent);
-    for(const[k,d]of puts){_pu(this._imgOuts,[k,d]);if(sent)this._imgSent.set(k,d)}   // ADR-1045
+    for(const[k,d]of puts){if(this._stgOK(this._imgOuts,d))_pu(this._imgOuts,[k,d]);if(sent)this._imgSent.set(k,d)}   // ADR-1045/1062
     if(_ln(puts)){let _sb=0;for(const[,d]of this._imgSent)_sb+=_ln(d);   // ADR-0842: byte-bound the answer store
       while(_sb>64_000_000){const o=this._imgSent.keys().next().value;if(o==null)break;_sb-=_ln(this._imgSent.get(o));this._imgSent.delete(o)}}
     return slim;
@@ -8100,6 +8101,7 @@ const Net={
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
     const n=_ceil(_ln(buf)/65536);   // ADR-0603
     if(n>384){_wT('syncTooLarge');return}
+    if(!this._stgOK(this._fragOuts,buf))return;   // ADR-1062: shed the newest stream rather than grow a wedged stage
     _pu(this._fragOuts,[k,buf]);this._flushFragOuts()   // ADR-1061
   },
   _flushFragOuts(){
@@ -8269,7 +8271,7 @@ const Net={
         // imgq flood cost O(board)/msg. ADR-0836: one answer per key per 10s.
         const d0=this._imgIn.get(msg.key)||(_idOK(msg.key)?this._imgSent.get(msg.key):null);
         const _t=nowTs(),_qt=this._imgqT.get(msg.key);
-        if(d0&&(!_qt||_t-_qt>10000)){this._imgqT.set(msg.key,_t);_pu(this._imgOuts,[msg.key,d0]);this._flushImgOuts()}
+        if(d0&&(!_qt||_t-_qt>10000)){this._imgqT.set(msg.key,_t);if(this._stgOK(this._imgOuts,d0)){_pu(this._imgOuts,[msg.key,d0]);this._flushImgOuts()}}   // ADR-1062
         break;}
       case 'snap':case 'opc':{
         // ADR-0383/0431/0987: frag streams are DC-only — a BC-forged chunk
