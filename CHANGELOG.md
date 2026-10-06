@@ -1,3 +1,18 @@
+## [1.8.093]
+- **Fix: RTC invite-token codec reached Share-only helpers — manual signaling threw TypeError (ADR-1070)** —
+  ADR-0160 moved `_encodeToken`/`_decodeToken` onto `_b64uEnc`/`_b64uDec`,
+  but the helpers live on `Share`, not `Net`: every offer/answer token
+  encode or decode since then hit `this._b64u* is not a function` —
+  the entire manual-signaling path dead on arrival. Both call sites now
+  use `Share._b64u*`. Second finding from the wire-secret audit: the SDP
+  token's `k` link key adopted with a bare `_iS` — no bound, unlike every
+  other secret intake (`rs` ≤64 everywhere) — now `≤64` for parity.
+  Audit documented the full secret lifecycle: mint (`_sec()` uid×4 lazy),
+  persistence (localStorage `board.rs` + IDB `d.rs`, both ≤64), adoption
+  (own records only — share links/.board files never carry or adopt `rs`),
+  resets (`Net.init`/`_wrtcInit`/dc.onclose null `_dcKey`), propagation
+  (offer token `k` → answerer adopts the offerer's link key).
+
 ## [1.8.092]
 - **Fix: doc-switch imports adopt `ro` before the swap's `_repC` (ADR-1069)** —
   `importFromHash` set `state.ro` AFTER recording the replace op, and

@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.092';   // ADR-1069
+const V='1.8.093';   // ADR-1070
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8609,13 +8609,13 @@ const Net={
   // path is deprecated and inflates any non-AS
   // old escape() format as a fallback so pre-1
   _encodeToken(sdp){
-    return this._b64uEnc(new TextEncoder().encode(_JS({type:sdp.type,sdp:sdp.sdp,k:this._dcKey})));   // ADR-1056
+    return Share._b64uEnc(new TextEncoder().encode(_JS({type:sdp.type,sdp:sdp.sdp,k:this._dcKey})));   // ADR-1056/1070: _b64u lives on Share
   },
   _decodeToken(s){
     s=_trm(s);let j;
-    try{j=_JP(new TextDecoder().decode(this._b64uDec(s)))}
+    try{j=_JP(new TextDecoder().decode(Share._b64uDec(s)))}
     catch(_){j=_JP(_dU(escape(atob(s))))}   // legacy escape() token
-    return{sdp:new RTCSessionDescription(j),k:_iS(j.k)?j.k:null};   // ADR-1056
+    return{sdp:new RTCSessionDescription(j),k:_iS(j.k)&&_ln(j.k)<=64?j.k:null};   // ADR-1056/1070: bound like rs
   }};
 
 // ====================== SHARE (URL hash) =====
