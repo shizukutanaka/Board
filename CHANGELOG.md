@@ -1,3 +1,13 @@
+## [1.8.102] - 2026-10-01
+### Fixed
+- **ADR-1078: `_park` intake bounds** — `_attachOp` parks a shape's `img` ref
+  into `_imgPending` **before** `validShape` runs, so a forged add carried a
+  megabyte-long `s.id` as the pending-map key (256 slots × attacker-sized
+  keys) and an oversized `img` ref — unanswerable on the wire (key ≤64) —
+  re-parked forever by `_imgRescan` → an imgq spam loop. `_park` now
+  `_idOK`-gates both its key and ref at the single chokepoint covering all
+  six park sites (`_attachShape`/`_oa`/`_pcR`/`_imgRescan`/img-ref repark).
+
 ## [1.8.101] - 2026-10-01
 ### Fixed
 - **ADR-1077: imgq junk-key throttle-slot abuse** — `case 'imgq'` stored

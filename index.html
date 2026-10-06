@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.101';   // ADR-1076
+const V='1.8.102';   // ADR-1076
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2238,7 +2238,7 @@ const _aE=()=>document.activeElement,_csr=v=>canvas.style.cursor=v;   // ADR-052
 const _hb=s=>s.w!=null;   // ADR-0501
 const _idOK=id=>_iS(id)&&_ln(id)<=64;   // ADR-0502: wire id cap (ADR-0485): unlocked
 const _idIdx=id=>_sh().findIndex(s=>s.id===id);   // ADR-0497: shape index by id (4 sites)
-const _park=(P,id,k)=>{if(P.size>=256&&!P.has(id))P.delete(P.keys().next().value);P.set(id,{k,t0:nowTs()})};   // ADR-0842
+const _park=(P,id,k)=>{if(!_idOK(id)||!_idOK(k))return;if(P.size>=256&&!P.has(id))P.delete(P.keys().next().value);P.set(id,{k,t0:nowTs()})};   // ADR-0842/1078
 const _imgRescan=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s)&&!Net._imgPending.has(s.id))_park(Net._imgPending,s.id,s.img)};   // ADR-1049: slow re-park of expired refs
 const _psc=id=>{_penBboxCache.delete(id);Net._imgPending.delete(id);const e=_penCache.get(id);if(e){_penCache.delete(id);_penCachePx-=e.px||0;}}   // ADR-0427/0435
 // Effective raster resolution: zoom-adaptive …

@@ -18257,6 +18257,23 @@ pass += 8;
 }
 console.log('  ✓ ADR-1077 imgq key id-gate (4 asserts)');
 pass += 4;
+// ---- ADR-1078: _park intake bounds — pending map keys/refs are wire ids ----
+{
+  // _attachOp parks before validShape runs, so a forged 'add' could plant a
+  // megabyte-long shape id as a _imgPending key; an oversized img ref could
+  // never be answered on the wire (key bound is 64) yet re-parked forever by
+  // _imgRescan — an imgq spam loop. _park now _idOK-gates both arguments.
+  Net._imgPending.clear();
+  Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:{id:'X'.repeat(4096),type:'rect',x:0,y:0,w:10,h:10,img:'k:1'},clock:{peer:'p9',seq:1,ts:1}}},false);
+  assert.strictEqual(Net._imgPending.size,0,'oversized shape id parks nothing');
+  Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:{id:'okBig',type:'rect',x:0,y:0,w:10,h:10,img:'K'.repeat(200)},clock:{peer:'p9',seq:2,ts:2}}},false);
+  assert.strictEqual(Net._imgPending.size,0,'unanswerable oversized ref parks nothing');
+  Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:{id:'okImg',type:'rect',x:0,y:0,w:10,h:10,img:'k:9'},clock:{peer:'p9',seq:3,ts:3}}},false);
+  assert.ok(Net._imgPending.has('okImg'),'a legit ref still parks');
+  assert.ok(html.includes('!_idOK(id)||!_idOK(k)'),'_park gates id + ref at the chokepoint');
+}
+console.log('  ✓ ADR-1078 _park intake bounds (4 asserts)');
+pass += 4;
 // ---- ADR-1065: img-ref × dataUrl coexistence — the patch's written prop wins ----
 {
   state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
