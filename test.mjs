@@ -18560,6 +18560,27 @@ pass += 3;
 assert.ok(html.includes('(_dd().x||_dd().y)'),'{0,0} delta falls back to the plain path');
 pass += 1;
 
+{
+  // ADR-1076: the read-only funnel is total — every local-mutation entry
+  // (commit/undo/redo/_recordCommitted) early-returns under state.ro, and the
+  // doc-switch swaps adopt the payload's ro flag before _repC records.
+  state.ro=1;
+  const h0=state.history.length,n0=state.shapes.length;
+  Store.commit({op:'add',shape:{id:'r1',type:'rect',x:0,y:0,w:10,h:10,z:1}});
+  assert.strictEqual(state.history.length,h0,'ro: commit records nothing');
+  assert.strictEqual(state.shapes.length,n0,'ro: commit mutates nothing');
+  assert.strictEqual(Store.undo(),false,'ro: undo refuses');
+  assert.strictEqual(Store.redo(),false,'ro: redo refuses');
+  state.ro=0;state.shapes.length=0;state.history=[];state.histIdx=-1;_invalidateGrid();
+  pass += 4;
+}
+assert.ok(html.includes("_nugEnd();   // ADR-0958/0960\n    if(state.ro){_roNo();return}"),'commit gates ro after the nudge flush');
+assert.ok(html.includes("if(state.ro){_roNo();return false}"),'undo+redo gate ro');
+assert.ok(html.includes("state.ro=d.ro===1;_roBadge();   // ADR-1069: adopt the payload's context before recording"),'.board replace adopts ro before repC');
+assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069: adopt before the swap's repC"),'hash replace adopts ro before repC');
+assert.ok(html.includes("function importBoardText(txt,wp){\n  if(state.ro){_roNo();return true}"),'clipboard .board import is ro-gated');
+pass += 5;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
