@@ -1105,6 +1105,7 @@ Board/
 │   └── ADR-1058-pen-skeleton-smoothing.md  # ペン描画のスケルトン平滑化 — `_penSm` (1,2,1)/4 加重で描画/スタンプ/SVG の3面を統一、端点保持・圧力 index 維持 (ADR-1048 W37)
 │   └── ADR-1059-superseded-link-backlog-reset.md  # 差替リンクの滞留送信キューを新チャンネル生成前にリセット — `_dcQ`/`_dcQB` 未クリアで新リンクが永久 wedge + 旧キューのクロスリンク注入を閉塞
 │   └── ADR-1060-deferred-img-chunk-outflow.md  # 滞留キュー超過で img chunk が途中ドロップ→再送増幅ループ — flush をキュー admission に同期させ残りを drain 再開へ延期 (blob 単位で seq:0 全量再送)
+│   └── ADR-1061-deferred-frag-stream-outflow.md  # 同型残穴の snap/opc フラグメント版 — `_fragOuts` ステージ + drain で causal データ優先再開 (joiner 飢餓・巨大 op 消失を閉塞)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

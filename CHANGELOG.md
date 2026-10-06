@@ -1,3 +1,16 @@
+## [1.8.084]
+- **Fix: congested send-queue defers staged snap/opc fragment streams
+  (ADR-1061)** — `_fragSend` had the same silent mid-stream drop ADR-1060
+  fixed for img chunks, with a bigger blast radius: a `snap` stream losing
+  tail fragments leaves the joiner's `_snapIn` slot permanently incomplete
+  (empty board; every bounded sync-req resend regenerates the doomed
+  multi-MB transfer) and an `opc` oversize op never reaches peers. The
+  sender now stages `[k,buf]` in `_fragOuts` and flushes with the same
+  queue-admission check; the remainder resumes on the
+  `onbufferedamountlow` drain *before* img chunks (causal data first),
+  re-emitting a partial stream whole from `seq:0` so the receiver slot
+  restarts cleanly. 8 asserts; `node test.mjs` 3700 pass.
+
 ## [1.8.083]
 - **Fix: congested send-queue defers staged image chunks instead of dropping
   them mid-stream (ADR-1060)** — `_flushImgOuts` pushed every 64KiB chunk of a

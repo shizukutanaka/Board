@@ -16398,7 +16398,7 @@ try {
       assert.strictEqual(state.seq,41,'op counter is boot-scoped, not room-scoped');
       assert.ok(state.wclock.keep,'wclock is doc-domain — untouched by init');
       assert.ok(html.includes("_sO().clear();_cT(this._snapT)"),'init clears dedup + deferred snapshot resend');
-      assert.ok(html.includes("this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null"),'init clears blob accounting + frag slots');
+      assert.ok(html.includes("this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._fragOuts.length=0;this._snapIn=null;this._opcIn=null"),'init clears blob accounting + frag slots');
       state.wclock={};state.roomId=null;state.seq=0;Net._imgPending.clear();
       clearInterval(Net._presenceTimer);
       if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}
@@ -18066,7 +18066,7 @@ pass += 14;
   // OLD channel; the reset clears both before the new link assigns this.dc.
   const sent=[];
   const dead={readyState:'open',send(){throw new Error('sctp-full')}};
-  const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[]};
+  const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[],_fragOuts:[]};
   Net._sendDC.call(net,'stale');
   assert.ok(net._dcQ&&net._dcQB===5,'congested send leaves a byte-counted backlog');
   const drain=dead.onbufferedamountlow;
@@ -18093,7 +18093,7 @@ pass += 8;
   // remainder to the drain hook instead of feeding the drop.
   const sent=[];
   const dead={readyState:'open',send(){throw new Error('sctp-full')}};
-  const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[],_sendDC:Net._sendDC,_flushImgOuts:Net._flushImgOuts,_bcast(m){sent.push(m);Net._sendDC.call(this,'|'+m.data)}};
+  const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[],_fragOuts:[],_sendDC:Net._sendDC,_flushImgOuts:Net._flushImgOuts,_flushFragOuts:Net._flushFragOuts,_bcast(m){sent.push(m);Net._sendDC.call(this,'|'+m.data)}};
   Net._sendDC.call(net,'x');
   assert.ok(net._dcQ&&net._dcQB===1,'send throw arms the byte-counted backlog');
   net._dcQB=33554432-70000;                          // budget for exactly one 64KiB chunk
@@ -18111,6 +18111,36 @@ pass += 8;
 }
 console.log('  ✓ ADR-1060 deferred img-chunk outflow (9 asserts)');
 pass += 9;
+
+// ---- ADR-1061: congested send-queue defers staged frag streams (snap/opc) too ----
+{
+  // _fragSend had the same mid-stream drop as _flushImgOuts pre-1060, with a
+  // bigger blast radius: a 'snap' stream losing tail fragments leaves the
+  // joiner's _snapIn slot incomplete forever — permanent empty board for the
+  // joiner, and every sync-req resend regenerates the doomed transfer.
+  const sent=[];
+  const dead={readyState:'open',send(){throw new Error('sctp-full')}};
+  const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[],_fragOuts:[],_dcKey:'k',
+    _sendDC:Net._sendDC,_fragSend:Net._fragSend,_flushFragOuts:Net._flushFragOuts,
+    _tagDc:Net._tagDc,_dmac:Net._dmac,_canon:Net._canon};
+  Net._sendDC.call(net,'x');
+  assert.ok(net._dcQ&&net._dcQB===1,'send throw arms the byte-counted backlog');
+  net._dcQB=33554432-70000;                          // budget for exactly one 64KiB fragment
+  net._fragSend('a'.repeat(3*65536),'snap');
+  assert.strictEqual(sent.length,0,'_fragSend does not record sends itself');
+  assert.strictEqual(net._dcQ.length,2,'only the fitting fragment reached the queue');
+  assert.deepStrictEqual(net._fragOuts.map(e=>e[0]),['snap'],'partially-sent stream stays staged for whole re-emit');
+  dead.onbufferedamountlow();                        // drain resumes the staged stream
+  assert.strictEqual(net._fragOuts.length,0,'drain flushes the deferred stream');
+  assert.strictEqual(net._dcQ.length,5,'re-emit queues backlog x + first frag + the re-sent 3-fragment stream');
+  const seqs=net._dcQ.slice(2).map(m=>JSON.parse(m).seq);
+  assert.deepStrictEqual(seqs,[0,1,2],'re-emitted stream restarts at seq:0 (receiver slot reset)');
+  // source pins — the defer gate mirrors the img-chunk gate and the drain resumes frags first.
+  assert.ok(html.includes("_pu(this._fragOuts,[k,buf]);this._flushFragOuts()"),'fragSend stages then flushes');
+  assert.ok(html.includes('if(_ln(this._fragOuts))this._flushFragOuts();if(_ln(this._imgOuts))this._flushImgOuts()'),'drain resumes frags ahead of img chunks');
+}
+console.log('  ✓ ADR-1061 deferred frag-stream outflow (8 asserts)');
+pass += 8;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
