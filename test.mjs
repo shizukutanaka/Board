@@ -18409,6 +18409,40 @@ assert.ok(html.includes("rs:state.roomSecret,ro:state.ro?1:0,savedAt"),'backup r
 assert.ok((html.match(/state\.ro=d\.ro===1/g)||[]).length>=2,'importBoard+restoreBackup adopt ro');
 pass += 4;
 
+// ---- ADR-1070: wire-secret lifecycle — SDP codec + `k` intake bound ----
+{
+  const _hadR=Object.prototype.hasOwnProperty.call(globalThis,'RTCSessionDescription'),_prevR=globalThis.RTCSessionDescription;
+  try{
+    globalThis.RTCSessionDescription=class{constructor(d){Object.assign(this,d)}};
+    const _tok=o=>Share._b64uEnc(new TextEncoder().encode(JSON.stringify(o)));
+    // ADR-0160 regression: Net called this._b64u* but the helpers live on Share — every
+    // invite-token encode/decode threw TypeError (manual signaling dead). Round-trip now:
+    const t=Net._encodeToken({type:'offer',sdp:'sdp0'});
+    const rt=Net._decodeToken(t);
+    assert.strictEqual(rt.sdp&&rt.sdp.type,'offer','offer token round-trips');
+    assert.strictEqual(rt.k,null,'encode without _dcKey yields k:null');
+    const good=Net._decodeToken(_tok({type:'offer',sdp:{type:'offer',sdp:'s'},k:'a'.repeat(40)}));
+    assert.strictEqual(good.k,'a'.repeat(40),'rs-sized link key adopts');
+    const big=Net._decodeToken(_tok({type:'offer',sdp:{type:'offer',sdp:'s'},k:'k'.repeat(4096)}));
+    assert.strictEqual(big.k,null,'oversized k rejected (HMAC key bound, parity with rs ≤64)');
+    const nul=Net._decodeToken(_tok({type:'answer',sdp:{type:'answer',sdp:'s'}}));
+    assert.strictEqual(nul.k,null,'absent k stays null');
+    const nok=Net._decodeToken(_tok({type:'offer',sdp:{type:'offer',sdp:'s'},k:12345}));
+    assert.strictEqual(nok.k,null,'non-string k rejected');
+  }finally{if(_hadR)globalThis.RTCSessionDescription=_prevR;else delete globalThis.RTCSessionDescription}
+}
+console.log('  ✓ ADR-1070 SDP codec + link-key intake bound (7 asserts)');
+pass += 7;
+assert.ok(html.includes("Share._b64uEnc(new TextEncoder().encode(_JS({type:sdp.type")&&html.includes("Share._b64uDec(s)"),'token codec reaches the Share helpers');
+assert.ok(!html.includes("this._b64u"),'no Net-internal _b64u references remain');
+assert.ok(html.includes("k:_iS(j.k)&&_ln(j.k)<=64?j.k:null"),'token k bounded at intake');
+assert.ok(html.includes("if(_iS(v)&&_ln(v)<=64&&v!==state.roomSecret)"),'localStorage rs bounded');
+assert.ok((html.match(/if\(_iS\(d\.rs\)&&_ln\(d\.rs\)<=64\)state\.roomSecret=d\.rs/g)||[]).length===2,'both IDB rs adoption sites bounded');
+assert.ok(html.includes("rs:state.roomSecret,ro:state.ro?1:0,savedAt"),'backup record carries rs+ro');
+assert.ok((html.match(/_dcKey=null/g)||[]).length>=3,'_dcKey resets on init/handshake/close');
+assert.ok(!html.includes("rs:state.roomSecret,shapes")&&!html.includes("data.rs="),'no rs in export payloads');
+pass += 6;
+
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
