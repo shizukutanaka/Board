@@ -18388,6 +18388,37 @@ pass += 5;
 }
 console.log('  \u2713 ADR-1084 emit\u00d7intake symmetry (4 asserts)');
 pass += 4;
+// ---- ADR-1085: wire 'before' is the changed-props baseline, not undo data ----
+{
+  // Emit carries before on every patch-family op: the receiver diffs before→after
+  // to learn WHICH props the writer touched (per-prop LWW change detection in
+  // _chg/_stampWrites). A move's `after` carries both axes absolutely, so without
+  // `before` the receiver cannot tell B moved only y — concurrent moves diverge.
+  const sent=[];
+  const _ob=Net.broadcast;
+  Net.broadcast=o=>{sent.push(JSON.parse(JSON.stringify(Net._slimOp(o))))};
+  const mk=id=>{const s=Shape.make('rect',{x:10,y:10,w:20,h:20});s.id=id;return s};
+  state.shapes.push(mk('wA'),mk('wB'));
+  Store.commit({op:'move',ids:['wA'],dx:5,dy:0});
+  Store.commit({op:'style',before:[{id:'wA',x:10}],after:[{id:'wA',x:11}]});
+  Store.commit({op:'upd',id:'wB',before:{x:10},after:{x:12}});
+  Store.commit({op:'zorder',changes:[{id:'wA',before:'0',after:'V'}]});
+  Store.commit({op:'align',dir:'left',before:[{id:'wA'}],after:[{id:'wA',x:0}]});
+  Net.broadcast=_ob;
+  assert.ok(sent.length>=5,'every patch-op emit path produced a wire op');
+  const mv=sent.find(o=>o.op==='move');
+  assert.ok(Array.isArray(mv.before)&&mv.before[0].x===10&&mv.after[0].x===15,'move wire keeps before+after so the peer diffs the moved axes');
+  assert.ok(sent.every(o=>o.op==='zorder'?o.changes.every(c=>'before' in c):('before' in o)),'every patch-family op carries its before baseline');
+  for(const o of sent)assert.ok(validRemotePayload(o),'before-bearing op passes intake: '+o.op);
+  // contract strictness: patch-array ops still REQUIRE before — a forged op
+  // without it can't pretend every prop in `after` was touched.
+  assert.ok(!validRemotePayload({op:'style',after:[{id:'x',x:1}]}),'before-less style op rejected');
+  assert.ok(!validRemotePayload({op:'align',dir:'left',after:[{id:'x',x:1}]}),'before-less align op rejected');
+  assert.ok(validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}]}),'move before stays optional on the wire (delta-capable)');
+}
+console.log('  \u2713 ADR-1085 wire before is a baseline (7 asserts)');
+pass += 7;
+
 // ---- ADR-1080: peer-selection ids resolve against live shapes ----
 {
   Net._onRecv({k:'ping',peer:'p9'},false);

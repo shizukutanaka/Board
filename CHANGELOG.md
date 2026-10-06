@@ -1,3 +1,8 @@
+## [1.8.109] - 2026-10-01
+
+### Added
+- wire `before` 監査 + 契約ピン (ADR-1085): ADR-1048 P4-b「patch 系 op の `before` 剥がしによるペイロード圧縮」は棄却 — wire `before` は undo 専用ではなく、受信側の `_chg`/`_stampWrites` が before→after 差分で「書き手が触れた prop」を特定する変更検出ベースライン (move の並行収束 x=10∧y=5 がそれに依存)。del.connClears.before は unbind 比較値、group.before はメンバー id で必須 — 圧縮不能を7挙動ピンで固定
+
 ## [1.8.108] - 2026-10-01
 
 ### Added
