@@ -1,3 +1,12 @@
+## [1.8.095]
+- **Fix: page-less doc paste drops a foreign `s.pg` (ADR-1072)** — `_placeCopies`
+  only reassigned `sh.pg` when the destination doc had pages; a copy/paste or
+  merge-import of a multi-page board into a single-page doc kept the source's
+  `s.pg`, so the pasted shape failed `_pgOk` on every page and sat invisible
+  (committed via `addMany` — peers inherited the same invisible shape). Now
+  `else delete sh.pg` so page-less docs take the copy page-less. Reached via
+  clipboard `.board` paste, `importBoardText`, and the ADR-1054 merge import.
+
 ## [1.8.094]
 - **Fix: doc-switch swaps cancel a live pointer gesture (ADR-1071)** — `_rs`
   cleared `_eraseBatch`/`state.measure` but left a live gesture armed on the
