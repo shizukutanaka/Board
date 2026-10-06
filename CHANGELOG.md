@@ -1,3 +1,22 @@
+## [1.8.080]
+- **Feat: read-only share links (ADR-1057, ADR-1048 P3-a)** — the share
+  modal gains a `👁 閲覧のみリンク` checkbox next to the encryption one.
+  Both URL forms now carry a `ro:1` payload flag: an imported read-only
+  board flips `state.ro`, which gates the entire mutation funnel
+  (`commit`/`_recordCommitted`/`undo`/`redo`/`_repC`), tool switching
+  (`pickTool` keeps `select`/`hand`), gesture arming (transform drags,
+  Alt-duplicate, quick-connect), editor opens (text/label/dblclick) and
+  the docName input — all with a `readOnlyMode` toast. Selection,
+  marquee/lasso, pan/zoom, search, export and page navigation all keep
+  working, and remote ops still apply (this is a *local input* gate, not
+  consensus). A `🔒 閲覧のみ` header badge announces the mode and unlocks
+  on click (also persisted via the doc record's `ro`).
+- Tests: behavioural pins — funnel drop, tool-pick refusal, undo/redo
+  block, real `z:` import flipping `state.ro`, badge unlock; source pins —
+  `data.ro=1` emit, `shareRo`/`roBadge` DOM, persist/import adoption,
+  editor/docName/tool/pointerdown gates, i18n keys, `_repC` guard (27
+  asserts, 3661 pass total).
+
 ## [1.8.079]
 - **Security: wire message authentication — room-secret HMAC tags
   (ADR-1056, ADR-1048 P1-c)** — every wire message on both transports was
