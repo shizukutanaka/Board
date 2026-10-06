@@ -798,7 +798,7 @@ const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=1
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(_ul);
-const _repC=(before,beforeWc,origSel,bp,bc)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc});   // ADR-0646: the swap records the page set on both sides
+const _repC=(before,beforeWc,origSel,bp,bc)=>Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc});   // ADR-0646
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel)};   // ADR-0309/0568: _ss drops missing/hidden ids
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
@@ -806,13 +806,13 @@ const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
 const _sb=()=>_selIds().map(byId).filter(Boolean);   // ADR-0418/0623
-const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
-const _sel0=()=>byId(_selIds()[0]);   // ADR-0421: single-selected shape (12 sites)
+const _hasS=id=>_sl().has(id);   // ADR-0418
+const _sel0=()=>byId(_selIds()[0]);   // ADR-0421
 const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: members of a group (id list)
 // ADR-0423: expand a working selection by its frameOf map — add each
 // child's id as a shape (unlocked only), idempotent across callers.
 const _xFS=(sel,frameOf)=>{for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)_pu(sel,ch);}}}
-const _inR=(b,f)=>b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h;   // ADR-0767: rect containment (frame membership)
+const _inR=(b,f)=>b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h;   // ADR-0767
 // ADR-0423: childId→frameId map — frame-containment expansion in del/move/flip/rot.
 // ADR-0767: nested frames are members; a nested selected frame skips its scan (outer wins).
 const _frameOf=(sel,ok)=>{const m=_mP();
@@ -884,7 +884,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.076';   // ADR-1053
+const V='1.8.077';   // ADR-1054
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -896,12 +896,12 @@ const _trimSeen=()=>{if(_sO().size>MAX_SEEN_OPS){const k=[..._sO()];for(let i=0;
 const SHARE_MAX_BYTES=128*1024*1024,SHARE_MAX_SHAPES=200000;
 // ADR-0602: op-level arrays cap at the board ceiling — a 500-cap dropped legal bulk ops.
 const MAX_OP_SHAPES=SHARE_MAX_SHAPES;
-const SHARE_URL_WARN=32768;   // ADR-0040: share links longer than this risk chat truncation
-const MIRROR_MAX=300;         // ADR-0041: cap the SR DOM-mirror list on huge boards
-const SVG_MAX_ELEMS=5000,SVG_MAX_PTS=2000;   // ADR-0042: SVG import ceilings (same anti-bomb spirit as ADR-0039)
+const SHARE_URL_WARN=32768;   // ADR-0040
+const MIRROR_MAX=300;         // ADR-0041
+const SVG_MAX_ELEMS=5000,SVG_MAX_PTS=2000;   // ADR-0042
 const EXC_MAX_ELEMS=50000,EXC_MAX_PTS=10000;   // ADR-0043: .excalidraw import ceilings
 const PASTE_MAX_CHARS=4000;                    // ADR-0044: cap a clipboard text dump
-const LONG_PRESS_MS=500;        // ADR-0006: long-press duration before opening the context menu
+const LONG_PRESS_MS=500;        // ADR-0006
 const LONG_PRESS_MOVE_TOL=10;   // px; beyond before firing = drag not hold
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
 const clampZoom=z=>_max(MIN_ZOOM,_min(MAX_ZOOM,z)); // single source for the zoom invariant
@@ -915,7 +915,7 @@ const PI2=_PI*2;
 const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
 const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
-const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate cap (~16/s)
+const CURSOR_THROTTLE_MS=60;            // ADR-0010
 const MAX_PEERS=32;                     // presence-map cap vs flooding peers
 const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; longer is garbage
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
@@ -1014,6 +1014,7 @@ const I18N={
     rtcOfferPh:'相手の招待コードを貼り付け',rtcAnswerPh:'相手の応答コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
     importConfirm:'共有された内容で現在のボードを置き換えますか？',
+    importMerge:'読み込んだ内容を現在のボードに追加(マージ)しますか?(キャンセル=置き換えまたは中止)',
     imported:'読み込みました',svgImported:'SVG を取り込みました',excImported:'Excalidraw を取り込みました',dioImported:'drawio を取り込みました',dioCompressed:'圧縮 .drawio は未対応 — draw.io で「圧縮しない」にして保存してください',dioExported:'.drawioファイルを保存しました',textPasted:'テキストを貼り付けました',peerReplaced:'相手が盤面を丸ごと置き換えました (再起動時に復元できます)',
     backupAvailable:'前回、上書きされる前のボードが保存されています。復元しますか？',
     backupRestored:'前回のボードを復元しました',
@@ -1094,6 +1095,7 @@ const I18N={
     rtcOfferPh:'Paste the invite code from your peer',rtcAnswerPh:'Paste the answer code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
     importConfirm:'Replace current board with shared content?',
+    importMerge:'Merge the imported content onto the current board? (Cancel = replace or abort)',
     imported:'Imported',svgImported:'SVG imported',excImported:'Excalidraw imported',dioImported:'drawio imported',dioCompressed:'Compressed .drawio is unsupported — re-save in draw.io with compression off',dioExported:'.drawio file saved',textPasted:'Text pasted',peerReplaced:'Peer replaced the whole board (recoverable on restart)',
     backupAvailable:'A board from before it was overwritten was saved. Restore it?',
     backupRestored:'Restored the previous board',
@@ -1138,13 +1140,13 @@ const state={
   draft:null,               // shape being created (not yet committed)
   editing:null,             // id of shape being text-edited
   marquee:null,             // {x1,y1,x2,y2} in world coords
-  dupIds:_sT(),         // ADR-0080: ids from the latest _placeCopies (repeat chain)
+  dupIds:_sT(),         // ADR-0080
   dupDelta:null,            // ADR-0080: cumulative vector to repeat on next ⌘D
   guides:null,              // object-snap alignment guide lines (during drag)
-  readout:null,             // ADR-0064: live dims pill during transform gestures {x,y,label}
-  bindPreview:null,         // ADR-0065: shape under a dragged connector endpoint
-  measure:null,             // ADR-0151: Alt+hover gap guides {a,b} world bboxes
-  lasso:null,               // ADR-0158: Alt+drag freehand select — live polyline pts (world)
+  readout:null,             // ADR-0064
+  bindPreview:null,         // ADR-0065
+  measure:null,             // ADR-0151
+  lasso:null,               // ADR-0158
   showGrid:true,
   showMinimap:MINIMAP_ON,
   snap:true,        // snap-to-grid when dragging shapes
@@ -1153,7 +1155,7 @@ const state={
   pages:null,curPg:null,   // ADR-0646
   lastSaveAt:0,
   // ---- v1.1 sync ----
-  peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459: per-boot incarnation — seq restarts can't collide
+  peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459
   seq:0,                    // monotonic op counter for CRDT clock
   _lastTs:0,                // monotonic floor (HLC-lite)
   _lastRep:null,            // newest 'replace' clock — swaps pick one winner (0614)
@@ -1300,7 +1302,7 @@ function validPatch(p){
   for(const k of ['z','rotate','size','opacity','dash','labelPos','cbend','spacing','lineH','fontSize','elbow','curve','hop','flip','r','visible','start','wrap']){   // ADR-0367/0369
     if(k in p&&p[k]!=null&&typeof p[k]!=='number')return false;
   }
-  for(const k of ['bold','italic','under','strike','locked','shadow','hl'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413/0430: flags are true|1 (drawio writes 1; shadow true)
+  for(const k of ['bold','italic','under','strike','locked','shadow','hl'])if(k in p&&p[k]!=null&&typeof p[k]!=='boolean'&&typeof p[k]!=='number')return false;   // ADR-0411/0413/0430
   // ADR-0868: out-of-range alpha/width/font leaks the previous shape's state.
   for(const k of['size','fontSize'])if(p[k]!=null&&!(p[k]>0&&p[k]<=1e4))return false;
   if(p.opacity!=null&&(p.opacity<0||p.opacity>1))return false;
@@ -1358,14 +1360,14 @@ function validRemotePayload(op){
   const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));   // ADR-0726
   switch(op.op){
     case 'add':    return validShape(op.shape);
-    case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)&&(op.wc==null||wcOk(op.wc));   // ADR-0721/0726: validate the clock snapshot too
+    case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)&&(op.wc==null||wcOk(op.wc));   // ADR-0721/0726
     case 'del':
       // ADR-0377: connClears whitelist — else any prop could ride before/after.
       if(op.connClears!=null&&!(_iA(op.connClears)&&_ln(op.connClears)<=MAX_OP_SHAPES&&op.connClears.every(p=>
           p&&_iS(p.id)&&_ln(p.id)<=64&&(p.before==null||_ccOk(p.before))&&(p.after==null||_ccOk(p.after)))))return false;
       return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
     case 'clear':  return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape);
-    case 'replace':   // ADR-0613: like 'clear' but carries the whole after-board + its write-clock map
+    case 'replace':   // ADR-0613
       return _iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(validShape)
         &&(op.afterWc==null||wcOk(op.afterWc));
     case 'upd':{const noLock=p=>!('locked' in p);
@@ -1375,7 +1377,7 @@ function validRemotePayload(op){
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
       &&patches(op.after)&&(op.before==null||patches(op.before));   // ADR-0729/0741
-    case 'zorder':  // ADR-0742: minimal-delta {changes} only — legacy wholesale clobbered newer frac
+    case 'zorder':  // ADR-0742
       return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&(c.after==null||_iS(c.after)&&_ln(c.after)<=600)&&(c.before==null||_iS(c.before)&&_ln(c.before)<=600));   // ADR-0473/0485
     case 'style':
@@ -1392,7 +1394,7 @@ function validRemotePayload(op){
                           &&_iS(op.gid)&&_ln(op.gid)>0&&_ln(op.gid)<=64   // ADR-0473
                           &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);
     case 'pageAdd':  return _idOK(op.id)&&(op.name==null||_iS(op.name)&&_ln(op.name)<=80)&&(op.i==null||_fin(op.i))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0755
-    case 'pageDel':  return _idOK(op.id)&&(op.firstId==null||_idOK(op.firstId))&&(op.unpage==null||op.unpage===1)&&(!op.unpage||_iA(op.shapes))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0776: unpage needs op.shapes — the wire kill-set
+    case 'pageDel':  return _idOK(op.id)&&(op.firstId==null||_idOK(op.firstId))&&(op.unpage==null||op.unpage===1)&&(!op.unpage||_iA(op.shapes))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0776
     case 'pageName': return _idOK(op.id)&&_iS(op.after)&&_ln(op.after)<=80&&(op.nts==null||_tsOK(op.nts));   // ADR-0791
     case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
                           &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64);   // ADR-0473
@@ -1405,7 +1407,7 @@ function validRemotePayload(op){
 function validClock(c){
   if(!c||!_iO(c))return false;
   if(!_iS(c.peer)||!c.peer||_ln(c.peer)>MAX_PEER_ID_LEN)return false;   // ADR-0779
-  if(!((_iN(c.seq)&&_fin(c.seq))||(_iS(c.seq)&&c.seq&&_ln(c.seq)<=80)))return false;   // ADR-0779: 'snap:'+id ≤69 — bound the string
+  if(!((_iN(c.seq)&&_fin(c.seq))||(_iS(c.seq)&&c.seq&&_ln(c.seq)<=80)))return false;   // ADR-0779
   if(c.ts!=null&&!_tsOK(c.ts))return false;   // ADR-0791
   return true;
 }
@@ -1480,7 +1482,7 @@ const Store={
         _oT('peerReplaced');
       }
       const _connFix=this._remoteDelConnFix(op);
-      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775: heal unknown pg — nts:-1 stub; a real write upgrades
+      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775
       this._apply(op,true);
       if(_connFix)for(const f of _connFix){
         const sh=byId(f.id);
@@ -6066,6 +6068,12 @@ function _placeCopies(srcShapes,dx,dy){
   _iv();
   return added;
 }
+// ADR-1054: merge-mode import — add onto the board via the paste machinery
+// (fresh ids + a/b/groupId remaps + one undoable addMany), not the swap.
+function _mergeImport(shapes){
+  const added=_placeCopies(shapes,0,0);
+  _o(t('imported')+' '+_ln(added));
+}
 function doDuplicate(){
   if(!_selN())return;
   const origSel=_selIds();
@@ -7563,6 +7571,11 @@ function importBoard(file){
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
       const shapes=(d.shapes||[]).filter(validShape);
       if(!_ln(shapes)){_wT(_EM);return}
+      // ADR-1054: non-empty board gets a merge-or-replace choice.
+      if(_ln(_sh())){
+        if(confirm(t('importMerge'))){_mergeImport(shapes);return}
+        if(!confirm(t('importConfirm')))return;
+      }
       // Atomic whole-board swap (mirrors importFromHash):
       // one Ctrl+Z fully restores the previous board, and a
       // clear+N-adds would overflow MAX_HISTORY on a big board; merge them into the one replace op
@@ -8570,7 +8583,10 @@ const Share={
       // validate each shape — reject anything without id/type/z
       const valid=data.shapes.filter(validShape);
       if(!_ln(valid)){_eT(_IB);clearHash();return false}
-      if(_nS()&&!confirm(t('importConfirm')))return false;
+      if(_nS()){
+        if(confirm(t('importMerge'))){_mergeImport(valid);clearHash();return true}   // ADR-1054: merge onto the board instead of replacing
+        if(!confirm(t('importConfirm')))return false;
+      }
       // Reversible whole-board swap: a mistaken import or a hostile
       // shared link can't silently destroy the board —
       const before=clone(_sh());

@@ -1095,6 +1095,11 @@ Board/
 │   └── ADR-1044-pending-nudge-remote-lifecycle.md  # `_nug` coalescer の flush 網羅監査 — 全ローカル変異は `_recordCommitted` で flush、remote は `_gTouch` fold + `n.reborn` で整合、clean 完走
 │   └── ADR-1045-snapshot-img-answer-store.md  # snapshot の `sent` 使い捨てマップで img 参照キーが `_imgSent` 不達 → imgq 応答不能の実害を解消 (snapshot puts も応答ストアへ登録)
 │   └── ADR-1046-img-pending-waitlist-bound.md  # `_park` 待機リスト 256上限+FIFO 監査 — 追い出しでも straggler スキャンで自己治癒、再 park は挿入位置維持、clean 完走
+│   └── ADR-1047-minimap-img-verify.md  # minimap 画像描画も `img._ik` バイト検証 — ADR-1040 と同型の指紋衝突残穴を閉塞
+│   └── ADR-1048-5050-audit.md  # 長所50/短所50 + P0–P4 改善候補の 7 仮定ソクラテス監査 (監査完走)
+│   └── ADR-1049-imgq-slow-rescan.md  # parked img 参照の 60s 期限切れを 5分 `_imgRescan` で再 park — 永久プレースホルダーを解消 (ADR-1048 P0-b)
+│   └── ADR-1053-peer-display-names.md  # presence (ping/cursor/selection) に `n` でピア表示名 — カーソルマーカー+アバターツールチップ、ephemeral (ADR-1048 P3-b)
+│   └── ADR-1054-merge-mode-import.md  # .board/共有リンクインポートにマージ選択 (OK=マージ `_placeCopies`、Cancel=置き換えまたは中止、空盤面は無確認置き換え) (ADR-1048 P2-c)
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で
