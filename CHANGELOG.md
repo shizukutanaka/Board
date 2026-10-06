@@ -1,3 +1,16 @@
+## [1.8.086]
+- **Fix: imgq answers consult the durable blob store (ADR-1063)** —
+  `_imgSent`/`_imgIn` are per-session in-memory maps cleared on room
+  switch and reload. A holder that rejoins a room has every blob in
+  the IDB `imgs` store but none in either map — peers' parked refs
+  (imgq requests) got a silent miss and stayed placeholders until the
+  holder happened to slim-send that shape again (possibly never).
+  A miss now stamps the same 10s per-key throttle (also bounding the
+  `_imgqT` map at 4096 and the IDB read rate) and falls back to a
+  durable `imgs.get(key)` lookup; a hit stages into `_imgOuts` like a
+  memory hit, honoring the ADR-1062 byte bound. 9 asserts;
+  `node test.mjs` 3718 pass.
+
 ## [1.8.085]
 - **Fix: bound the staged outflow queues at 64MiB (ADR-1062)** —
   `_fragOuts`/`_imgOuts` (ADR-1060/1061 staging) accumulated without a

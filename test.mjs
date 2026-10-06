@@ -18163,6 +18163,40 @@ pass += 8;
 }
 console.log('  ✓ ADR-1062 staged-outflow byte bound (9 asserts)');
 pass += 9;
+
+// ---- ADR-1063: imgq answer falls back to the durable blob store ----
+{
+  // A holder that reloads has an empty _imgSent/_imgIn — the blob lives only
+  // in IDB `imgs`. imgq answers used to consult only the two in-memory maps,
+  // so the requester's parked ref starved until the holder happened to
+  // slim-send that shape again (often never). A miss now stamps the per-key
+  // throttle AND looks the key up in the durable store; a hit stages like
+  // any other answer. The throttle bound also caps the IDB read rate.
+  const dcSent=[];
+  const net={_dcQ:null,_dcQB:0,_imgOuts:[],_fragOuts:[],_imgqT:new Map(),
+    _bcast:m=>dcSent.push(m),_flushImgOuts:Net._flushImgOuts,
+    _stgOK:Net._stgOK,_imgDbGet:Net._imgDbGet};
+  const rq={result:'data:image/png;base64,'+'D'.repeat(300)};
+  const _odb=Persist.db;
+  Persist.db={transaction(){return{objectStore(){return{get(){return rq}}}}}}
+  Net._imgDbGet.call(net,'kDB');
+  rq.onsuccess();
+  assert.strictEqual(dcSent.length,1,'durable hit emits the img answer');
+  assert.strictEqual(dcSent[0].key,'kDB','answer carries the requested key');
+  assert.strictEqual(dcSent[0].n,1,'small blob rides a single chunk');
+  net._imgOuts=[['x','a'.repeat(67108864-10)]];
+  Net._imgDbGet.call(net,'kDB');rq.onsuccess();
+  assert.strictEqual(net._imgOuts.length,1,'late durable answer respects the stage bound');
+  Persist.db=null;
+  Net._imgDbGet.call(net,'kDB');
+  assert.strictEqual(net._imgOuts.length,1,'no durable store → silent no-op');
+  Persist.db=_odb;
+  assert.ok(html.includes('else if(_idOK(msg.key))this._imgDbGet(msg.key)'),'imgq miss consults IDB');
+  assert.ok(html.includes('if(this._imgqT.size<4096)this._imgqT.set(msg.key,_t)'),'misses stamp a bounded throttle');
+  assert.ok(html.includes("_oS(_trx(Persist.db,DB_IMG_STORE,_RO),DB_IMG_STORE).get(k)"),'lookup reads the imgs store');
+}
+console.log('  ✓ ADR-1063 durable imgq fallback (9 asserts)');
+pass += 9;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
