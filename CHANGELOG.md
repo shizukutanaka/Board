@@ -1,3 +1,13 @@
+## [1.8.078]
+- **Fix: two-class `_dcQ` drain (ADR-1052)** — the backpressure queue
+  replayed every buffered message FIFO, so a cursor/selection flood
+  queued behind bulk traffic (ops, snapshot frags, img chunks) replayed
+  stale positions on drain — useless traffic that delays real ops.
+  `_sendDC` now takes an `eph` kind: presence coalesces latest-per-kind
+  in `_dcQp` while ops keep faithful FIFO; the drain sends ops first,
+  then the newest presence per kind. `bye`/`name`/`imgq` stay durable —
+  they're causal, not presence.
+
 ## [1.8.077]
 - **Fix: CI gate on GitHub Actions (ADR-1051)** — `node test.mjs` was
   the whole regression surface but nothing ran it except whoever

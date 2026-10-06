@@ -16449,7 +16449,7 @@ try {
       assert.ok(html.includes('_fck=o=>{o.clock={peer:_pi(),seq:++state.seq,ts:nowTs()}}'),'all broadcast paths stamp a unique clock');
       // (d) Presence lifecycle: reap skips rtc: (onclose-owned); _bcast is dual-transport.
       assert.ok(html.includes("if(_sw(id,'rtc:'))continue;"),'the presence reaper leaves rtc rows to onclose');
-      assert.ok(html.includes('this._sendDC(_JS(msg))'),'_bcast reaches the DataChannel too');
+      assert.ok(html.includes('this._sendDC(_JS(msg),'),'_bcast reaches the DataChannel too');
       const _pc0=Net.peerCount();
       Net._touchPeer('bcPeerX');
       assert.strictEqual(Net.peerCount(),_pc0+1,'touchPeer adds a presence row');
@@ -17883,6 +17883,30 @@ pass += 2;
   console.log('  ✓ ADR-1051 CI workflow pins (3 asserts)');
 }
 pass += 3; // ADR-1051 CI workflow pins
+
+// ADR-1052: two-class _dcQ — ops drain FIFO (causal, every entry must send);
+// presence (cursor/selection) coalesces latest-per-kind via _dcQp so a cursor
+// flood can't replay stale positions behind bulk traffic.
+{
+  const sent=[],dc={readyState:'open',bufferedAmountLowThreshold:0,onbufferedamountlow:null,send:m=>sent.push(m)};
+  Net.dc=dc;Net._dcQ=null;Net._dcQp=null;Net._dcQB=0;
+  dc.send=()=>{throw new Error('full')};   // simulate a full SCTP buffer until drain
+  Net._sendDC('op1');Net._sendDC('op2');
+  Net._sendDC('cur1','cursor');Net._sendDC('cur2','cursor');Net._sendDC('sel1','selection');
+  assert.deepStrictEqual(Net._dcQ,['op1','op2'],'ops keep faithful FIFO order');
+  assert.strictEqual(Net._dcQp.get('cursor'),'cur2','presence coalesces to latest per kind');
+  dc.send=m=>sent.push(m);
+  dc.onbufferedamountlow();
+  assert.deepStrictEqual(sent,['op1','op2','cur2','sel1'],'drain: ops first, then latest presence');
+  assert.ok(Net._dcQ===null&&Net._dcQp===null,'drain clears both buffers');
+  Net.dc=null;Net._dcQ=null;Net._dcQp=null;Net._dcQB=0;
+  console.log('  ✓ ADR-1052 two-class _dcQ (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes('this._dcQp=null;this._syncTick()'),'dc lifecycle resets purge the presence map');
+assert.ok(html.includes("msg.k==='cursor'||msg.k==='selection'?msg.k:0"),'_bcast tags ephemeral kinds');
+assert.ok(html.includes("for(const x of p.values())this._sendDC(x)"),'presence drains after the ops queue');
+pass += 3;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
