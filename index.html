@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.090';   // ADR-1067
+const V='1.8.091';   // ADR-1068
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6992,10 +6992,9 @@ function drawioToShapes(txt){
     else if(sty.shape==='note'){s=_smk('sticky',{x,y,w:w||160,h:ht||160,color:_YW,text:_s0(lbl,2000)});   // ADR-0226
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
     else if(('text' in sty||sty.text===1)&&!w&&!ht)s=_smk('text',{x,y,w:120,h:24,text:_s0(lbl,2000)});
+    else if(sty.shape==='image'){const _im=(_ga(c,'style')||'').match(/image=(data:image\/[^;]*;base64,[^;]*)/);   // ADR-0259/1068
+      s=_smk('image',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});if(_im)s.dataUrl=_im[1].slice(0,25_000_000)}   // ADR-0353: byte-less image cells stay images (placeholder), not rects
     else s=_smk('rect',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
-    {const _im=(sty.shape==='image')?(_ga(c,'style')||'').match(/image=(data:[^;]*;base64,[^;]*|https?:[^;]*)/):null;   // ADR-0259
-     if(_im)s=_smk('image',{x,y,w:w||120,h:ht||80,dataUrl:_im[1].slice(0,25_000_000),label:_s0(lbl,240)})   // ADR-0353
-    }
     if(sty.rounded==='1'&&_hb(s))s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
     _dioStyApply(s,sty,_hid);                                            // ADR-0258
@@ -8277,7 +8276,7 @@ const Net={
         this._imgChunks.delete(kk);
         const data=st.p.join('');
         if(_ln(data)>12_000_000)break;
-        if(_imgHash(data)!==msg.key.replace(/:\d+$/,''))break;   // ADR-0864: key must hash-match blob
+        if(_imgHash(data)!==msg.key.replace(/:\d+$/,'')||!_sw(data,'data:image/'))break;   // ADR-0864/1068: hash-matched AND image-typed — junk blobs would plant a dataUrl validShape can never carry
         if(this._imgIn.has(msg.key))this._imgInB-=_ln(this._imgIn.get(msg.key));
         this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
         while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784
@@ -8990,7 +8989,7 @@ function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+
 function _imgSlim(shapes,stored,fmark){
   const slim=[],puts=[];
   for(const s of shapes){
-    if(s&&_im(s)&&_iS(s.dataUrl)&&_du(s).length>128){
+    if(s&&_im(s)&&_iS(s.dataUrl)&&_sw(_du(s),'data:image/')&&_du(s).length>128){   // ADR-1068: a non-image dataUrl fails validShape — never slim it into a "blob" that hash-matches junk into _imgIn
       let k=_imgHash(_du(s));
       while(stored.get(k)!==_ud&&stored.get(k)!==_du(s))k=_imgNextKey(k);
       if(stored.get(k)===_ud){stored.set(k,_du(s));_pu(puts,[k,_du(s)])}
