@@ -517,7 +517,7 @@ const checks = [
   ['curve route: quadratic draw + sampled hit + svg path', html.includes('_qC(c,cc.x,cc.y,e.x2,e.y2)')&&html.includes('const pts=_curveSegs(s);')&&html.includes('Q ${_num(cc.x+ox)}')],
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:_el(s)?0:1,curve:0')],
   // v1.7.127: ADR-0069 wire-level image refs
-  ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:i,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
+  ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:s,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
   ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(kk)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
   ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('_qconnShape(1)')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(_dk('qline'))")&&html.includes('_ivO()}   // ADR-0070')],
@@ -18066,7 +18066,7 @@ pass += 14;
   // OLD channel; the reset clears both before the new link assigns this.dc.
   const sent=[];
   const dead={readyState:'open',send(){throw new Error('sctp-full')}};
-  const net={dc:dead,_dcQ:null,_dcQB:0};
+  const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[]};
   Net._sendDC.call(net,'stale');
   assert.ok(net._dcQ&&net._dcQB===5,'congested send leaves a byte-counted backlog');
   const drain=dead.onbufferedamountlow;
@@ -18085,6 +18085,32 @@ pass += 14;
 }
 console.log('  ✓ ADR-1059 superseded-link backlog reset (8 asserts)');
 pass += 8;
+
+// ---- ADR-1060: congested send-queue defers staged img chunks instead of dropping them mid-stream ----
+{
+  // _sendDC's 32MB queued-byte cap silently drops over-cap messages; a blob
+  // stream losing tail chunks can never reassemble — defer the unflushed
+  // remainder to the drain hook instead of feeding the drop.
+  const sent=[];
+  const dead={readyState:'open',send(){throw new Error('sctp-full')}};
+  const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[],_sendDC:Net._sendDC,_flushImgOuts:Net._flushImgOuts,_bcast(m){sent.push(m);Net._sendDC.call(this,'|'+m.data)}};
+  Net._sendDC.call(net,'x');
+  assert.ok(net._dcQ&&net._dcQB===1,'send throw arms the byte-counted backlog');
+  net._dcQB=33554432-70000;                          // budget for exactly one 64KiB chunk
+  net._imgOuts=[['k','x'.repeat(3*65536)],['k2','y']];
+  Net._flushImgOuts.call(net);
+  assert.strictEqual(sent.length,1,'only the fitting chunk went out');
+  assert.deepStrictEqual(net._imgOuts.map(e=>e[0]),['k','k2'],'unflushed blobs stay staged, the partial blob re-emits whole');
+  assert.strictEqual(net._dcQ.length,2,'queue holds backlog+one chunk — nothing dropped');
+  dead.onbufferedamountlow();                        // drain resumes the staged outs
+  assert.strictEqual(net._imgOuts.length,0,'drain flushes every deferred blob');
+  assert.strictEqual(sent.length,5,'re-emitted blob + second blob complete the streams');
+  // source pins — the defer gate mirrors the queue caps and the drain resumes it.
+  assert.ok(html.includes('{this._imgOuts=outs.slice(i);return}'),'over-cap flush defers the remainder');
+  assert.ok(html.includes('if(_ln(this._imgOuts))this._flushImgOuts()}'),'bufferedamountlow resumes staged outs');
+}
+console.log('  ✓ ADR-1060 deferred img-chunk outflow (9 asserts)');
+pass += 9;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

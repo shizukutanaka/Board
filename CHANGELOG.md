@@ -1,3 +1,17 @@
+## [1.8.083]
+- **Fix: congested send-queue defers staged image chunks instead of dropping
+  them mid-stream (ADR-1060)** — `_flushImgOuts` pushed every 64KiB chunk of a
+  blob answer synchronously; once `_sendDC`'s backlog was armed, chunks past
+  the 32MiB/4096-msg caps were silently discarded. A stream losing tail
+  chunks can never reassemble (the slot expires at 60s and the receiver's
+  park-rescan re-requests the whole blob every 5min), so under a persistently
+  slow link each answer dropped in the same place — a permanent, silent
+  blob-starvation amplification loop. The flush now mirrors the queue's
+  admission check and stops at the budget: the unstarted remainder stays
+  staged in `_imgOuts` and resumes from the same `onbufferedamountlow` drain,
+  and a partially-emitted blob re-emits whole (a `seq:0` restart resets the
+  receiver's slot cleanly). 9 asserts; `node test.mjs` 3692 pass.
+
 ## [1.8.082]
 - **Fix: superseded link's send backlog is reset before the next channel
   (ADR-1059)** — a congested send parks messages in `_dcQ` and drains them
