@@ -1113,7 +1113,8 @@ Board/
 │   └── ADR-1084-emit-intake-symmetry.md  # op emit×intake 対称監査完走 — 全emit経路のwire化opがintake契約を通過を4ピンで固定
 │   └── ADR-1085-wire-before-baseline.md  # wire `before` 監査 — undo専用ではなく変更検出ベースライン (P4-b圧縮案棄却) を7ピンで固定
 │   ├── ADR-1086-move-requires-before.md  # remote move の `before` 必須化 — before-less 絶対座標は両軸適用で並行単軸 move を破壊
-│   └── ADR-1087-complete-before-baseline.md  # パッチ系 op の `before` 完全カバレッジ — 欠落キーは _chg で changed 扱い (upd/beautify は設計上 exempt)
+│   ├── ADR-1087-complete-before-baseline.md  # パッチ系 op の `before` 完全カバレッジ — 欠落キーは _chg で changed 扱い (upd/beautify は設計上 exempt)
+│   └── ADR-1088-ungroup-before-contract.md  # ungroup の `before` 契約 — 非 iterable/null 要素は例外 drop → intake で棄却 + groupId を wire id bound
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
