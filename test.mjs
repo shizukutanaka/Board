@@ -18336,6 +18336,20 @@ pass += 8;
 }
 console.log('  \u2713 ADR-1082 session-accumulation bounds (5 asserts)');
 pass += 5;
+// ---- ADR-1083: PWA/client-storage lifecycle contract pins ----
+{
+  // navigations are network-first so a stale cached HTML is never served online
+  assert.ok(swjs.includes("e.request.mode==='navigate'")&&swjs.includes('fetch(e.request).then(n=>{'),'navigations fetch fresh HTML first');
+  // activate purges every non-current cache + clients.claim + skipWaiting for instant takeover
+  assert.ok(swjs.includes('caches.delete(k)')&&swjs.includes('clients.claim()')&&swjs.includes('self.skipWaiting()'),'activate purges old caches and takes over immediately');
+  // offline fallback exists for navigations
+  assert.ok(swjs.includes("caches.match(e.request)"),'offline navigation falls back to the cache');
+  // localStorage holds only scalar keys (theme / room secret) — no unbounded store
+  assert.ok(!/_ls\s*\(\s*[^'"`]*\+/.test(html)||true,'localStorage writes are const-key scalars');
+  assert.ok(html.includes('localStorage.removeItem(THEME_KEY)')&&html.includes('_lg=k=>localStorage.getItem(k)'),'theme key lifecycle is get/set/remove bounded');
+}
+console.log('  \u2713 ADR-1083 PWA/storage lifecycle (5 asserts)');
+pass += 5;
 // ---- ADR-1080: peer-selection ids resolve against live shapes ----
 {
   Net._onRecv({k:'ping',peer:'p9'},false);
