@@ -1,3 +1,7 @@
+## [1.8.099] - 2026-10-01
+### Fixed
+- ADR-1075: img-heal ページ横断 + `:prev` バックアップペイロードの監査 (docs+pin、code 変更なし) — img heal (`_imgRescan`/`_pcR`/`_imgqSweep`/blob 到着) は `_sh()` 全域走査で非閲覧ページの parked ref も heal、`:prev` は pages/curPg/rs/ro 完備・因果 marker 非保持は「新 clock で復元」の意図的設計として契約化。
+
 ## [1.8.098] - 2026-10-01
 
 ### Fixed

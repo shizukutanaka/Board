@@ -17873,6 +17873,27 @@ pass += 2; // ADR-1048 audit-doc pins
 pass += 3; // ADR-1049 imgRescan pins
 assert.ok(html.includes('if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}'),'presence sweep runs the slow rescan');
 pass += 1;
+// ADR-1075: img-heal coverage spans every page — the rescan reads _sh() (all
+// shapes), not the page-scoped _shV() subset, so a parked ref on a non-viewed
+// page still re-parks and re-asks via imgq. And the :prev safety record carries
+// the full page context (pages/curPg) alongside rs/ro — a backup restore keeps
+// the multi-page layout instead of flattening it.
+{
+  state.shapes.length=0;Net._imgPending.clear();
+  state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+  const kk=_imgHash('data:image/png;base64,ZZ');
+  const offPg=Shape.make('image',{x:0,y:0,w:10,h:10,img:kk});offPg.id='off1';offPg.pg='pB';
+  const onPg=Shape.make('image',{x:0,y:0,w:10,h:10,img:kk});onPg.id='on1';onPg.pg='pA';
+  state.shapes=[offPg,onPg];_invalidateGrid();
+  _imgRescan();
+  assert.ok(Net._imgPending.has('off1')&&Net._imgPending.has('on1'),'rescan parks refs on every page, not just the viewed one');
+  Net._imgPending.clear();state.shapes.length=0;state.pages=null;state.curPg=null;_invalidateGrid();
+  console.log('  \u2713 ADR-1075 off-page img heal coverage (1 assert)');
+}
+pass += 1; // ADR-1075 img-heal page coverage
+assert.ok(html.includes('for(const s of _sh())if(s.img===msg.key)'),'blob arrival heals refs on every page');
+assert.ok(html.includes('pages:_pgs(),curPg:state.curPg,rs:state.roomSecret,ro:state.ro?1:0'),'the :prev record carries the page context + room secret + ro flag');
+pass += 2;
 // ADR-1053: peer display names ride presence msgs; intake lands on the
 // presence row, bounded ≤24 chars, empty clears.
 {
