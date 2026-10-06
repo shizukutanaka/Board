@@ -518,7 +518,7 @@ const checks = [
   ['curve ctx menu + i18n + exclusive toggle', html.includes("['ctxCurve','',toggleCurve]")&&html.includes("ctxCurve:'曲線'")&&html.includes("ctxCurve:'Curved'")&&html.includes('elbow:_el(s)?0:1,curve:0')],
   // v1.7.127: ADR-0069 wire-level image refs
   ['img wire refs: slim op + 64KB chunk msgs + snapshot re-emit', html.includes("this._slimOp(op);this._flushImgOuts()")&&html.includes('k:\'img\',key,seq:s,n,data:d.slice')&&html.includes('this._slimShapes(ops.map(o=>o.shape),_mP())')],
-  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(kk)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op)')&&html.includes('const op=this._attachOp(msg.op)')],
+  ['img inbound: chunk reassembly + pending drain + attach paths', html.includes("this._imgChunks.get(kk)")&&html.includes("delete sh.img;sh.dataUrl=data")&&html.includes('op=this._attachOp(op,1)')&&html.includes('const op=this._attachOp(msg.op)')],
   // v1.7.128: ADR-0070 quick-connect
   ['qconn: hover dots + _qdotAt + qline→endLineLike', html.includes('_qconnShape(1)')&&html.includes("ptr.dragKind='qline';")&&html.includes("else if(_dk('qline'))")&&html.includes('_ivO()}   // ADR-0070')],
   // v1.7.129: ADR-0071 equal-gap snap
@@ -18264,6 +18264,35 @@ pass += 8;
 }
 console.log('  ✓ ADR-1065 img-ref × dataUrl coexistence (12 asserts)');
 pass += 12;
+// ---- ADR-1066: _attachShape enforces bytes-beat-refs on every attach path ----
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+  state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+  Net._imgPending.clear();Net._imgIn.clear();
+  // a coexist attach strips the stale ref — the renderer draws dataUrl only,
+  // so bytes are the convergent truth; a kept ref would clobber them on a
+  // coincidental blob arrival (the arrival straggler scan)
+  const a1=Net._attachShape({id:'c1',type:'image',x:0,y:0,w:10,h:10,z:1,img:'K_STALE',dataUrl:'data:FRESH'});
+  assert.strictEqual(a1.img,undefined,'coexist attach drops the ref');
+  assert.strictEqual(a1.dataUrl,'data:FRESH','bytes kept');
+  assert.ok(!Net._imgPending.has('c1'),'stripped ref is not parked');
+  // a remote add carrying a coexist shape arrives stripped on the board
+  Store._apply({op:'add',shape:{id:'c2',type:'image',x:0,y:0,w:5,h:5,z:1,img:'K2',dataUrl:'data:N2'},clock:{peer:'A',seq:1,ts:nowTs()}},true);
+  assert.strictEqual(byId('c2').img,undefined,'remote add attach strips coexist');
+  // a del undo restores a recorded coexist shape the same way
+  Store._apply({op:'del',shapes:[{id:'c3',type:'image',x:0,y:0,w:5,h:5,z:1,img:'K3',dataUrl:'data:N3'}],clock:{peer:'A',seq:2,ts:nowTs()}},false);
+  assert.strictEqual(byId('c3').img,undefined,'del-undo restore strips coexist');
+  // ref-only paths unchanged: an _imgIn hit materializes, a miss parks
+  Net._imgIn.set('kM','data:M');
+  const m=Net._attachShape({id:'c4',type:'image',x:0,y:0,w:1,h:1,z:1,img:'kM'});
+  assert.strictEqual(m.dataUrl,'data:M','_imgIn hit materializes bytes');
+  Net._attachShape({id:'c5',type:'image',x:0,y:0,w:1,h:1,z:1,img:'kP'});
+  assert.ok(Net._imgPending.get('c5')?.k==='kP','ref-only miss parks for imgq heal');
+  assert.ok(html.includes("if(_du(s)){if(!raw){const{img:_x,...rest}=s;return rest}}"),'bytes-win branch pinned in _attachShape');
+  assert.ok(html.includes("this._attachOp(op,1)"),'merge keeps the raw pair for clock arbitration');
+}
+console.log('  ✓ ADR-1066 attach-path coexistence (10 asserts)');
+pass += 10;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

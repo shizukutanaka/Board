@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.088';   // ADR-1065
+const V='1.8.089';   // ADR-1066
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8158,20 +8158,26 @@ const Net={
     }
     this._imgOuts=[];
   },
-  _attachShape(s){
-    if(s&&_iS(s.img)&&!_du(s)){
-      const d=this._imgIn.get(s.img);
-      if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
-      // ADR-0374: bounded parked-ref waitlist.
-      if(_iS(s.id))_park(this._imgPending,s.id,s.img);   // ADR-0835
+  _attachShape(s,raw){
+    if(s&&_iS(s.img)){
+      // ADR-1066: bytes beat refs on install — same rule as _imgAttach. A kept
+      // stale ref would clobber dataUrl on a coincidental blob arrival; a merge
+      // needs the raw pair to arbitrate by clock.
+      if(_du(s)){if(!raw){const{img:_x,...rest}=s;return rest}}
+      else{
+        const d=this._imgIn.get(s.img);
+        if(d){const{img:_x,...rest}=s;return{...rest,dataUrl:d}}
+        // ADR-0374: bounded parked-ref waitlist.
+        if(_iS(s.id))_park(this._imgPending,s.id,s.img);   // ADR-0835
+      }
     }
     return s;
   },
-  _attachOp(op){
+  _attachOp(op,raw){
     if(!op||!_iO(op))return op;
-    if(op.op==='add'&&op.shape)return{...op,shape:this._attachShape(op.shape)};
-    if(op.op==='addMany'&&_iA(op.shapes))return{...op,shapes:op.shapes.map(s=>this._attachShape(s))};
-    if(op.op==='replace'&&_iA(op.after))return{...op,after:op.after.map(s=>this._attachShape(s))};   // ADR-0613
+    if(op.op==='add'&&op.shape)return{...op,shape:this._attachShape(op.shape,raw)};
+    if(op.op==='addMany'&&_iA(op.shapes))return{...op,shapes:op.shapes.map(s=>this._attachShape(s,raw))};
+    if(op.op==='replace'&&_iA(op.after))return{...op,after:op.after.map(s=>this._attachShape(s,raw))};   // ADR-0613
     return op;
   },
   // Outbound: from local Store.commit
@@ -8397,7 +8403,7 @@ const Net={
   // known shape → per-property LWW so concurrent edits on both
   // peers converge instead of split-braining (loser reports 'skip').
   _mergeSnapshotOp(op){
-    op=this._attachOp(op);                            // ADR-0069
+    op=this._attachOp(op,1);                          // ADR-0069/1066: raw pair — the merge arbitrates img×dataUrl by clock
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
     const ex=byId(op.shape.id);
     if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}   // ADR-0927

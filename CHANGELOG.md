@@ -1,3 +1,18 @@
+## [1.8.089]
+- **Fix: `_attachShape` closes the coexistence rule at install (ADR-1066)** —
+  ADR-1065's *written prop wins* invariant covered the four writers that
+  could leave `img:`+`dataUrl` on a live shape, but `_attachShape` — the
+  funnel for remote `add`/`addMany`/`replace` ops, `.board`/share imports,
+  and every undo restore — still attached a coexist shape untouched: a
+  stale ref sat un-parked (no imgq heal) and could still clobber
+  `dataUrl` when a blob coincidentally arrived under its key.
+  `_attachShape(s,raw)` now strips the ref on install — bytes are what
+  the renderer draws, so the strip is convergence-neutral for every
+  peer — while `_mergeSnapshotOp` passes `raw` to keep the incoming
+  pair for per-property clock arbitration (an adopted ref intent newer
+  than the bytes can still win, park, and heal). Ref-only paths are
+  unchanged: `_imgIn` hit materializes, miss parks for imgq heal.
+
 ## [1.8.088]
 - **Fix: img-ref × dataUrl coexistence — the written prop wins (ADR-1065)** —
   A live shape could hold both a stale `img:` ref and fresh `dataUrl`
