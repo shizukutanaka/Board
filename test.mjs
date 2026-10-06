@@ -18122,7 +18122,7 @@ pass += 9;
   const dead={readyState:'open',send(){throw new Error('sctp-full')}};
   const net={dc:dead,_dcQ:null,_dcQB:0,_imgOuts:[],_fragOuts:[],_dcKey:'k',
     _sendDC:Net._sendDC,_fragSend:Net._fragSend,_flushFragOuts:Net._flushFragOuts,
-    _tagDc:Net._tagDc,_dmac:Net._dmac,_canon:Net._canon};
+    _tagDc:Net._tagDc,_dmac:Net._dmac,_canon:Net._canon,_stgOK:Net._stgOK};
   Net._sendDC.call(net,'x');
   assert.ok(net._dcQ&&net._dcQB===1,'send throw arms the byte-counted backlog');
   net._dcQB=33554432-70000;                          // budget for exactly one 64KiB fragment
@@ -18141,6 +18141,28 @@ pass += 9;
 }
 console.log('  ✓ ADR-1061 deferred frag-stream outflow (8 asserts)');
 pass += 8;
+
+// ---- ADR-1062: staged outflow shares the answer store's byte bound ----
+{
+  // Without a bound, a wedged link accumulates staged streams forever:
+  // every sync-req answer stages a multi-MB snapshot and every imgq answer a
+  // blob, none draining — unbounded memory growth on the responder. Stage
+  // pushes now shed the newest entry past 64MiB (matching the _imgSent bound).
+  assert.ok(Net._stgOK([['k','a'.repeat(67108864)]],'x')===false,'over-cap staging refused');
+  assert.ok(Net._stgOK([['k','a'.repeat(67108864-10)]],'x')===true,'at-cap staging admitted');
+  assert.ok(Net._stgOK([],'x')===true,'empty stage admits');
+  const net={_fragOuts:[['snap','a'.repeat(67108860)]],_imgOuts:[],_fragSend:Net._fragSend,_flushFragOuts(){this.flushed=true},_stgOK:Net._stgOK};
+  net._fragSend('y'.repeat(70000),'snap');
+  assert.strictEqual(net._fragOuts.length,1,'wedged stage sheds the newest frag stream');
+  assert.ok(!net.flushed,'shed stream never reaches the flush');
+  net._fragSend('x','opc');
+  assert.strictEqual(net._fragOuts.length,2,'small stream still stages under the bound');
+  assert.ok(html.includes('if(!this._stgOK(this._fragOuts,buf))return'),'fragSend sheds over-cap staging');
+  assert.ok(html.includes('if(this._stgOK(this._imgOuts,d0)){_pu'),'imgq answer gates its stage push');
+  assert.ok(html.includes('if(this._stgOK(this._imgOuts,d))_pu'),'snapshot img puts gate their stage push');
+}
+console.log('  ✓ ADR-1062 staged-outflow byte bound (9 asserts)');
+pass += 9;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

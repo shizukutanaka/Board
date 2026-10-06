@@ -1,3 +1,14 @@
+## [1.8.085]
+- **Fix: bound the staged outflow queues at 64MiB (ADR-1062)** —
+  `_fragOuts`/`_imgOuts` (ADR-1060/1061 staging) accumulated without a
+  bound while a link stayed wedged: every sync-req answer staged a
+  multi-MB snapshot and every imgq answer a blob — unbounded responder
+  memory growth. `_stgOK` now admits a stage push only while staged
+  bytes stay under the same 64MiB bound the `_imgSent` answer store
+  uses; the newest staging sheds (frag stream, snapshot img put, imgq
+  answer) and receivers recover via the existing re-request paths once
+  the link drains. 9 asserts; `node test.mjs` 3708 pass.
+
 ## [1.8.084]
 - **Fix: congested send-queue defers staged snap/opc fragment streams
   (ADR-1061)** — `_fragSend` had the same silent mid-stream drop ADR-1060
