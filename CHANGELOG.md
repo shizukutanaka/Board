@@ -1,3 +1,20 @@
+## [1.8.088]
+- **Fix: img-ref × dataUrl coexistence — the written prop wins (ADR-1065)** —
+  A live shape could hold both a stale `img:` ref and fresh `dataUrl`
+  bytes. `replaceImage` set bytes without clearing `s.img`, and
+  patch/snapshot adoption of an `img:` ref landed next to a stale
+  `dataUrl` — a coincidental blob arrival for the stale key then
+  **clobbered the fresh bytes with the old image** via the arrival
+  straggler scan. Conversely, `_mergeSnapshotOp` adopted `ex.img` with
+  no `_imgPending` entry whenever the incoming shape also carried
+  bytes (its `_attachShape` park skipped) — a dead ref with no imgq
+  heal. The prop a patch or merge *writes* now declares intent:
+  `dataUrl` written → `delete r.img` (the ref is derivable via
+  `_imgHash`); `img` written → park it even over a surviving stale
+  `dataUrl` (the blob arrival converges, same as ADR-0745 semantics).
+  `_imgAttach` strips persisted coexistence at load; `replaceImage`
+  drops `s.img`. 12 asserts; `node test.mjs` 3738 pass.
+
 ## [1.8.087]
 - **Fix: dedup imgq re-requests per key within a sweep (ADR-1064)** —
   `_imgPending` entries are per shape id, but the blob answer is per
