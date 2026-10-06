@@ -1109,6 +1109,7 @@ Board/
 │   └── ADR-1062-staged-outflow-byte-bound.md  # ステージング蓄積の無制限成長を閉塞 — `_stgOK` が frag/img 両ステージを `_imgSent` と同じ 64MiB byte bound で shed (新規 stream 優先破棄、imgq rescan で自己治癒)
 │   └── ADR-1063-imgq-durable-fallback.md  # imgq 応答を耐久ストアへ拡張 — リロード後の空 `_imgSent` で自 blob に応答不能→相手方飢餓を閉塞 (miss も throttle で `_imgqT`/IDB 読みレートを有界化)
 │   └── ADR-1064-imgq-per-key-dedup.md  # imgq 再要求をスイープ内キー単位で dedup — 同一コンテンツ参照の N 図形が N 本の同一 imgq を送出していた増幅を 1 本へ (応答はキー単位のため)
+│   └── ADR-1065-img-dataurl-coexistence.md  # img ref × dataUrl 同居の不変条件 — パッチ/マージが書いた prop が意図 (dataUrl 書込→ref 削除、img 書込→stale dataUrl 越しでも park→blob 到達で収束)。stale ref の偶発 blob 到着による新 dataUrl の旧画像への巻き戻りを閉塞
     └── .github/workflows/ci.yml  # CI: test.mjs・構文チェック・innerHTML/外部リソース禁止・サイズガード
     # ⚠️ .gitignore が .github/ を意図的に除外 (push に workflows スコープが要る)。
     # ファイル自体は作成済み (v1.7.58) だが未コミット — 適切な権限を持つ人が手動で

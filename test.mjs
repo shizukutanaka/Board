@@ -18221,6 +18221,49 @@ pass += 9;
 }
 console.log('  ✓ ADR-1064 per-key imgq dedup (8 asserts)');
 pass += 8;
+// ---- ADR-1065: img-ref × dataUrl coexistence — the patch's written prop wins ----
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+  state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+  Net._imgPending.clear();Net._imgIn.clear();
+  // a dataUrl patch kills a stale ref (fresh content beats the old pointer —
+  // the ref is content-derivable via _imgHash, so nothing is lost)
+  const a={id:'o1',type:'image',x:0,y:0,w:10,h:10,z:1,img:'K_OLD'};state.shapes.push(a);
+  _oa(a,{dataUrl:'data:NEW'});
+  assert.strictEqual(a.img,undefined,'dataUrl patch kills the stale ref');
+  assert.ok(!Net._imgPending.has('o1')||Net._imgPending.get('o1').k!=='K_OLD','stale ref not re-parked');
+  // an img patch parks over surviving stale dataUrl — the adopted ref is the
+  // sender's intent; the blob arrival replaces dataUrl (converges)
+  const b={id:'o2',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:OLD'};state.shapes.push(b);
+  const kH=_imgHash('data:HEALED');
+  _oa(b,{img:kH});
+  assert.strictEqual(b.img,kH,'adopted ref kept');
+  assert.ok(Net._imgPending.get('o2')?.k===kH,'adopted ref parks for imgq heal');
+  Net._onRecv({k:'img',key:kH,data:'data:HEALED',n:1,seq:0,peer:'A'},false);
+  assert.strictEqual(b.dataUrl,'data:HEALED','blob arrival converges the stale dataUrl');
+  assert.strictEqual(b.img,undefined,'resolved ref dropped');
+  // a ref-only shape stays parked across an unrelated patch
+  const c={id:'o3',type:'image',x:0,y:0,w:10,h:10,z:1,img:'K3'};state.shapes.push(c);
+  Net._imgPending.set('o3',{k:'K3',t0:nowTs()});
+  _oa(c,{x:7});
+  assert.ok(Net._imgPending.get('o3')?.k==='K3','unrelated patch keeps the park');
+  // merge: adopted img ref parks even when the incoming shape also carried
+  // bytes — _attachShape skips parking for shapes with dataUrl
+  const r={id:'o4',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:PREV'};
+  Store.commit({op:'add',shape:r});
+  Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),img:'K_MRG',dataUrl:'data:x'},wc:{
+    img:{peer:'A',seq:5,ts:Date.now()+1e3},
+  }});
+  assert.strictEqual(byId('o4').img,'K_MRG','merge adopts the ref');
+  assert.ok(Net._imgPending.get('o4')?.k==='K_MRG','adopted ref parks past _attachShape');
+  // _imgAttach strips a persisted coexistence at load
+  const st=_imgAttach([{id:'o5',type:'image',x:0,y:0,w:1,h:1,z:1,img:'k',dataUrl:'d'}],new Map());
+  assert.strictEqual(st[0].img,undefined,'load-time coexistence strips the ref');
+  assert.ok(html.includes("'dataUrl' in p"),'written-prop intent gate at _oa');
+  assert.ok(html.includes('else if(imgNew)'),'merge parks adopted refs');
+}
+console.log('  ✓ ADR-1065 img-ref × dataUrl coexistence (12 asserts)');
+pass += 12;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
