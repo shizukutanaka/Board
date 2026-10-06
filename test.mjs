@@ -18059,6 +18059,32 @@ pass += 13;
 }
 console.log('  ✓ ADR-1058 pen skeleton smoothing (14 asserts)');
 pass += 14;
+
+// ---- ADR-1059: superseded-link backlog is reset before the next channel ----
+{
+  // behavioural: a congested send leaves a pending queue + a drain hook on the
+  // OLD channel; the reset clears both before the new link assigns this.dc.
+  const sent=[];
+  const dead={readyState:'open',send(){throw new Error('sctp-full')}};
+  const net={dc:dead,_dcQ:null,_dcQB:0};
+  Net._sendDC.call(net,'stale');
+  assert.ok(net._dcQ&&net._dcQB===5,'congested send leaves a byte-counted backlog');
+  const drain=dead.onbufferedamountlow;
+  net._dcQ=null;net._dcQB=0;                 // _wrtcInit's reset lands between throw and drain
+  drain();                                   // must tolerate the cleared queue, not TypeError
+  assert.strictEqual(net._dcQ,null,'drain leaves the queue cleared');
+  net.dc={readyState:'open',send(m){sent.push(m)}};
+  Net._sendDC.call(net,'fresh');
+  assert.deepStrictEqual(sent,['fresh'],'a clean queue lets the new link send immediately');
+  // source pins — the reset sits on both supersede paths, and the stale-close
+  // early return still protects the live link's state.
+  assert.ok(html.includes('if(this.dc){try{this.dc.close()}catch(_){}}\n    this._dcQ=null;this._dcQB=0;   // ADR-1059'),'_wrtcInit drops the channel + backlog before the new rtc');
+  assert.ok(html.includes('this._dcKey=null;this._dcQ=null;this._dcQB=0;   // ADR-0464/0466/0836/1049/1056/1059'),'Net.init room-switch clears the backlog');
+  assert.ok(html.includes('for(const x of b||[])this._sendDC(x)'),'drain tolerates a cleared queue');
+  assert.ok(html.includes('if(this.dc!==dcRef)return;   // stale close must not clobber the live link'),'stale-close early return preserved');
+}
+console.log('  ✓ ADR-1059 superseded-link backlog reset (8 asserts)');
+pass += 8;
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

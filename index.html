@@ -932,7 +932,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.081';   // ADR-1058
+const V='1.8.082';   // ADR-1059
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8041,7 +8041,7 @@ const Net={
     if(this.bc){try{this._send(_mk('bye'));this.bc.close()}catch(_){}}   // ADR-0458
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}   // ADR-0619/0695/0839
-    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;this._dcKey=null;   // ADR-0464/0466/0836/1049/1056
+    this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;this._dcKey=null;this._dcQ=null;this._dcQB=0;   // ADR-0464/0466/0836/1049/1056/1059
     for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467: drop old-room presence
     clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat
     state.roomId=roomId||DOC_KEY;
@@ -8187,7 +8187,7 @@ const Net={
     if(q){if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m),this._dcQB=(this._dcQB||0)+_ln(m);return}   // ADR-0783
     if(!d||d.readyState!=='open')return;
     try{d.send(m)}catch(_){this._dcQ=[m];this._dcQB=_ln(m);d.bufferedAmountLowThreshold=65536;
-      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b)this._sendDC(x)}}
+      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b||[])this._sendDC(x)}}
   },
   _canon(m){const c={...m};delete c.mac;delete c.dmac;delete c.data;return _JS(c)},   // ADR-1056
   _mac(m){return _hmac(_sec(),this._canon(m))},
@@ -8499,6 +8499,8 @@ const Net={
   },
   _wrtcInit(){
     if(this.rtc){try{this.rtc.close()}catch(_){}}
+    if(this.dc){try{this.dc.close()}catch(_){}}
+    this._dcQ=null;this._dcQB=0;   // ADR-1059: a superseded link's backlog must not wedge/ride the next channel
     if(typeof RTCPeerConnection===_un)throw new Error('WebRTC not supported');
     this._rtcConnFailed=false;this._dcKey=null;   // ADR-1056
     this.rtc=new RTCPeerConnection({iceServers:[
