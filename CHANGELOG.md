@@ -1,3 +1,12 @@
+## [1.8.077]
+- **Fix: CI gate on GitHub Actions (ADR-1051)** — `node test.mjs` was
+  the whole regression surface but nothing ran it except whoever
+  remembered to; a commit could break the ~3,600-pin gate and still
+  merge. `.github/workflows/test.yml` runs it on every push and pull
+  request (single job, Node 22, no matrix — the local gate is the one
+  gate). Pinned by a self-reading source pin so dropping the workflow
+  fails the local gate too.
+
 ## [1.8.076]
 - **Fix: join-sync progress affordance (ADR-1050)** — a joiner staring at
   an empty board had zero feedback while the snapshot was owed: the

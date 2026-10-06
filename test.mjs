@@ -17873,6 +17873,16 @@ pass += 4; // ADR-1050 join-sync pins
 assert.ok(html.includes('id="sSync"')&&html.includes('Net._syncUI=m=>UI._setSync(m)'),'statusbar carries the sync surface + wiring');
 assert.ok(html.includes("syncing:'同期中'")&&html.includes("syncing:'Syncing'"),'syncing is localized');
 pass += 2;
+// ADR-1051: the local gate runs on GitHub Actions — one job, node test.mjs.
+// The pin reads the workflow itself so dropping the gate fails this gate.
+{
+  const w=(()=>{try{return readFileSync('.github/workflows/test.yml','utf8')}catch(_){return''}})();
+  assert.ok(w.includes('node test.mjs'),'CI job runs the local gate');
+  assert.ok(w.includes('actions/checkout')&&w.includes('actions/setup-node'),'CI job checks out and provisions node');
+  assert.ok(/on:\s*\n\s*push:|on:.*push/.test(w)&&/pull_request/.test(w),'CI triggers on push and pull_request');
+  console.log('  ✓ ADR-1051 CI workflow pins (3 asserts)');
+}
+pass += 3; // ADR-1051 CI workflow pins
 pass += 1922; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
