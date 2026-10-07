@@ -1,3 +1,11 @@
+## [1.8.141] - 2026-10-01
+
+### Fixed
+- **round867 / ADR-1117 — bound the carried `ntp` on wire `pageName`**: the undo-wire rename carries the restored name clock as `nts`/`ntp` (ADR-0727); `nts` was `_tsOK`-bounded at intake + apply, but `ntp` landed verbatim — any non-null value reached `p.ntp`, where it persists, gossips via `msg.pages`, and is read as the `peer` in `clockNewer`'s equal-ts tie-break (`a.peer > b.peer`). A MAC-authenticated peer shipping `ntp:'\uffff'…` wins every subsequent equal-ts rename (durable rename-pinning); a non-string `ntp` skews arbitration silently. `ntp` is now bounded like `_vPages`' (`_iS` + ≤64) at the validator AND at apply (the `_tsOK` recheck's sibling, covering validator-bypassing applies).
+
+### Tests
+- 6 behavioural pins: oversized / non-string `ntp` rejects the whole op; valid `nts`+`ntp` lands both; the apply-side guard drops a non-string `ntp` without clobbering the `clock.peer` write.
+
 ## [1.8.140] - 2026-10-01
 
 ### Fixed

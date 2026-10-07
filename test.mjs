@@ -19715,6 +19715,33 @@ pass += 4;
 }
 pass += 8;
 
+// ---- ADR-1117: wire pageName carries the restored nts/ntp — nts was _tsOK-
+// bounded (ADR-0791) but ntp landed verbatim into p.ntp → persisted, gossiped
+// via msg.pages, and read as the 'peer' in clockNewer equal-ts rename
+// arbitration: a highest-codepoint string wins every tie. ntp is now bounded
+// like _vPages' ntp (string ≤64) at the validator AND at apply (the _tsOK
+// recheck's sibling — covers ops that bypass validRemotePayload).
+{
+  const seed=()=>{state.roomId='roomOld';Net.init('roomX');state.shapes=[];state.wclock={};state.pages=[{id:'p1',name:'A',nts:10,ntp:'a',bts:5,btp:'a'}];state.curPg='p1';state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid()};
+  seed();
+  Store.applyRemote({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:'z'.repeat(200)});
+  assert.strictEqual(state.pages[0].name,'A','ADR-1117: oversized ntp rejects the whole op');
+  assert.strictEqual(state.pages[0].nts,10,'ADR-1117: the rejected op leaves the name clock untouched');
+  seed();
+  Store.applyRemote({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:{x:1}});
+  assert.strictEqual(state.pages[0].name,'A','ADR-1117: non-string ntp rejects the op');
+  seed();
+  Store.applyRemote({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:'z'});
+  assert.strictEqual(state.pages[0].name,'B','ADR-1117: valid nts+ntp rename lands');
+  assert.strictEqual(state.pages[0].ntp,'z','ADR-1117: the carried ntp is adopted on the page record');
+  seed();
+  Store._apply({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:7},true);
+  assert.strictEqual(state.pages[0].ntp,'q','ADR-1117: apply-side guard drops a non-string ntp (validator-bypass path)');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
+  console.log('  ✓ ADR-1117 pageName ntp bound (6 asserts)');
+}
+pass += 6;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
