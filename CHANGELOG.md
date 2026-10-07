@@ -1,3 +1,11 @@
+## [1.8.129] - 2026-10-01
+
+### Fixed
+- **round855 / ADR-1105 — ro page-duplicate broadcast leak**: `_pgDup` sent an unconditional `Net.broadcast({op:'addMany'})` after `_cmt({op:'pageAdd'})` — under `state.ro` the pageAdd was rejected (no page added) yet the member shapes still leaked to peers carrying `s.pg` for a page that doesn't exist, diverging the room AND making the read-only board write to the room. Entry gate `if(state.ro){_roNo();return}` added (same pattern as ADR-1102's `importDrawioText` fix); all other `Net.broadcast` sites audited safe (post-gate Store internals, ro-gated undo/redo, unreachable text-finalize bridge, already-gated drawio import).
+
+### Tests
+- 5 behavioural pins: ro `_pgDup()` adds no page, leaks nothing to the broadcast spy, toasts `readOnlyMode`; editable control adds a page and broadcasts members. Plus 1 source pin for the entry gate.
+
 ## [1.8.128] - 2026-10-01
 
 ### Fixed

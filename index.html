@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.128';   // ADR-1104
+const V='1.8.129';   // ADR-1105
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2181,6 +2181,7 @@ function _pgFollow(op){   // ADR-0652
 }
 function _pgAdd(){if(_pgOn()&&_ln(_pgs())>=64){_wT('pgMax');return}if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});const id=uid();_cmt({op:'pageAdd',id,name:t('pgPage')+' '+(_ln(_pgs())+1)});switchPage(id)}   // ADR-0688
 function _pgDup(){   // ADR-0651
+  if(state.ro){_roNo();return}   // ADR-1105
   if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});
   const si=_pgIdx(),src=_pgs()[si];if(!src)return;
   if(_ln(_pgs())>=64){_wT('pgMax');return}   // ADR-0688: same cap as _pgAdd
@@ -2202,7 +2203,7 @@ function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646
   _unB();   // ADR-0953
-  // ADR-0707/0724/0725: 'del' parity — locked survive; `only` caps kill
+  // ADR-0707/0724/0725: del parity — locked survive; `only` caps kill
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722
   for(const id of dead){_wc()[id]=_wM({_del:op.clock});_sdl(id)}   // ADR-0679/0734/0954
@@ -7084,9 +7085,7 @@ async function _dioInflate(b64){
 }
 function importDrawioText(txt,wp){
   if(state.ro){_roNo();return true}   // ADR-1102: also stops the multi-page broadcast leak
-  // ADR-0324: every <diagram> page carries its own deflate payload — inflate ALL
-  // of them and re-wrap into one uncompressed mxfile — the multi-page path
-  // (ADR-0311) flattens every page, not just page 1.
+  // ADR-0324: inflate ALL <diagram> payloads; multi-page (ADR-0311) flattens every page.
   const _dms=[..._St(txt||'').matchAll(/<diagram[^>]*>([^<]+)<\/diagram>/g)];
   if(_ln(_dms)&&!txt.includes('<mxGraphModel')){
     if(typeof DecompressionStream===_un){_wT('dioCompressed');return false}
