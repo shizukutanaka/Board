@@ -19453,6 +19453,18 @@ pass += 1;
 }
 pass += 7;
 
+// ADR-1108: ctx menu Cut item — the last keyboard/OS-only clipboard op to
+// reach the context menu (ADR-0135 family). The composite mirrors ctxCopy's
+// flag drain (no OS event follows a menu click) then deletes.
+{
+  assert.ok(html.includes("has&&['ctxCut','⌘X',()=>{doCopy();_cpNow=false;doDelete()}]"),'ctxCut menu item: copy→drain flag→delete');
+  assert.ok(html.indexOf("['ctxCut'")<html.indexOf("['ctxCopy'"),'ctxCut precedes ctxCopy (standard order)');
+  assert.ok(html.includes("ctxCut:'カット'"),'ctxCut ja i18n');
+  assert.ok(html.includes("ctxCut:'Cut'"),'ctxCut en i18n');
+  console.log('  ✓ ADR-1108 ctx menu Cut item (4 asserts)');
+}
+pass += 4;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
