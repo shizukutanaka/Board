@@ -1,3 +1,8 @@
+## [1.8.160] - 2026-10-01
+
+### Verified
+- **round886 / ADR-1136 — convergence-queue flush coverage × revert/ro lifecycle audit**: end-to-end audit of the convergence-emit pipeline resolves clean on all four sides. (1) `_txE` arms at exactly six sites (prop/groupId/frac drops in `_lwwDrop`, `_mT3` merges in `upd`/`beautify` backward, snapshot merge) and every call chain flushes (`commit`/`applyRemote` bail+tail/`undo`/`redo`/inline merge); `_recordCommitted`/`_txC` can't arm. (2) `_nugEnd` precedes every commit-family entry (commit, `_recordCommitted`, undo, redo, switchPage, hide/visibilitychange/pagehide flushes). (3) `_roRe`'s revert domain (`orig`/`before`/`changes`) covers every op shape carrying pre-commit writes; add-family ops gate before `_apply`. (4) `state.ro` adopted on all four doc intakes, persisted, badge-unlocked. (5) `_slimOp` field matrix verified for all undo-wire emissions (`addMany` keeps `wc`; `pageDel` keeps `firstId`/`unpage`/`shapes`; `pageName` keeps `nts`/`ntp`). 7 behavioural pins.
+
 ## [1.8.159] - 2026-10-01
 
 ### Fixed

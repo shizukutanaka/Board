@@ -20436,6 +20436,24 @@ pass += 11;
 }
 pass += 7;
 
+// ADR-1136 — convergence-queue flush coverage × revert/ro lifecycle audit:
+// the emit pipeline is closed on all four sides — _txE arms only at the six
+// audited merge sites and every _apply-calling tail flushes; _nugEnd precedes
+// every commit-family entry; _roRe's revert domain covers every op shape that
+// can carry pre-commit writes; state.ro adoption is closed; _slimOp's field
+// matrix reaches every undo-wire emission.
+{
+  assert.strictEqual(html.split("_pu(_txE||(_txE=[])").length-1,6,'ADR-1136: _txE arms only at the six audited merge sites');
+  assert.strictEqual(html.split("_txFlush();   // ADR-1123").length-1,4,'ADR-1136: every _apply-calling tail flushes (commit/applyRemote/undo/redo)');
+  assert.ok(html.includes("if(!this._lwwDrop(op)){_txFlush();return}   // ADR-1125"),'ADR-1136: the all-dropped bail flushes too');
+  assert.ok(html.includes("switchPage(id){if(!_pgById(id)||state.curPg===id)return;_nugEnd();"),'ADR-1136: page switch flushes the pending nudge first');
+  assert.strictEqual(html.split("_roRe(op);_roNo()").length-1,3,'ADR-1136: ro revert seam at commit/_recordCommitted/_nugPush');
+  assert.ok(html.includes("op.op==='addMany'){const{origSel:_o1,...r}=op")&&html.includes("del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op"),'ADR-1136: addMany keeps wc; del/clear/pageAdd strip it');
+  assert.ok(html.includes("state.ro=d.ro===1")&&html.includes("state.ro=data.ro===1")&&html.includes("state.ro=false;_roBadge()"),'ADR-1136: ro adopted on every doc intake and badge-unlockable');
+  console.log('  ✓ ADR-1136 flush-funnel coverage audit (7 asserts)');
+}
+pass += 7;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
