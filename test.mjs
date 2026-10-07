@@ -19425,6 +19425,34 @@ pass += 11;
 }
 pass += 1;
 
+// ---- ADR-1107: OS-menu copy/cut capture the selection; cut deletes ----
+{
+  try{
+    state.shapes.length=0;state.ro=false;_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const fireW=(t,match)=>{let wrote='';const e={type:t,preventDefault(){},stopPropagation(){},target:{matches:match||(()=>false)},clipboardData:{setData(m,x){wrote=x}}};for(const f of fakeWin._L[t]||[])f(e);return wrote};
+    fireW('copy');   // drain a stale _cpNow leaked by earlier doCopy pins
+    const mk=id=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;Store.commit({op:'add',shape:s})};
+    mk('oc-a');mk('oc-b');
+    state.selection=new Set(['oc-a','oc-b']);
+    state.clipboard=null;
+    const c=fireW('copy');
+    assert.ok(state.clipboard&&state.clipboard.shapes.length===2,'OS-menu copy captures the selection');
+    assert.ok(c.includes('"shapes"'),'OS-menu copy writes .board JSON');
+    const iw=fireW('cut',s=>true);
+    assert.ok(!iw&&state.shapes.length===2,'input-target cut stays native (no capture/delete)');
+    const x=fireW('cut');
+    assert.ok(x.includes('"shapes"'),'OS-menu cut writes .board JSON');
+    assert.strictEqual(state.shapes.length,0,'OS-menu cut deletes the selection');
+    mk('oc-c');state.selection=new Set(['oc-c']);
+    state.ro=true;
+    const rc=fireW('cut');
+    assert.ok(rc.includes('"shapes"'),'ro cut still writes the copy JSON');
+    assert.ok(byId('oc-c'),'ro cut: copy lands but delete is gated');
+  }finally{state.ro=false;state.shapes.length=0;state.selection=new Set();state.clipboard=null;_invalidateGrid();state.history=[];state.histIdx=-1}
+  console.log('  \u2713 ADR-1107 OS-menu clipboard capture+delete (7 asserts)');
+}
+pass += 7;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

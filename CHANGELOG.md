@@ -1,3 +1,11 @@
+## [1.8.131] - 2026-10-01
+
+### Fixed
+- **round857 / ADR-1107 — OS-menu copy/cut dead path**: the `copy`/`cut` event bridge (`_osCopy`, ADR-0516) only wrote `e.clipboardData` when `_cpNow` was already set — a flag only produced by the ⌘C/⌘X keydown path. Edit-menu Copy/Cut never carried that flag, so OS-menu Copy wrote nothing anywhere (internal clipboard untouched, OS clipboard untouched) and OS-menu Cut didn't delete at all. `_osCopy` is now event-driven: it self-captures via `doCopy()` when no keydown-side capture is pending, writes the `.board` JSON, and runs `doDelete()` on `cut` (ro/locked gates apply internally — on a read-only board the copy lands but the delete is rejected). Also clears a `_cpNow` stale leak: `ctxCopy` (menu copy) sets the flag without an event, which the next OS gesture would consume to write stale clipboard data — now reset to `false` right after the menu capture.
+
+### Tests
+- 7 behavioural pins dispatched through `fakeWin._L` (real listener path): OS-menu copy captures the selection + writes `.board` JSON; input/textarea targets stay native (no capture, no delete); OS-menu cut writes JSON AND deletes the selection; under ro a cut still writes the copy JSON while `doDelete` is gated.
+
 ## [1.8.130] - 2026-10-01
 
 ### Fixed

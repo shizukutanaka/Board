@@ -865,10 +865,8 @@ const _wAdopt=(id,rw)=>{   // ADR-0927
 };
 const _tAlive=(id,rw)=>{const w=_wc()[id];return!!(w&&w._del&&!(w._born&&clockNewer(w._born,w._del))&&!(rw&&rw._born&&validClock(rw._born)&&clockNewer(rw._born,w._del)))};   // ADR-0927
 const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_xC=v=>_max(-1e7,_min(1e7,v)),_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795/0798
-// ADR-1056: wire authentication — every message carries an HMAC-SHA256 tag
-// over its canonical JSON (mac: room secret / BC, dmac: link key / DC).
-// Bulk byte fields (`data` in frag/img chunks) are excluded from the tag;
-// their integrity rides the reassembled inner tag or the content hash.
+// ADR-1056: wire auth — HMAC-SHA256 tag per message (mac: room secret/BC,
+// dmac: link key/DC); bulk `data` excluded — inner tag/content hash covers it.
 const _shaB=b=>{
   const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
   const l=_ln(b),nb=((l+9+63)>>6)<<6,a=new Uint8Array(nb);a.set(b);a[l]=0x80;
@@ -901,11 +899,9 @@ const _hmac=(k,m)=>{
   return _hexB(_shaB(out));
 };
 const _eqs=(a,b)=>{if(_ln(a)!==_ln(b))return false;let d=0;for(let i=0;i<_ln(a);i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0};
-// The doc-scoped secret every wire tag is keyed by — generated once,
-// persisted in the doc record, never sent in the clear. RTC offer/answer
-// tokens carry it as `k` so a paired link authenticates against it.
-// ADR-1056: the room secret lives on localStorage so every tab on this origin
-// converges on one key — ls wins over the IDB record's `rs` (its durable copy).
+// Doc-scoped wire-tag secret — generated once, persisted, never sent clear;
+// `k` on offer/answer tokens authenticates a paired link. ADR-1056: lives on
+// localStorage so same-origin tabs converge on one key (ls wins over IDB `rs`).
 const _sec=()=>{try{const v=_lg('board.rs');if(_iS(v)&&_ln(v)<=64&&v!==state.roomSecret)return state.roomSecret=v}catch(_){}
   if(!state.roomSecret){state.roomSecret=uid()+uid()+uid()+uid();try{_ls('board.rs',state.roomSecret)}catch(_){}}
   return state.roomSecret};
@@ -933,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.130';   // ADR-1106
+const V='1.8.131';   // ADR-1107
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4797,12 +4793,15 @@ _on(canvas,'drop',e=>{
 // _osClip echoes it back to the internal doPaste path.
 let _osClip=null,_cpNow=false;
 function _osCopy(e){
+  if(e.target.matches&&e.target.matches('input,textarea'))return;
+  const cut=e.type==='cut';
+  if(!_cpNow)doCopy();   // ADR-1107: OS-menu copy/cut captures the selection itself
   if(!_cpNow)return;
   _cpNow=false;
-  if(e.target.matches&&e.target.matches('input,textarea'))return;
   const cl=_cl();if(!cl)return;
   _pd(e);
   e.clipboardData.setData('text/plain',_osClip=_JS({v:V,docName:_dn(),shapes:roundShapesForExport(cl.shapes)}));
+  if(cut)doDelete();
 }
 _on(window,'copy',_osCopy);
 _on(window,'cut',_osCopy);
@@ -9148,7 +9147,7 @@ const UI={
     const has=_selN()>0;
     while(m.firstChild)m.removeChild(m.firstChild);
     const items=customItems||[
-      has&&['ctxCopy','⌘C',doCopy],
+      has&&['ctxCopy','⌘C',()=>{doCopy();_cpNow=false}],   // ADR-1107: menu copy has no event — clear so the next OS gesture re-captures
       _cl()&&['ctxPaste','⌘V',doPaste],
       _cl()&&['ctxPasteAt','',()=>doPasteAt(m._wx,m._wy)],
       _cl()&&['ctxPasteInPlace','⌘⇧V',doPasteInPlace],
