@@ -1129,6 +1129,7 @@ Board/
 │   ├── ADR-1100-two-world-egress-restore.md  # two-world ハーネス teardown が Net.broadcast/_send を dead-B 中継のまま残す汚染 — 正規 egress を救出して終端で復元、3 挙動ピン
 │   ├── ADR-1101-export-pipeline-completeness.md  # エクスポート面監査完走記録 (hidden parity・page scope・escaping・bounds・parked-img・born-clock 全 clean) + exportPDF 空ページ `_wT(_EM)` toast parity
 │   └── ADR-1102-ro-paste-import-gates.md  # 貼付/ドロップ取込カスケードの ro ゲート — 3穴 (drawio multi-page broadcast 漏洩・成功 toast・live shape 変異) を5入口ゲートで閉塞 + 7挙動ピン
+│   └── ADR-1103-ro-adoption-folds-open-editors.md  # ro 採用時に開いた text/label エディタを畳む — _teFollow/_lblFollow の fold 条件へ state.ro 追加 (blur commit が ro ゲートで静黙破棄される実害) + 4挙動ピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

@@ -772,8 +772,8 @@ const checks = [
   ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967/0995)', html.includes("if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967/0995)', html.includes("if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
   ['sticky chain guards remote-deleted source (ADR-0558/0995)', html.includes("s.type!=='sticky'||_lk(s))return")],
-  ['text overlay closes when edited shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0574/0709)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
-  ['label overlay closes when labelled shape removed/hidden/locked/off-page (ADR-0559/0569/0572/0709)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}")],
+  ['text overlay closes when edited shape removed/hidden/locked/off-page/ro-adopted (ADR-0559/0569/0572/0574/0709/1103)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
+  ['label overlay closes when labelled shape removed/hidden/locked/off-page/ro-adopted (ADR-0559/0569/0572/0709/1103)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)||state.ro){_rm(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
   ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data);sn.t=_now()}")],
   ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)")],
@@ -19277,6 +19277,29 @@ pass += 9;
   console.log('  ✓ ADR-1102 ro paste-import gates (7 asserts)');
 }
 pass += 7;
+
+// ---- ADR-1103: ro adoption folds an open text/label editor — contract pinned ----
+{
+  try{
+    state.shapes.length=0;state.ro=false;_invalidateGrid();
+    const T1=Shape.make('text',{x:0,y:0,w:60,h:20,text:'t'});T1.id='ro-t1';
+    Store.commit({op:'add',shape:T1});
+    openTextEditor(byId('ro-t1'),false);
+    assert.ok(_getTeTa()&&state.editing==='ro-t1','precondition: text editor armed');
+    state.ro=true;_teFollow();
+    assert.strictEqual(_getTeTa(),null,'ro adoption folds the open text editor (typed text can never reach the gated commit)');
+    assert.strictEqual(state.editing,null,'editing flag cleared with the fold');
+    state.ro=false;state.shapes.length=0;_invalidateGrid();
+    const T2=Shape.make('rect',{x:0,y:0,w:60,h:40,label:'l'});T2.id='ro-t2';
+    Store.commit({op:'add',shape:T2});
+    openTextEditor(byId('ro-t2'),false);
+    _teFollow();
+    assert.ok(_getTeTa()!==null,'control: editor stays open while editable');
+    _getTeTa().blur();
+  }finally{state.ro=false;state.editing=null;try{_getTeTa()&&_getTeTa().blur()}catch(_){}state.shapes.length=0;_invalidateGrid()}
+  console.log('  ✓ ADR-1103 ro adoption folds open editors (4 asserts)');
+}
+pass += 4;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

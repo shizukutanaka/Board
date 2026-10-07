@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.126';   // ADR-1102
+const V='1.8.127';   // ADR-1103
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4664,7 +4664,7 @@ function _lblFollow(){
   if(!_lblTa)return;
   // ADR-0559/0569/0572: close when the labelle
   // (locked skips upd — the edit would be silently dropped)
-  const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)){_rm(_lblTa.inp);_lblTa=null;return}
+  const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)||state.ro){_rm(_lblTa.inp);_lblTa=null;return}   // ADR-1103
   const v=_vp(),sig=v.x+'|'+v.y+'|'+v.zoom+'|'+_gridVer;   // ADR-0892/0893
   if(sig===_lblVp)return;
   _lblVp=sig;
@@ -5792,7 +5792,7 @@ function _teFollow(){
   // us (remote del/clear/replace/hide/lock, local del) — fold
   // once instead of dangling until blur. No commit;
   // upd anyway, so the typed text can't be applied.
-  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709/1103
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom+','+_gridVer;   // ADR-0892
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
