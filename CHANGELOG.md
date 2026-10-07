@@ -1,3 +1,8 @@
+## [1.8.107] - 2026-10-01
+
+### Added
+- PWA/クライアントストレージ監査完走 + 挙動ピン (ADR-1083): sw.js network-first navigation・activate 旧キャッシュ清掃 + skipWaiting/clients.claim・オフライン fallback・localStorage スカラーキーのみ — 5 asserts
+
 ## [1.8.106] - 2026-10-01
 
 ### Added
