@@ -1,3 +1,8 @@
+## [1.8.166] - 2026-10-01
+
+### Fixed
+- **round892 / ADR-1142 — presence cursor coordinates share the intake bound**: `case 'cursor'` validated `x`/`y` for finiteness only, making it the last unbounded remote coordinate surface after ADR-0792/0793/0795 clamped every other one (shape geometry, pts/way, viewport centers). A finite-but-huge peer cursor (e.g. `1e30`) was stored and drawn off-screen — a parity gap, not a designed exception. The gate now shares `_xyOK` (`finite && |v| ≤ 1e7`), which is smaller *and* strictly stronger than the old checks; `cursorHide` is unaffected. 7 behavioural pins.
+
 ## [1.8.165] - 2026-10-01
 
 ### Fixed

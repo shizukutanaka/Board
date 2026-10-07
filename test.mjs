@@ -20577,6 +20577,25 @@ pass += 9;
 }
 pass += 7;
 
+// ---- ADR-1142: presence cursor coordinates bounded like every remote coordinate ----
+{
+  assert.ok(html.includes("if(!_xyOK(msg.x)||!_xyOK(msg.y))break;   // ADR-0010/0986/1142"),'ADR-1142: cursor intake shares the _xyOK bound');
+  state.peers.set('p9',{color:0,lastSeen:_now(),pg:null});
+  Net._onRecv({k:'cursor',peer:'p9',x:1e9,y:0},false);
+  assert.strictEqual(state.peers.get('p9').cursor,undefined,'ADR-1142: an over-bound cursor never lands');
+  Net._onRecv({k:'cursor',peer:'p9',x:1e7,y:-1e7},false);
+  assert.deepStrictEqual(state.peers.get('p9').cursor,{x:1e7,y:-1e7},'ADR-1142: a cursor at the bound lands');
+  Net._onRecv({k:'cursor',peer:'p9',x:1e7+1,y:0},false);
+  assert.deepStrictEqual(state.peers.get('p9').cursor,{x:1e7,y:-1e7},'ADR-1142: x just over the bound is ignored');
+  Net._onRecv({k:'cursor',peer:'p9',x:0,y:-(1e7+1)},false);
+  assert.deepStrictEqual(state.peers.get('p9').cursor,{x:1e7,y:-1e7},'ADR-1142: y just over the bound is ignored');
+  Net._onRecv({k:'cursor',peer:'p9',x:0,y:0,h:1},false);
+  assert.strictEqual(state.peers.get('p9').cursor,null,'ADR-1142: cursorHide still clears');
+  state.peers.delete('p9');
+  console.log('  ✓ ADR-1142 presence cursor coordinate bound (7 asserts)');
+}
+pass += 7;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
