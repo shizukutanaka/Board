@@ -1,3 +1,12 @@
+## [1.8.133] - 2026-10-01
+
+### Fixed
+- **round859 / ADR-1109 — page-tomb parity gaps (Devin Review on ADR-1093)**: two of four flagged lifecycle gaps closed. (A) `_recordCommitted` tombed dropped *shape* ids on local `replace` commits (doc-switch imports, load, restore) but never page ids — the local `dels` channel had nothing to advertise, so a joiner's stale page healed back as a zombie. Now tombs dropped page ids with the same `_bN` escape the remote forward uses. (B) `_pgDel2` resolved implicit membership `(s.pg||firstId)` against the *post*-delete first page — deleting the first page let its null-pg members escape the kill set and rehome onto the survivor. New `pg0` parameter carries the pre-delete first page (`i===0?op.id:null`); implicit members of a deleted first page now die/rehome per the sender's kill-set contract. Deferred to round860: `_pgClk` rep-less fallback clock + `bts`/`btp` page birth-clock carriage on the wire.
+
+### Tests
+- 5 source pins: local-replace page tomb, `pg0` signature, implicit-membership predicate, dels-channel + pageDel call-site flags.
+- One stale source pin updated: ADR-0724 `_pgDel2` signature carries the new `pg0` param.
+
 ## [1.8.132] - 2026-10-01
 
 ### Fixed

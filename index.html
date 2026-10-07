@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.132';   // ADR-1108
+const V='1.8.133';   // ADR-1109
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -955,14 +955,14 @@ function snapV(v){return state.snap?_rnd(v/GRID_SIZE)*GRID_SIZE:v}
 function snapPt(p){return{x:snapV(p.x),y:snapV(p.y)}}
 const SNAP_OBJ=8;                        // object-snap distance (screen px)
 const HANDLE_SIZE=8;
-const ROT_OFFSET=24;                     // rotation handle distance above top edge (screen px)
+const ROT_OFFSET=24;                     // rot handle gap above edge (px)
 const PI2=_PI*2;
 const NET_CHANNEL_PREFIX='board:';      // BroadcastChannel name prefix
 const NET_PRESENCE_INTERVAL=5000;       // 5s heartbeat
 const NET_PRESENCE_TIMEOUT=15000;       // 15s drop
 const CURSOR_THROTTLE_MS=60;            // ADR-0010: peer cursor broadcast rate cap (~16/s)
 const MAX_PEERS=32;                     // presence-map cap vs flooding peers
-const MAX_PEER_ID_LEN=64;               // real ids are 32-char uids; longer is garbage
+const MAX_PEER_ID_LEN=64;               // 32-char uids; longer = garbage
 const PEER_COLORS=['#00C4CC','#7C3AED','#DC2626','#F59E0B','#16A34A','#2563EB','#DB2777','#EA580C'];
 const uid=()=>typeof crypto!==_un&&crypto.randomUUID
   ?crypto.randomUUID().replace(/-/g,'')  // 122-bit UUID v4; no collision concern
@@ -1183,13 +1183,13 @@ const state={
   histIdx:-1,               // points to last applied op; -1 = none applied
   clipboard:null,
   styleClipboard:null,   // for format-painter (Alt+C / Alt+V)
-  hover:null,               // shape id under cursor (for cursor feedback)
+  hover:null,               // shape id under cursor
   draft:null,               // shape being created (not yet committed)
   editing:null,             // id of shape being text-edited
   marquee:null,             // {x1,y1,x2,y2} in world coords
   dupIds:_sT(),         // ADR-0080
   dupDelta:null,            // ADR-0080: cumulative vector to repeat on next ⌘D
-  guides:null,              // object-snap alignment guide lines (during drag)
+  guides:null,              // obj-snap guide lines
   readout:null,             // ADR-0064
   bindPreview:null,         // ADR-0065
   measure:null,             // ADR-0151: Alt+hover gap guides {a,b} world bboxes
@@ -1205,12 +1205,12 @@ const state={
   peerId:PEER_ID+'.'+uid().slice(0,6),   // ADR-0459
   seq:0,                    // monotonic op counter for CRDT clock
   _lastTs:0,                // monotonic floor (HLC-lite)
-  _lastRep:null,            // newest 'replace' clock — swaps pick one winner (0614)
+  _lastRep:null,            // newest 'replace' clock (0614)
   seenOps:_sT(),        // "peer:seq" set for dedup
   wclock:_wM(),                // shapeId→{prop:clock} LWW (0002)
   peers:_mP(),          // peerId→{color,lastSeen,name,cursor?} (0010)
   roomId:null,              // doc room id (BroadcastChannel name suffix)
-  roomSecret:null           // doc auth key — wire tags are HMAC'd against it (1056)
+  roomSecret:null           // doc auth key (1056)
 };
 
 const canvas=_g('c');
@@ -1618,7 +1618,7 @@ const Store={
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
-    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock)}   // ADR-0616/0736/0927
+    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock)}   // ADR-0616/0736/0927/1109
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1790,7 +1790,7 @@ const Store={
           // survived locally while peers' wire pageDel removed it. Undo emptying
           // the page set reverts members to un-paged — 'unpage' keeps the sender's too.
           if(_pgs()){const i=_pgs().findIndex(p=>p.id===op.id);if(i>=0)_pgs().splice(i,1);
-            if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id);
+            if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id,null,undefined,i===0?op.id:null);   // ADR-1109
             else{const die=new Set((op.shapes||[]).map(s=>s.id));_pgDel2(op,null,die);for(const s of _sh())if(s.pg===op.id)s.pg=null;state.pages=null;state.curPg=null;_pgHealS()}}   // ADR-0663/0724
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
@@ -1810,12 +1810,12 @@ const Store={
           // other page; receivers with extra pages must converge on null.
           const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId);
           const die=op.unpage?new Set((op.shapes||[]).map(s=>s.id)):null;   // ADR-0724
-          op.shapes=[];op.i=i;op.name=_pgs()[i].name;   // record for undo regardless of a slimmed wire copy
+          op.shapes=[];op.i=i;op.name=_pgs()[i].name;   // recorded for undo
           for(const s of _sh())if((s.pg||_pgs()[0].id)===op.id)op.shapes.push(clone(s));
           _pgs().splice(i,1);
           op.firstId=rehome;   // ADR-0725
-          if(op.unpage){_pgDel2(op,null,die,firstId);for(const s of _sh())if((s.pg||firstId)===op.id)s.pg=null}   // ADR-0724/0725
-          else _pgDel2(op,rehome,null,firstId);   // ADR-0707/0725
+          if(op.unpage){_pgDel2(op,null,die,firstId,i===0?op.id:null);for(const s of _sh())if((s.pg||firstId)===op.id)s.pg=null}   // ADR-0724/0725/1109
+          else _pgDel2(op,rehome,null,firstId,i===0?op.id:null);   // ADR-0707/0725/1109
           if(!_ln(_pgs())){state.pages=null;state.curPg=null;_pgHealS()}   // ADR-0703
         }else{
           if(!_pgs())state.pages=[];   // heal
@@ -2127,7 +2127,7 @@ function getImg(dataUrl){
   if(img){_imgCache.delete(k);if(img._ik===dataUrl){_imgCache.set(k,img);return img}}   // ADR-1040
   img=new Image();
   img._ik=dataUrl;
-  img.onload=()=>{_iv();Minimap.invalidateCache();};   // minimap keys on _gridVer — img loads don't bump it
+  img.onload=()=>{_iv();Minimap.invalidateCache();};   // img load doesn't bump _gridVer
   img.src=dataUrl;
   if(_imgCache.size>=IMG_CACHE_MAX)_imgCache.delete(_imgCache.keys().next().value);
   _imgCache.set(k,img);
@@ -2197,14 +2197,16 @@ function _pgDup(){   // ADR-0651
 }
 function _pgDel(){if(state.ro){_roNo();return}if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
-function _pgDel2(op,firstId,only,viewId){   // ADR-0646
+function _pgDel2(op,firstId,only,viewId,pg0){   // ADR-0646
   _unB();   // ADR-0953
-  // ADR-0707/0724/0725: del parity — locked survive; `only` caps kill
-  const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
+  // ADR-0707/0724/0725/1109: del parity — locked survive; `only` caps kill;
+  // implicit members resolve on the PRE-delete first page (op.id if it was first)
+  const _mp=s=>(s.pg||pg0||firstId)===op.id;
+  const dead=new Set();for(const s of _sh())if(_mp(s)&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722
   for(const id of dead){_wc()[id]=_wM({_del:op.clock});_sdl(id)}   // ADR-0679/0734/0954
   if(!_bN(op.id,op.clock))_wD(op.id,op.clock);   // ADR-1093/1094: page-id tomb; a newer _born wins
-  for(const s of _sh())if((s.pg||firstId)===op.id&&(s.locked||_bN(s.id,op.clock)))s.pg=firstId;
+  for(const s of _sh())if(_mp(s)&&(s.locked||_bN(s.id,op.clock)))s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
   state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();_pcR();   // ADR-0985
@@ -2217,7 +2219,7 @@ const tb=_g('pgTabs');if(!tb)return;
 const sig=_JS(_pgs().map(p=>p.id+'\x1f'+p.name));let _fid;   // ADR-0683/0860
 if(sig!==_pgSig){_pgSig=sig;const _fe=_aE();_fid=_fe&&_fe._pgid;_tC(tb,'');   // ADR-0683
 for(const p of _pgs()){const c=_ce('button');c.className='pg-b pg-t';c.title=p.name;c._pgid=p.id;c.setAttribute('aria-label',p.name);_tC(c,_s0(p.name,12));   // ADR-0682
-_oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // click live tab to rename (0646 path)
+_oC(c,()=>c._pgid===state.curPg?_pgRename():switchPage(c._pgid));   // live-tab click renames
 _ap(tb,c)}}
 for(const c of tb.children||[]){const on=c._pgid===state.curPg;c.classList.toggle('on',on);if(on)c.setAttribute('aria-current','page');else c.removeAttribute('aria-current')}
 if(_fid)for(const c of tb.children||[])if(c._pgid===_fid){c.focus();break}
@@ -4371,7 +4373,7 @@ _on(canvas,_PM,e=>{
         const sh=byId(ptr.wayOrig.id);
         if(sh){
           const wa=_wayArr(sh),i=ptr.wayIdx|0;
-          if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts the vertex (0866 bound)
+          if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts vertex
           else{
             const pts=_linePts(sh),mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
             if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(_ln(wa))sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
@@ -4774,7 +4776,7 @@ _on(canvas,'drop',e=>{
     return;
   }
   const wp=_o2w(e);
-  // Cascade dropped images by per-iteration index — reader.onload is async, so the offset comes from forEach's `i`.
+  // index from forEach i — reader.onload is async
   files.forEach((f,i)=>{
     _imgImportFile(f,(dataUrl,nw,nh)=>{
       const maxDim=400;
@@ -5861,10 +5863,10 @@ function _focusables(root){
 }
 function _trapStep(items,active,back){
   if(!_ln(items))return null;
-  if(!items.includes(active))return back?items[_ln(items)-1]:items[0];   // focus entered from outside → pull in
+  if(!items.includes(active))return back?items[_ln(items)-1]:items[0];   // outside focus → pull in
   if(!back&&active===items[_ln(items)-1])return items[0];                 // wrap forward off the last
   if(back&&active===items[0])return items[_ln(items)-1];                  // wrap backward off the first
-  return null;                                                              // middle → let native Tab move
+  return null;                                                              // middle → native Tab
 }
 // The open modal dialog (help/share), or null. While one is open, global canvas
 // shortcuts must not fire behind it.
@@ -6629,7 +6631,7 @@ function doRotate(d){
   for(const c of _bC)if(!selIds.has(c.id))after.push(clone(c));
   _nugPush({op:'align',dir:'rotate',before,after});   // ADR-0961: held ,/. folds into one rotate op
   _ivp();
-  _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. rotate announce; point-geom has no .rotate (0055)
+  _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. rotate announce (0055)
 }
 // ====================== EXPORT ======================
 // Browsers cap a canvas's dimension (~16384px) and area — a fixed scale silently
@@ -6762,7 +6764,7 @@ function exportPDF(){
     w2.document.close();_stO(()=>URL.revokeObjectURL(url),30e3);
   };
   if(typeof off.toBlob==='function')off.toBlob(fin,'image/png');
-  else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // rejection → exportFailed toast parity
+  else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // reject → exportFailed parity
 }
 
 function exportSVG(shapes=_shV()){   // ADR-0658
@@ -7349,10 +7351,10 @@ function _svgPathPts(d,m){
     else if(C==='V'){y=ay+num();push(x,y);}
     else if(C==='Z'){x=x0;y=y0;push(x,y);}
     else if(C==='C'){const x1=ax+num(),y1=ay+num(),x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x1,y1,x2,y2,ex,ey);}
-    else if(C==='S'){const x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x,y,x2,y2,ex,ey);}   // S's ctrl point approximated by current point
+    else if(C==='S'){const x2=ax+num(),y2=ay+num(),ex=ax+num(),ey=ay+num();cubic(x,y,x2,y2,ex,ey);}   // S ctrl pt ≈ current
     else if(C==='Q'){const x1=ax+num(),y1=ay+num(),ex=ax+num(),ey=ay+num();quad(x1,y1,ex,ey);}
-    else if(C==='T'){const ex=ax+num(),ey=ay+num();quad(x,y,ex,ey);}   // T's reflected ctrl point likewise
-    else if(C==='A'){num();num();num();num();num();x=ax+num();y=ay+num();push(x,y);}   // arc → endpoint chord approximation
+    else if(C==='T'){const ex=ax+num(),ey=ay+num();quad(x,y,ex,ey);}   // T reflected ctrl pt
+    else if(C==='A'){num();num();num();num();num();x=ax+num();y=ay+num();push(x,y);}   // arc → endpoint chord
     else break;   // unknown command → end this path here
   }
   // transform all points once at the end — cheaper than per-vertex matrix ops
@@ -8022,7 +8024,7 @@ function wrapText(text,maxWidth,measure){
       if(measure(line+tok)<=maxWidth){line+=tok;continue;}
       if(line!==''){_pu(out,line.replace(/\s+$/,''));line='';if(/^\s+$/.test(tok))continue;}
       if(measure(tok)<=maxWidth){line=tok;continue;}
-      let chunk='';                                         // single token longer than the line → char-break
+      let chunk='';                                         // oversized token → char-break
       for(const ch of tok){
         if(chunk===''||measure(chunk+ch)<=maxWidth){chunk+=ch;continue;}
         // 禁則: a line-start-prohibited char must not open a line — it
@@ -8345,7 +8347,7 @@ const Net={
             const w=_wc()[id]||(_wc()[id]=_wM());
             if(!w._del||clockNewer(c,w._del))w._del=clone(c);
             const s=byId(id);
-            if(!s){if(_pgs()&&_pgById(id)&&!_bN(id,c)){_pgs().splice(_pgs().findIndex(p=>p.id===id),1);const re=_ln(_pgs())?_pgs()[0].id:null;_pgDel2({id,clock:c},re);if(!_ln(_pgs())){state.pages=null;state.curPg=null}_pgHealS();_pgBar();rm=true}continue}   // ADR-1093
+            if(!s){const pi=_pgs()?_pgs().findIndex(p=>p.id===id):-1;if(pi>=0&&!_bN(id,c)){_pgs().splice(pi,1);const re=_ln(_pgs())?_pgs()[0].id:null;_pgDel2({id,clock:c},re,null,undefined,pi===0?id:null);if(!_ln(_pgs())){state.pages=null;state.curPg=null}_pgHealS();_pgBar();rm=true}continue}   // ADR-1093/1109
             if(s.locked||!_tAlive(id))continue;
             const i=_idIdx(id);if(i>=0)_sh().splice(i,1);_sdl(id);_psc(id);rm=true;
             const fx=Store._remoteDelConnFix({op:'del',shapes:[s]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);
@@ -9937,7 +9939,7 @@ function unbindSelection(){
   _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s)||(!s.a&&!s.b))return;
     _pu(before,{id,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
     const e=_cE(s);                                          // ADR-0591: freeze the resolved endpoint —
-    s.x1=e.x1;s.y1=e.y1;s.x2=e.x2;s.y2=e.y2;                 // stored coords drift while bound (gsnap/moves)
+    s.x1=e.x1;s.y1=e.y1;s.x2=e.x2;s.y2=e.y2;                 // coords drift while bound
     s.a=null;s.b=null;s.aF=null;s.bF=null;                     // ADR-0209
     _pu(after,{id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
   })
