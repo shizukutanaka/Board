@@ -18350,6 +18350,44 @@ pass += 5;
 }
 console.log('  \u2713 ADR-1083 PWA/storage lifecycle (5 asserts)');
 pass += 5;
+// ---- ADR-1084: local emit ops pass the remote intake contract ----
+{
+  // capture what the wire actually carries — the post-_slimOp, post-serialization
+  // op — for every local emit path, then run it through the remote gate. A local
+  // emit the intake would reject is silent divergence.
+  const sent=[];
+  const _ob=Net.broadcast;
+  Net.broadcast=o=>{sent.push(JSON.parse(JSON.stringify(Net._slimOp(o))))};
+  const mk=id=>{const s=Shape.make('rect',{x:10,y:10,w:20,h:20});s.id=id;return s};
+  const a=mk('emA'),b=mk('emB');
+  state.shapes.push(a,b);
+  state.selection=new Set(['emA','emB']);
+  Store.commit({op:'add',shape:mk('emD')});
+  Store.commit({op:'addMany',shapes:[mk('emE'),mk('emF')]});
+  Store.commit({op:'move',ids:['emA'],dx:5,dy:5});
+  Store.commit({op:'zorder',changes:[{id:'emA',before:'0',after:'V'}]});
+  Store.commit({op:'style',before:[{id:'emA',x:10}],after:[{id:'emA',x:11}]});
+  Store.commit({op:'upd',id:'emB',before:{x:10},after:{x:12}});
+  Store.commit({op:'align',dir:'flip',before:[{id:'emA'}],after:[{id:'emA'}]});
+  doGroup();_nugEnd();
+  doUngroup();
+  const ln=Shape.make('line',{x1:0,y1:0,x2:9,y2:9});ln.id='emL';ln.a='emA';state.shapes.push(ln);
+  Store.commit({op:'del',shapes:[a],connClears:computeConnClears(new Set(['emA']))});
+  Store.undo();   // undo-wire restore ops are captured too
+  Store.commit({op:'clear',shapes:state.shapes.map(s=>({...s}))});
+  Store._recordCommitted({op:'replace',before:[],after:[mk('emR')],wc:{},afterWc:{}});
+  Store.commit({op:'pageAdd',id:'emP1',name:'P',i:1});
+  Store.commit({op:'pageName',id:'emP1',after:'Q',nts:nowTs()});
+  Store.commit({op:'pageDel',id:'emP1',firstId:'emP0',unpage:1,shapes:[]});
+  Store.commit({op:'beautify',before:[{id:'emR',x:10}],after:[{id:'emR',x:12}]});
+  Net.broadcast=_ob;
+  assert.ok(sent.length>=15,'every emit path produced a wire op');
+  for(const o of sent)assert.ok(Store.REMOTE_OPS.has(o.op),'emitted kind is remote-applyable: '+o.op);
+  for(const o of sent)assert.ok(validRemotePayload(o),'slim op passes intake contract: '+o.op);
+  assert.ok(sent.some(o=>o.op==='replace'&&Array.isArray(o.after)&&o.after.length===0),'clear translates to replace(after:[])');
+}
+console.log('  \u2713 ADR-1084 emit\u00d7intake symmetry (4 asserts)');
+pass += 4;
 // ---- ADR-1080: peer-selection ids resolve against live shapes ----
 {
   Net._onRecv({k:'ping',peer:'p9'},false);
