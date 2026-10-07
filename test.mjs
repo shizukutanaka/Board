@@ -20533,7 +20533,7 @@ pass += 7;
 // ---- ADR-1140: line-granularity merge rescues overlapping char-hunks ----
 {
   assert.ok(html.includes('_mL3='),'ADR-1140: line-granularity merger exists');
-  assert.ok(html.includes('const _m=_mL3(l,b,r)'),'ADR-1140: char-level conflict falls back to the line merge');
+  assert.ok(html.includes(':_mL3(l,b,r);'),'ADR-1140: char-level conflict falls back to the line merge');
   assert.ok(html.includes('_lcsA='),'ADR-1140: LCS line-alignment helper exists');
   state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
   const ops=[];const _ob=Net.broadcast;Net.broadcast=o=>ops.push(o);
@@ -20554,6 +20554,28 @@ pass += 7;
   console.log('  ✓ ADR-1140 line-granularity text merge (9 asserts)');
 }
 pass += 9;
+
+// ---- ADR-1141: over-cap merged text can't be emitted — fall back to remote ----
+{
+  assert.ok(html.includes("_tk==='text'?5000:600"),'ADR-1141: merge hook passes the per-prop wire bound');
+  assert.strictEqual(_mT3('A\ny','x\ny','x\nB'),'A\nB','ADR-1141: uncapped call still unions');
+  assert.strictEqual(_mT3('A\ny','x\ny','x\nB',3),'A\nB','ADR-1141: a union at the cap merges');
+  assert.strictEqual(_mT3('A\ny','x\ny','x\nB',2),'x\nB','ADR-1141: an over-cap union returns remote');
+  assert.strictEqual(_mT3('A\ny','x\ny','x\nB',0),'A\nB','ADR-1141: cap 0 means uncapped');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+  const ops=[];const _ob=Net.broadcast;Net.broadcast=o=>ops.push(o);
+  const _b9='a\n'+'M'.repeat(1000)+'\nz';
+  const t2=Shape.make('text',{id:'t2',x:0,y:0,w:100,h:50});t2.text=_b9;t2.z=1;
+  state.shapes=[t2];_invalidateGrid();
+  t2.text='L'.repeat(3995)+'\n'+_b9;   // 5000-char local text raced a 5000-char remote edit → 8996-char union
+  Store.applyRemote({op:'upd',id:'t2',before:{text:_b9},after:{text:_b9+'\n'+'R'.repeat(3995)},clock:{peer:'pX',seq:1,ts:state._lastTs+1000}});
+  assert.strictEqual(t2.text,_b9+'\n'+'R'.repeat(3995),'ADR-1141: an over-cap union falls back to remote, not an undeliverable value');
+  assert.ok(!ops.some(o=>o.op==='upd'&&o.id==='t2'),'ADR-1141: no emit on a capped merge');
+  Net.broadcast=_ob;
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+  console.log('  ✓ ADR-1141 over-cap text-merge emit bound (7 asserts)');
+}
+pass += 7;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

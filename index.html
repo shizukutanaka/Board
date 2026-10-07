@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.164';   // ADR-1140
+const V='1.8.165';   // ADR-1141
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1742,7 +1742,7 @@ const Store={
         // Only skip restoring if a *remote* peer wrote a newer value.
         // Local-peer writes (same peerId) are also bound by it —
         if(!forward)for(const k of _ok(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
-        {const _bs=forward?op.before:op.after;for(const _tk of['text','label'])if(p[_tk]!=null&&_iS(sh[_tk])&&_bs!=null&&_iS(_bs[_tk])){const _m=_mT3(sh[_tk],_bs[_tk],p[_tk]);if(_m!==p[_tk]){_pu(_txE||(_txE=[]),{id:sh.id,k:_tk,b:p[_tk],a:_m});p[_tk]=_m}}}   // ADR-1123/1140
+        {const _bs=forward?op.before:op.after;for(const _tk of['text','label'])if(p[_tk]!=null&&_iS(sh[_tk])&&_bs!=null&&_iS(_bs[_tk])){const _m=_mT3(sh[_tk],_bs[_tk],p[_tk],_tk==='text'?5000:600);if(_m!==p[_tk]){_pu(_txE||(_txE=[]),{id:sh.id,k:_tk,b:p[_tk],a:_m});p[_tk]=_m}}}   // ADR-1123/1140/1141
         _oa(sh,p);
         if(!forward)_selR(op);
         break;}
@@ -1897,7 +1897,7 @@ const Store={
           const p=clone(raw);delete p.pg;delete p.frac;delete p.groupId;if(p.type!=null&&!_typOK(p.type,p,sh))delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];
           // Same LWW guard as 'upd' (_lwwSkip): undo must not clobber a newer remote write
           if(!forward)for(const k of _ok(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
-          {const _bw=forward?op.before:op.after,_bp=_iA(_bw)&&_bw.find(e=>e&&e.id===sh.id);for(const _tk of['text','label'])if(p[_tk]!=null&&_iS(sh[_tk])&&_bp!=null&&_iS(_bp[_tk])){const _m=_mT3(sh[_tk],_bp[_tk],p[_tk]);if(_m!==p[_tk]){_pu(_txE||(_txE=[]),{id:sh.id,k:_tk,b:p[_tk],a:_m});p[_tk]=_m}}}   // ADR-1123
+          {const _bw=forward?op.before:op.after,_bp=_iA(_bw)&&_bw.find(e=>e&&e.id===sh.id);for(const _tk of['text','label'])if(p[_tk]!=null&&_iS(sh[_tk])&&_bp!=null&&_iS(_bp[_tk])){const _m=_mT3(sh[_tk],_bp[_tk],p[_tk],_tk==='text'?5000:600);if(_m!==p[_tk]){_pu(_txE||(_txE=[]),{id:sh.id,k:_tk,b:p[_tk],a:_m});p[_tk]=_m}}}   // ADR-1123/1141
           _oa(sh,p);
         }
         if(!forward)_selR(op);
@@ -1984,13 +1984,12 @@ _mL3=(l,b,r)=>{
   }
   if(pos<_ln(B))_pu(o,...B.slice(pos));
   return o.join('\n');},
-_mT3=(l,b,r)=>{
+_mT3=(l,b,r,t)=>{
   if(l==null||l===r||b==null||b===l)return r;
   const rp=_cpl(b,r),rs=_min(_csl(b,r),_ln(b)-rp,_ln(r)-rp),R1=_ln(b)-rs,Hr=r.slice(rp,_ln(r)-rs),
         lp=_cpl(b,l),ls=_min(_csl(b,l),_ln(b)-lp,_ln(l)-lp),L1=_ln(b)-ls,Hl=l.slice(lp,_ln(l)-ls);
-  if(L1<=rp)return b.slice(0,lp)+Hl+b.slice(L1,rp)+Hr+b.slice(R1);
-  if(R1<=lp)return b.slice(0,rp)+Hr+b.slice(R1,lp)+Hl+b.slice(L1);
-  const _m=_mL3(l,b,r);return _m==null?r:_m;
+  const _m=L1<=rp?b.slice(0,lp)+Hl+b.slice(L1,rp)+Hr+b.slice(R1):R1<=lp?b.slice(0,rp)+Hr+b.slice(R1,lp)+Hl+b.slice(L1):_mL3(l,b,r);
+  return _m==null||t&&_ln(_m)>t?r:_m;   // ADR-1141: an over-cap union can't be emitted — converge on remote
 };
 let _txE=null;
 function _txC(op){if(!op.clock)_fck(op);const k=_ck(op);if(_sO().has(k))return;_sO().add(k);_trimSeen();try{Store._stampWrites(op);_ps();Net.broadcast(op)}catch(e){_sO().delete(k);throw e}}   // ADR-1128
