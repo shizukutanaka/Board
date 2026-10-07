@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.118';   // ADR-1094
+const V='1.8.119';   // ADR-1095
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1780,6 +1780,7 @@ const Store={
         break;}
       case 'pageAdd':{   // ADR-0646: multi-page
         if(forward){
+          if(_tmb(op.id,op))break;   // ADR-1095: tombstone outranks a stale pageAdd (add parity)
           if(!_pgs()){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
           else{const l=_pgById(op.id);if(l&&l.nts<0){l.name=op.name!=null?op.name:l.name;l.nts=0}   // ADR-0775
           else if(!l&&_ln(_pgs())<64){
@@ -1788,7 +1789,7 @@ const Store={
             _pgs().splice(at,0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
           }}
           if(_pgById(op.id))_bT(op.id,op.clock);   // ADR-1093: born-stamp introduced pages
-          if(_iA(op.shapes)&&_pgById(op.id)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))continue;if(wd)delete wd._del;if(!byId(sh.id)&&_shCap()){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2);_bT(sh.id,op.clock)}}_sz()}   // ADR-0650/0708/0734/0735/0834/0926: no page ⇒ no members
+          if(_iA(op.shapes)&&_pgById(op.id)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;if(!byId(sh.id)&&_shCap()){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2);_bT(sh.id,op.clock)}}_sz()}   // ADR-0650/0708/0734/0735/0834/0926/1095: no page ⇒ no members
         }else{
           // ADR-0724: purge by CURRENT membership via _pgDel2, not op.shapes — a shape
           // that acquired pg=op.id after the commit (a peer's add on that page)

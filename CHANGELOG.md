@@ -1,3 +1,14 @@
+## [1.8.119] - 2026-10-01
+
+### Fixed
+- **round845 / ADR-1095 — `pageAdd` forward gets `add` parity (`_tmb` on the page id + member loop)**: shape `add`/`addMany` reject stale adds behind a newer `_del` tomb (ADR-0734), but `pageAdd` had no gate — a stale `pageAdd` spliced the page back (plus `curPg` move, `s.pg` re-attribution, member attach) despite a newer tomb, leaving a zombie until the next `dels` exchange. The member loop also re-implemented the check without `_tmb`'s `_born` escape, dropping members that were reborn after their tomb. `pageAdd` forward now breaks on `_tmb(op.id,op)` and the member loop uses `_tmb(sh.id,op)` — a newer `pageAdd` still rebirths over its tomb, and a reborn member is admitted even when the op clock predates the tomb.
+
+### Docs
+- `docs/ADR-1095-pageadd-tomb-parity.md`.
+
+### Tests
+- test.mjs: 5 ADR-1095 behavioural pins — stale `pageAdd` rejected (no page, no members); newer `pageAdd` rebirths and stamps `_born`; reborn member admitted via the `_born` escape; tombed member still skipped.
+
 ## [1.8.118] - 2026-10-01
 
 ### Fixed

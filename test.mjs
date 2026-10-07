@@ -19097,6 +19097,27 @@ pass += 12;
 }
 pass += 6;
 
+// ---- ADR-1095: pageAdd forward lacks 'add' parity — no _tmb gate on the page id, member loop misses the _born escape ----
+{
+  const m9=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));m9.id='m9';m9.pg='p9';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.pages=null;state.curPg=null;state.wclock={p9:{_del:{ts:200,peer:'a',seq:0}}};state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'pageAdd',id:'p9',name:'X',shapes:[m9],clock:{ts:100,peer:'p9',seq:5}});
+  assert.ok(!_pgById('p9')&&state.pages==null,'a stale pageAdd cannot resurrect a tombed page (add parity)');
+  assert.ok(!byId('m9'),'a stale pageAdd lands no members either');
+  Store.applyRemote({op:'pageAdd',id:'p9',name:'X',clock:{ts:300,peer:'p9',seq:6}});
+  assert.ok(_pgById('p9')&&state.wclock.p9._born&&state.wclock.p9._born.ts===300,'a newer pageAdd rebirths over the tomb');
+  // member loop unifies on _tmb: a member reborn after its tomb must be admitted even when the op clock predates the tomb
+  const m10=JSON.parse(JSON.stringify(m9));m10.id='m10';const m11=JSON.parse(JSON.stringify(m9));m11.id='m11';
+  state.wclock={m10:{_del:{ts:500,peer:'a',seq:0},_born:{ts:600,peer:'a',seq:0}},m11:{_del:{ts:500,peer:'a',seq:0}}};
+  Store.applyRemote({op:'pageAdd',id:'p9',name:'X',shapes:[m10,m11],clock:{ts:400,peer:'p9',seq:7}});
+  assert.ok(byId('m10'),'a member reborn after its tomb is admitted via the _born escape');
+  assert.ok(!byId('m11'),'a member whose tomb outranks the op clock is still skipped');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1095 pageAdd tomb/_born parity (5 asserts)');
+}
+pass += 5;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
