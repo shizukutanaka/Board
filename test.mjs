@@ -1811,7 +1811,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, _oa, _imgRescan,
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
           _s256, _hmac, _eqs, _sec, Share } = api;
@@ -19254,6 +19254,29 @@ pass += 12;
   console.log('  ✓ ADR-1099 name-channel clock + change-path parity (9 asserts)');
 }
 pass += 9;
+
+// ---- ADR-1102: ro entry gates on the paste-import cascade — contracts pinned ----
+{
+  const _ot=UI.toast;const seen=[];UI.toast=(m,k)=>{seen.push(m)};
+  const _ob=Net.broadcast;let bcast=0;Net.broadcast=()=>bcast++;
+  const _roM=/閲覧|View only/;
+  try{
+    state.shapes.length=0;state.ro=true;_invalidateGrid();
+    importExcText('{"type":"excalidraw","elements":[]}',{x:0,y:0});
+    assert.ok(_roM.test(seen.pop()),'exc import toasts readOnlyMode, not a success');
+    importSvgText('<svg xmlns="http://www.w3.org/2000/svg"/>',{x:0,y:0});
+    assert.ok(_roM.test(seen.pop()),'svg import toasts readOnlyMode');
+    importDrawioText('<mxfile><diagram>Page<diagram></mxfile>',{x:0,y:0});
+    assert.ok(_roM.test(seen.pop()),'drawio import toasts readOnlyMode — also stops the multi-page broadcast leak');
+    assert.strictEqual(bcast,0,'no Net.broadcast escapes on ro (drawio multi-page leak closed)');
+    assert.strictEqual(_textCascade('plain text',{x:0,y:0}),true,'cascade returns true (suppresses doPaste fallback + second toast)');
+    _imgImportFile({size:10,name:'a.png'},()=>{});
+    assert.strictEqual(state.shapes.length,0,'zero shapes added across all ro-gated importers');
+    assert.ok(seen.every(m=>_roM.test(m)),'every intake seam toasts readOnlyMode only');
+  }finally{state.ro=false;state.shapes.length=0;_invalidateGrid();UI.toast=_ot;Net.broadcast=_ob}
+  console.log('  ✓ ADR-1102 ro paste-import gates (7 asserts)');
+}
+pass += 7;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

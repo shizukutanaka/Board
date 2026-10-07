@@ -1,3 +1,12 @@
+## [1.8.126] - 2026-10-01
+
+### Fixed
+- **round852 / ADR-1102 — read-only gates on the paste-import cascade**: the ro (`state.ro`) mutation funnel stops every commit at `Store.commit`, but three hole classes let paste/drop intake seams run feedback or mutations around it. Entry gates now toast `readOnlyMode` once and consume the intake: (1) `importDrawioText` broadcast page shapes via an unconditional `Net.broadcast` after its `_cmt` was rejected — a multi-page drawio paste leaked peer divergence on a read-only board; (2) `importSvgText`/`importExcText` fired their `svgImported`/`excImported` success toasts after rejection (same class ADR-1073 fixed for `_placeCopies`/`importBoardText`); (3) `replaceImage`'s `_imgImportFile` callback wrote `s.dataUrl`/`s.h`/`delete s.img` on the live shape pre-commit — now unreachable on ro. `_textCascade` returns `true` on ro so the paste listener's `doPaste()` fallback can't double-toast via `_placeCopies`'s own gate; the importers return `true` for the same consume semantics.
+
+### Tests
+- 7 behavioural pins: every intake seam (`importExcText`/`importSvgText`/`importDrawioText`/`_textCascade`/`_imgImportFile`) toasts exactly `readOnlyMode`, adds zero shapes, and escapes no `Net.broadcast` on ro.
+- Docs: ADR-1102 records the clipboard/drop ingest-cascade completeness audit — the ingest counterpart to round851's export audit.
+
 ## [1.8.125] - 2026-10-01
 
 ### Fixed
