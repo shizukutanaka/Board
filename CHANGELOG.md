@@ -1,3 +1,8 @@
+## [1.8.142] - 2026-10-01
+
+### Tests
+- **round868 / ADR-1118 — op-clock seq contract audit (docs+pin)**: every emitted op clock mints `{peer:_pi(), seq:++state.seq, ts:nowTs()}` — one monotonic counter per launch. `state.seq` is intentionally not persisted: the ADR-0459 per-launch peerId incarnation suffix makes `peer:seq` dedup keys launch-unique, so a relaunched tab reusing seqs cannot collide with keys peers already recorded. Snapshot-embedded adds carry `seq:'snap:'+id` at `ts:0` — dedup-key-only, never arbitrate; the intra-peer seq tie-break is a total order (mixed string/number compares false both ways). 10 pins: seq consumption per commit, undo restamp freshness, dedup key composition, peerId suffix source pin, snap-clock legality + non-winning, intra-peer seq order, mixed-type determinism.
+
 ## [1.8.141] - 2026-10-01
 
 ### Fixed
