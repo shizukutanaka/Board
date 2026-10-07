@@ -1,3 +1,14 @@
+## [1.8.137] - 2026-10-01
+
+### Audited
+- **round863 / ADR-1113 — undo-wire × backward parity audit (clean pass, contract pinned)**: audited all 17 op kinds across the two convergence requirements for an undo — (1) every `_undoWire` inverse survives `validRemotePayload` on peers, (2) the peers' forward apply performs the same writes the undoer's backward apply performed. Two documented seams:
+  - **delta-move rescue**: a recorded delta `move` (`{ids,dx,dy}`, no before/after) inverts to a wire op that fails `validRemotePayload` *pre-slim* (the `move` case requires `patches`+`cov` since ADR-1086/1087) — `Net.broadcast`'s `_slimOp` fabricates `after`/`before` absolutes from live positions at send time, so peers receive the undoer's post-undo coordinates and their forward apply lands identically.
+  - **HLC-mooted gates**: backward apply gates per-key on `clockNewer(w[key], op.clock)` while peers' forward applies unconditionally — the asymmetry resolves via `nowTs()`'s `_lastTs` floor (every seen stamp `< ut`), making the backward gates side-effect-free by construction.
+- Already-covered territory re-verified: `_nugEnd` ordering (0957), field parity (0719/0720/0721/0727/0732), replace tomb parity (1112), group/ungroup before-coverage (1087/1088), pageDel `unpage`/`firstId`/`bts`/`btp` carriage (0775/0776/0725/1110).
+
+### Tests
+- 6 behavioural pins: delta-move inverse wire-invalid pre-slim; `_slimOp` fabricates wire-legal absolutes; every undo-broadcast move is wire-legal post-slim; wire `after` anchors the undoer's post-undo position; wire `before` anchors the pre-undo position; `nowTs` floors above every seen stamp.
+
 ## [1.8.136] - 2026-10-01
 
 ### Fixed

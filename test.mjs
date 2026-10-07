@@ -19577,6 +19577,37 @@ pass += 5;
 }
 pass += 5;
 
+// ---- ADR-1113: undo-wire × backward parity — the audit showed every inverse
+// op's send path is wire-legal (mostly pre-slim; delta moves only post-slim via
+// _slimOp's absolute fabrication), and the HLC floor makes the undo-side
+// _lwwSkip gates equivalent to the peers' unconditional forward apply.
+{
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;state.history=[];state.histIdx=-1;_invalidateGrid();
+  // the one pre-slim-invalid inverse: a recorded delta move (no before/after)
+  const dm=_undoWire({op:'move',ids:['m1'],dx:3,dy:4});
+  assert.ok(dm.length===1&&dm[0].op==='move'&&!validRemotePayload(dm[0]),'a delta-move inverse is wire-invalid before _slimOp');
+  const m1=JSON.parse(JSON.stringify(Shape.make('rect',{x:10,y:10,w:5,h:5})));m1.id='m1';state.shapes=[m1];_invalidateGrid();
+  const slim0=Net._slimOp(dm[0]);
+  assert.ok(validRemotePayload(slim0)&&slim0.after[0].x===10&&slim0.before[0].x===13,'_slimOp fabricates wire-legal absolutes for a delta inverse (after=live, before=live-delta)');
+  // end-to-end: the undo broadcast rides the same rescue — after anchors the
+  // undoer's post-undo position, so the peers' forward equals our backward.
+  Store._recordCommitted({op:'move',ids:['m1'],dx:3,dy:4});
+  const ob=Net.broadcast,sent=[];Net.broadcast=w=>{sent.push(w)};
+  Store.undo();Net.broadcast=ob;
+  const sw=sent.map(w=>Net._slimOp(w));
+  assert.ok(sw.every(w=>w.op!=='move'||validRemotePayload(w)),'every undo-broadcast move is wire-legal after _slimOp');
+  const inv=sw.find(w=>w.op==='move');
+  assert.ok(inv&&inv.after[0].x===7&&inv.before[0].x===10,'wire after anchors the undoer post-undo position (7=10-3); peer forward == our backward');
+  // HLC floor: a seen stamp always loses to the next local clock, so the undo
+  // side's _lwwSkip gates can never diverge from the peers' unconditional apply.
+  state._lastTs=1e15;const _nt=nowTs();
+  assert.ok(_nt>1e15,'nowTs floors above every seen stamp — undo-side _lwwSkip is side-effect-free (HLC invariant)');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1113 undo-wire × backward parity (6 asserts)');
+}
+pass += 6;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

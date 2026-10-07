@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.136';   // ADR-1112
+const V='1.8.137';   // ADR-1113
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -10022,7 +10022,7 @@ function _undoWire(op){
     case 'del':case 'clear':{const o=[{op:'addMany',shapes:op.shapes,wc:op.wc}];   // ADR-0721: ride the wclock snapshot too
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});
       return o;}
-    case 'move':{const o={op:'move',ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy};   // ADR-0719
+    case 'move':{const o={op:'move',ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy};   // ADR-0719/1113: a delta inverse stays wire-legal — _slimOp fabricates the absolutes
       if(_iA(op.after)&&_iA(op.before)){o.after=op.before;o.before=op.after}   // ADR-0732
       return[o];}
     case 'upd':case 'style':case 'resize':case 'align':case 'beautify':
