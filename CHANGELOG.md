@@ -1,3 +1,12 @@
+## [1.8.134] - 2026-10-01
+
+### Fixed
+- **round860 / ADR-1110 — page birth clock (`bts`/`btp`) on page records**: the remaining two Devin Review findings on ADR-1093 closed. (A) `_pgClk`'s rep-less fallback stamped the *receiver's* now-clock as `_born`, so a tombed page adopted via `msg.pages` outranked its older tomb — the receiver itself manufactured the rebirth. (B) union-heal stamped `_bT` with `nts` — the *rename* clock, not a birth clock. Page records now carry `bts`/`btp` (the introducing `pageAdd`'s `op.clock`) through every emission channel (snapshot `pages:`, `.board`, `_slimOp`, IDB) with zero emitter changes. Adopt/union-heal arbitrate the *carried* birth against the local tomb — birth-less pages lose to tombs instead of inheriting the receiver's clock — and `_pgHealS` no longer mints `'?'` stubs on tomb-dead page ids.
+
+### Tests
+- 11 behavioural pins: pageAdd stamps `bts`/`btp`; tomb outranks carried birth → drop; carried birth survives at the real clock; birth-less loses to tomb; birth-less+no-tomb adopts and normalizes; tomb-dead `s.pg` gets no stub; union-heal tomb gate + carried-birth stamp; `_vPages` bts/btp validation.
+- One source pin updated: `_pgHealS` loop head gains the tomb gate (ADR-0692→0692/1110).
+
 ## [1.8.133] - 2026-10-01
 
 ### Fixed
