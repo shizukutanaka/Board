@@ -1,3 +1,12 @@
+## [1.8.098] - 2026-10-01
+
+### Fixed
+- **ADR-1074: zero-delta dup chain** — `_placeCopies(_,0,0)` (merge import,
+  paste-in-place) seeds `dupDelta={0,0}`; the next ⌘D then took the smart
+  chain and stacked copies exactly on the placed set — invisible duplicates.
+  `doDuplicate` now treats a `{0,0}` seed as no chain and falls back to the
+  default-offset path, which reseeds a real delta for subsequent presses.
+
 ## [1.8.097]
 
 - **Fix — restore merge-mode import (ADR-1054, round823)**: the `.board` file

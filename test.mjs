@@ -18520,7 +18520,26 @@ assert.ok(html.includes('_mergeImport(shapes)')&&html.includes('_mergeImport(val
 assert.ok(html.includes("importMerge:'読み込んだ内容")&&html.includes("importMerge:'Merge"),'merge choice is localized');
 pass += 3;
 
-pass += 1942; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
+{
+  // ADR-1074: a {0,0} seeded dupDelta is no chain — the first ⌘D after an
+  // in-place placement (merge import, paste-in-place) uses the default offset
+  // instead of stacking invisible copies on the placed set.
+  const s1=Shape.make('rect',{x:0,y:0,w:10,h:10});s1.id='h1';state.shapes=[s1];
+  _placeCopies([s1],0,0);
+  assert.deepStrictEqual(state.dupDelta,{x:0,y:0},'in-place placement seeds a {0,0} delta');
+  const n0=state.shapes.length;
+  doDuplicate();
+  assert.strictEqual(state.shapes.length,n0+1,'⌘D still duplicates after a {0,0} delta');
+  const c1=state.shapes[n0];
+  assert.ok(c1.x>s1.x&&c1.y>s1.y,'⌘D after a {0,0} delta offsets instead of stacking invisibly');
+  assert.ok(state.dupDelta.x>0,'chain reseeded with the default offset');
+  state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;_invalidateGrid();
+  pass += 4;
+}
+assert.ok(html.includes('(_dd().x||_dd().y)'),'{0,0} delta falls back to the plain path');
+pass += 1;
+
+pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -1100,6 +1100,7 @@ Board/
 │   └── ADR-1049-img-rescan-repark.md  # presence sweep 内の 5分 `_imgRescan` — 60s 期限切れ parked ref の永久プレースホルダー化を解消
 │   └── ADR-1053-peer-display-names.md  # presence (`ping`/`cursor`/`selection`) に `n` フィールドでピア表示名 — カーソルマーカー+アバター tooltip に表示
 │   └── ADR-1054-merge-mode-import.md  # 非空ボードでの .board/共有リンク取込にマージor置換の選択 — `_placeCopies` 経由で 1 回の undoable addMany (round823 でスタック再構築ロスから復元)
+│   └── ADR-1074-zero-delta-dup-chain.md  # ゼロデルタ dup シードをチェーンなし扱い — ⌘D の不可視スタック解消
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
