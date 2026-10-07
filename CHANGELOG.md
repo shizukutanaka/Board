@@ -1,3 +1,14 @@
+## [1.8.115] - 2026-10-01
+
+### Fixed
+- **round841 / ADR-1091 — snapshot merge path converges `docName` (delta-sync parity)**: the audit of delta-sync (`sync-req` → `_snapshotMsg(req)`) vs full-snapshot field completeness found the envelope fields are emitted identically — `name`/`nameTs`/`namePeer`, `rep`, `pages` — but intake-side the `docName` LWW adoption lived only inside `_applySnapshot` (the empty-board path). A rejoining peer with a non-empty board therefore never learned a rename it missed while offline: the merge path evaluated `ops`/`dels`/`pages`/`rep` and left its stale docName standing forever. `case 'snapshot'` now applies a strict `_nameWin`/`_tsOK` arbitration on both paths — a winning `(ts,peer)` clock adopts `name` and the writer clock; a clock-less name cannot arbitrate on the merge path and is skipped (the unconditional `:!0` adopt stays empty-board-only, where there is no local rename to lose).
+
+### Docs
+- `docs/ADR-1091-merge-path-docname-parity.md`.
+
+### Tests
+- test.mjs: 4 ADR-1091 behavioural pins — merge path adopts a winning snapshot name, rejects a stale one, skips a clock-less name, and the empty-board unconditional adopt is preserved.
+
 ## [1.8.114] - 2026-10-01
 
 ### Docs

@@ -18973,6 +18973,30 @@ pass += 14;
 }
 pass += 10;
 
+// ---- ADR-1091: merge-path docName parity (delta snapshot intake) ----
+{
+  const sD=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sD.id='m1';
+  state.roomId='roomOld';Net.init('roomX');   // resets _nameTs/_namePeer (ADR-0619)
+  state.shapes=[sD];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  // a winning (ts,peer) name converges on the merge path too — a rejoining peer heals
+  Net._onRecv({k:'name',name:'StaleName',ts:1,peer:'p9'},false);
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'FreshName',nameTs:nowTs()},false);
+  assert.strictEqual(state.docName,'FreshName','merge path adopts a winning snapshot name');
+  // a stale name is rejected — the adopted winner clock now stands
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'Loser',nameTs:1,namePeer:'p9'},false);
+  assert.strictEqual(state.docName,'FreshName','merge path rejects a stale snapshot name');
+  // a clock-less name cannot arbitrate on the merge path — local rename kept
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'Clockless'},false);
+  assert.strictEqual(state.docName,'FreshName','clock-less name cannot overwrite a local rename');
+  // empty-board parity keeps the unconditional adopt (no local name to lose)
+  state.shapes.length=0;
+  Net._onRecv({k:'snapshot',peer:'p9',shapes:[sD],ops:[],name:'Clockless'},false);
+  assert.strictEqual(state.docName,'Clockless','empty path keeps the unconditional adopt');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  \u2713 ADR-1091 merge-path docName parity (4 asserts)');
+}
+pass += 4;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
