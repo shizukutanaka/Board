@@ -1,3 +1,8 @@
+## [1.8.146] - 2026-10-01
+
+### Fixed
+- **round872 / ADR-1122 — 'locked' gated on every patch baseline**: `upd`'s `before` baseline and `move`'s `before`/`after` patches lacked the `noLock` guard that siblings already enforce. A forged `upd` `before.locked` landed on the victim's undo (local lock + revert) while every peer's `noLock(after)` rejected the inverse op — divergence. A forged `move` `after.locked` stamped a phantom `locked` arbitration clock through `_stampWrites`, silently corrupting every later legit lock op — divergence. `noLock` is now hoisted to `validRemotePayload` top-level and both ops gate `locked` on `before` *and* `after`. 7 behavioural pins.
+
 ## [1.8.145] - 2026-10-01
 
 ### Tests
