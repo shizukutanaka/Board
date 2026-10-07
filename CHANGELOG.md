@@ -1,3 +1,12 @@
+## [1.8.127] - 2026-10-01
+
+### Fixed
+- **round853 / ADR-1103 — ro adoption folds open text/label editors**: `_teFollow`/`_lblFollow` (the per-frame editor-follow passes) fold the overlay when the edited shape is removed/hidden/locked/off-page (ADR-0574/0709), but `state.ro` was missing from both conditions. On an editable board with a text or label editor open, importing a read-only document (`.board` file, `#b=` share link, or backup restore adopting `ro:1`, ADR-1069) left the overlay open; its blur-time `upd` commit then hit the ro gate at `Store.commit` and was silently discarded — typed text lost with no warning. Both fold conditions now include `state.ro`, folding the overlay on the next frame tick before the blur commit can fire.
+
+### Tests
+- 4 behavioural pins: `state.ro=true` while a text editor is armed folds it (`_teTa`/`state.editing` cleared) on the next `_teFollow`; editable control keeps the editor open.
+- 2 source pins updated to the ro-inclusive fold conditions for both overlays.
+
 ## [1.8.126] - 2026-10-01
 
 ### Fixed
