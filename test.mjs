@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT } = api;
+          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3 } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -20529,6 +20529,31 @@ pass += 8;
   console.log('  ✓ ADR-1139 dup-chain arming closed to real duplicates (7 asserts)');
 }
 pass += 7;
+
+// ---- ADR-1140: line-granularity merge rescues overlapping char-hunks ----
+{
+  assert.ok(html.includes('_mL3='),'ADR-1140: line-granularity merger exists');
+  assert.ok(html.includes('const _m=_mL3(l,b,r)'),'ADR-1140: char-level conflict falls back to the line merge');
+  assert.ok(html.includes('_lcsA='),'ADR-1140: LCS line-alignment helper exists');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+  const ops=[];const _ob=Net.broadcast;Net.broadcast=o=>ops.push(o);
+  const t1=Shape.make('text',{id:'t1',x:0,y:0,w:100,h:50});t1.text='a\nb\nc\nd\ne';t1.z=1;
+  state.shapes=[t1];_invalidateGrid();
+  t1.text='a\nX\nc\nY\ne';   // local edit raced the incoming remote edit
+  Store.applyRemote({op:'upd',id:'t1',before:{text:'a\nb\nc\nd\ne'},after:{text:'a\nb\nZ\nd\ne'},clock:{peer:'pX',seq:1,ts:state._lastTs+1000}});
+  assert.strictEqual(t1.text,'a\nX\nZ\nY\ne','ADR-1140: line-level merge unions disjoint line edits');
+  const emit=ops.find(o=>o.op==='upd'&&o.id==='t1');
+  assert.ok(emit&&emit.after.text==='a\nX\nZ\nY\ne','ADR-1140: the union lands in a convergence emit');
+  t1.text='a\nX1\nc';state.wclock={};ops.length=0;
+  Store.applyRemote({op:'upd',id:'t1',before:{text:'a\nb\nc'},after:{text:'a\nX2\nc'},clock:{peer:'pX',seq:2,ts:state._lastTs+1000}});
+  assert.strictEqual(t1.text,'a\nX2\nc','ADR-1140: a same-line conflict still loses wholesale');
+  assert.ok(!ops.some(o=>o.op==='upd'&&o.id==='t1'),'ADR-1140: no union emit on a real conflict');
+  assert.strictEqual(_mT3('a\nX\nc\nY\ne','a\nb\nc\nd\ne','a\nb\nZ\nd\ne'),'a\nX\nZ\nY\ne','ADR-1140: exported merger union');
+  Net.broadcast=_ob;
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+  console.log('  ✓ ADR-1140 line-granularity text merge (9 asserts)');
+}
+pass += 9;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

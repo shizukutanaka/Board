@@ -1,3 +1,8 @@
+## [1.8.164] - 2026-10-01
+
+### Fixed
+- **round890 / ADR-1140 — line-granularity 3-way text merge (ADR-1048 P2-a)**: ADR-1123's `_mT3` treated *any* overlapping char-level hunks as a conflict and dropped the local edit wholesale — but the most common collaborative case (one peer edits line 2, another edits line 8) produces overlapping char hunks whose *line* ranges are fully disjoint, silently discarding one side's edit. `_mT3` now retries at line granularity via `_mL3`: LCS-aligns each side against the base lines, walks the two line-hunk lists with a two-pointer merge — one-sided hunks adopt that side, same-position inserts concatenate remote-first (deterministic), real line-range overlaps return null and fall back to the remote clock winner. Bounded at 400 lines per side for LCS memory. 9 behavioural pins.
+
 ## [1.8.163] - 2026-10-01
 
 ### Fixed
