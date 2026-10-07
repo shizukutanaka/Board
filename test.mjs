@@ -18317,6 +18317,25 @@ pass += 4;
 }
 console.log('  ✓ ADR-1081 presence-intake contract (8 asserts)');
 pass += 8;
+// ---- ADR-1082: session-accumulation bounds contract pins ----
+{
+  // history is capped at MAX_HISTORY on BOTH push paths (commit + applyRemote)
+  const mkOp=i=>({op:'add',id:'hb'+i,shape:{id:'hb'+i,type:'rect',x:0,y:0,w:1,h:1,z:1},clock:{peer:'p9',seq:1,ts:nowTs()}});
+  while(state.history.length<MAX_HISTORY)state.history.push(mkOp(state.history.length));
+  state.histIdx=MAX_HISTORY-1;
+  Store.commit(mkOp('x'));
+  assert.strictEqual(state.history.length,MAX_HISTORY,'commit path shifts at MAX_HISTORY');
+  assert.strictEqual(state.histIdx,MAX_HISTORY-1,'histIdx stays at the tip after a shift');
+  Net._onRecv({k:'op',peer:'p9',op:mkOp('y')},false);
+  assert.strictEqual(state.history.length,MAX_HISTORY,'applyRemote path shifts at MAX_HISTORY too');
+  state.shapes.length=0;state.history.length=0;state.histIdx=-1;state.wclock={};_invalidateGrid();
+  // pointer map lifecycle is pinned: deleted on up/cancel, cleared on blur
+  assert.ok(html.includes('_pointers.delete(e.pointerId)')&&html.includes('_pointers.clear()'),'_pointers lifecycle is bounded by up/cancel/blur');
+  // IDB imgs GC keeps live+backup refs and heals the rest
+  assert.ok(html.includes('if(!live.has(k))imgs.delete(k)'),'imgs GC deletes non-live blobs (undo refs heal via park/imgq)');
+}
+console.log('  \u2713 ADR-1082 session-accumulation bounds (5 asserts)');
+pass += 5;
 // ---- ADR-1080: peer-selection ids resolve against live shapes ----
 {
   Net._onRecv({k:'ping',peer:'p9'},false);

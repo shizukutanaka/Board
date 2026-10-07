@@ -1,3 +1,8 @@
+## [1.8.106] - 2026-10-01
+
+### Added
+- セッション蓄積面の有界性監査完走 + 挙動ピン (ADR-1082): `state.history` MAX_HISTORY=500 両経路シフト、`_pointers` up/cancel/blur ライフサイクル、IDB `imgs` GC (live+:prev 保持・欠落は heal 治癒)、全蓄積面の契約表 — 5 asserts
+
 ## [1.8.105] - 2026-10-01
 
 ### Added
