@@ -1,3 +1,8 @@
+## [1.8.159] - 2026-10-01
+
+### Fixed
+- **round885 / ADR-1135 — undo-wire send exception tolerance**: two propagation windows remained in `undo`/`redo`. (1) `_pgFollow(op)` (the ADR-0652 page-follow → `switchPage`, a real throwing surface) ran *before* the wire broadcasts — a follow throw left the op applied locally but never sent to peers. It now runs after propagation in both paths (`histIdx` is still consumed first per ADR-1129, so no double-revert). (2) `undo()`'s `_undoWire` loop broadcast each inverse op bare — a `Net.broadcast` throw mid-loop stranded the remaining wire ops (partial-send divergence). The loop is now best-effort per the ADR-1130 contract: first error collected, rethrown after `_txFlush`/`_rdb`. `commit`/`_recordCommitted` keep the bare send — no batch to strand, failures surface directly. 7 behavioural pins.
+
 ## [1.8.158] - 2026-10-01
 
 ### Fixed

@@ -16791,7 +16791,7 @@ try {
       // all stamp the clocks they applied.
       assert.ok(html.includes("_lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'}"),'single _lwwOp gate shared by drop+stamp');
       assert.ok(html.includes("key==='pg'||key==='frac'||key==='groupId'||key[0]==='_'"),'structural keys stay outside per-prop LWW stamping');
-      assert.ok(html.includes("this._stampWrites(w);Net.broadcast(w)"),'undo stamps the inverse wire ops');
+      assert.ok(html.includes("this._stampWrites(w);try{Net.broadcast(w)}"),'undo stamps the inverse wire ops');
       assert.ok(html.includes("this._stampWrites(op);Net.broadcast(op)"),'redo stamps the restamped op');
       state.shapes.length=0;state.seenOps=new Set();state.wclock={};_invalidateGrid();
       const r29=Shape.make('rect',{x:0,y:0,w:10,h:10});state.shapes=[r29];
@@ -20409,6 +20409,32 @@ pass += 9;
   console.log('  ✓ ADR-1134 live-read convergence flush (11 asserts)');
 }
 pass += 11;
+
+// ADR-1135 — undo propagation is exception-tolerant: a mid-loop Net.broadcast
+// failure can no longer strand the remaining wire ops (partial-send divergence),
+// and _pgFollow moved behind the wire ops so a follow throw can't abort the
+// whole propagation. The first send error still surfaces after cleanup.
+{
+  const a=Shape.make('rect',{x:0,y:0,w:10,h:10});a.id='bb1';
+  const c=Shape.make('line',{x:0,y:0,w:50,h:50});c.id='bc1';c.a='bb1';
+  Store.commit({op:'add',shape:a});
+  Store.commit({op:'add',shape:c});
+  Store.commit({op:'del',shapes:[JSON.parse(JSON.stringify(a))],connClears:[{id:'bc1',before:{a:'bb1'},after:{a:null}},{id:'bc1',before:{b:'x2'},after:{b:null}}]});
+  const calls=[];let n=0;const _ob2=Net.broadcast;
+  Net.broadcast=o=>{n++;if(n===1)throw new Error('net-fail');calls.push(o)};
+  let threw=null;try{Store.undo()}catch(e){threw=e}
+  Net.broadcast=_ob2;
+  assert.strictEqual(n,3,'ADR-1135: every wire op is attempted despite the first failing');
+  assert.strictEqual(calls.length,2,'ADR-1135: the remaining wire ops still broadcast');
+  assert.ok(threw&&threw.message==='net-fail','ADR-1135: the first send error surfaces after cleanup');
+  assert.ok(html.includes("try{Net.broadcast(w)}catch(e){if(!_werr)_werr=e}"),'ADR-1135: per-op send is guarded');
+  assert.ok(html.includes("Net.broadcast(w)}catch(e){if(!_werr)_werr=e}}   // ADR-1135: best-effort — a mid-loop send failure must not strand the rest\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the undo wire ops');
+  assert.ok(html.includes("Net.broadcast(op);   // ADR-0615\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the redo broadcast');
+  assert.ok(html.includes("if(_werr)throw _werr;"),'ADR-1135: first error rethrown after flush');
+  state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();state.history=[];state.histIdx=-1;_invalidateGrid();
+  console.log('  ✓ ADR-1135 undo-wire send exception tolerance (7 asserts)');
+}
+pass += 7;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
