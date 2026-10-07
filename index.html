@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.135';   // ADR-1111
+const V='1.8.136';   // ADR-1112
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1766,8 +1766,11 @@ const Store={
         _iG();   // ADR-0613
         _sz();
         if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);   // ADR-1039
-        if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
-        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id)&&!(wc0[p.id]&&wc0[p.id]._born&&clockNewer(wc0[p.id]._born,op.clock)))_wD(p.id,op.clock)}   // ADR-0736/0926/1093
+        if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);   // ADR-1039
+        if(forward)for(const s of keep)_wR(s.id,wc0[s.id]);
+        for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);   // ADR-0736/0926/1112: undo tombs the swapped-out set like the peers' forward does
+        _wTb(wc0,op.clock,inN);   // ADR-0736/1096/1112: interim existence clocks survive the undo too (peer parity)
+        {const inP=_sT(((forward?op.pages:op.beforePages)||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id)&&!(wc0[p.id]&&wc0[p.id]._born&&clockNewer(wc0[p.id]._born,op.clock)))_wD(p.id,op.clock)}   // ADR-1093/1112
         for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928
         if(forward)_pgAdopt(op.pages,op.curPg,op.clock);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock);   // ADR-0646/1093: the swap carries the page set
         if(!forward)_selR(op);
@@ -1785,10 +1788,7 @@ const Store={
           if(_pgById(op.id))_bT(op.id,op.clock);   // ADR-1093
           if(_iA(op.shapes)&&_pgById(op.id)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;if(!byId(sh.id)&&_shCap()){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2);_bT(sh.id,op.clock)}}_sz()}   // ADR-1095
         }else{
-          // ADR-0724: purge by CURRENT membership via _pgDel2, not op.shapes — a shape
-          // that acquired pg=op.id after the commit (a peer's add on that page)
-          // survived locally while peers' wire pageDel removed it. Undo emptying
-          // the page set reverts members to un-paged — 'unpage' keeps the sender's too.
+          // ADR-0724: purge by CURRENT membership via _pgDel2 — late pg members die like peers' wire pageDel; 'unpage' keeps the sender's.
           if(_pgs()){const i=_pgs().findIndex(p=>p.id===op.id);if(i>=0)_pgs().splice(i,1);
             if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id,null,undefined,i===0?op.id:null);   // ADR-1109
             else{const die=new Set((op.shapes||[]).map(s=>s.id));_pgDel2(op,null,die);for(const s of _sh())if(s.pg===op.id)s.pg=null;state.pages=null;state.curPg=null;_pgHealS()}}   // ADR-0663/0724
@@ -1797,9 +1797,7 @@ const Store={
         break;}
       case 'pageDel':{
         if(forward){
-          // ADR-0703: the <2 guard is LOCAL-only — a remote del must apply even when it
-          // empties our set — apply it exactly as the
-          // sender did; refusing here diverges the page sets permanently).
+          // ADR-0703: <2 guard is local-only — a remote del applies even when it empties our set (refusing diverges page sets).
           if(!_pgs()||(_ln(_pgs())<2&&(!op.clock||op.clock.peer===_pi())))break;
           const i=_pgs().findIndex(p=>p.id===op.id);if(i<0)break;
           if(_bN(op.id,op.clock))break;   // ADR-1094
