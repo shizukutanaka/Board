@@ -19137,6 +19137,26 @@ pass += 5;
 }
 pass += 5;
 
+// ---- ADR-1097: wclock flood trim rebuilt tomb-only entries — dropped an outranking _born, advertising live ids as dead ----
+{
+  const x1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));x1.id='x1';
+  const d1=JSON.parse(JSON.stringify(x1));d1.id='d1';
+  const wc={x1:{_del:{ts:500,peer:'a',seq:0},_born:{ts:600,peer:'a',seq:0}},x2:{_del:{ts:500,peer:'a',seq:0}},x3:{_born:{ts:600,peer:'a',seq:0}}};
+  for(let i=0;i<8200;i++)wc['f'+i]={_del:{ts:1,peer:'a',seq:0}};
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[x1];state.pages=null;state.curPg=null;state.wclock=wc;state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'del',shapes:[d1],clock:{ts:700,peer:'p9',seq:8}});
+  assert.ok(state.wclock.x1&&state.wclock.x1._born&&state.wclock.x1._born.ts===600,'trim preserves an outranking _born');
+  assert.ok(state.wclock.x1._del&&state.wclock.x1._del.ts===500,'trim preserves the tomb itself');
+  assert.ok(!state.wclock.x2._born,'a plain tomb keeps no _born (dead weight trimmed)');
+  assert.ok(state.wclock.x2._del&&state.wclock.x2._del.ts===500,'plain tombs still survive the trim');
+  assert.ok(state.wclock.x3&&state.wclock.x3._born&&state.wclock.x3._born.ts===600,'a born-only record survives — still gates a stale del');
+  assert.ok(clockNewer(state.wclock.x1._born,{ts:550,peer:'a',seq:0}),'the born still outranks — a dels sweep would not offer the live id as dead');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1097 wclock flood trim keeps outranking _born (6 asserts)');
+}
+pass += 6;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

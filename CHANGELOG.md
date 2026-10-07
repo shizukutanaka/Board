@@ -1,3 +1,14 @@
+## [1.8.121] - 2026-10-01
+
+### Fixed
+- **round847 / ADR-1097 — wclock flood trim preserves existence clocks**: the `del`-forward flood cap (>8192 entries) rebuilt the map as `t[id]={_del:w._del}`, dropping `_born` in two clobber modes (same class as ADR-1096's `_wTb` fix): (1) an outranking `_born` on `{_del@500,_born@600}` degenerated to a plain tomb — a live shape stayed installed while `dels` advertised the id as dead to joining peers and a re-delivered stale `del` could tomb it again; (2) `_born`-only live records (canonical after `add` clears the tomb) were dropped entirely, erasing the `_bN`/`_tmb` protection record. The trim now keeps `_del` plus any `_born` that outranks it (`clockNewer(w._born,w._del||{})`) and still drops all prop clocks — bounded at the two existence clocks per entry.
+
+### Docs
+- `docs/ADR-1097-wclock-trim-born.md`.
+
+### Tests
+- test.mjs: 6 ADR-1097 behavioural pins — outranking `_born` survives; tomb survives; plain tomb gains no `_born`; plain tombs survive; `_born`-only record survives; surviving `_born` still outranks a dels clock.
+
 ## [1.8.120] - 2026-10-01
 
 ### Fixed

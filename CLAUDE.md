@@ -1122,7 +1122,8 @@ Board/
 │   ├── ADR-1093-page-id-tombstones.md  # pageDel がメンバーしか tomb 化しない Gap B — ページ id を shape tomb 機構に載せ dels 経路で輸送、union-heal のゾンビ残存を閉塞 (wire 新規フィールドなし)
 │   ├── ADR-1094-page-tomb-born-parity.md  # ページ id 側に欠けていた del parity — stale pageDel が born-newer ページを splice し _wD が _born 毎消す残穴を _bN ゲートで閉塞 (replace は pre-wipe wc0 を読む)
 │   ├── ADR-1095-pageadd-tomb-parity.md  # pageAdd fwd に add parity 欠落 — ページ id の _tmb ゲートなし (stale add がゾンビ復活) + メンバーループが _born エスケープ欠落の手書きチェック → _tmb に統一
-│   └── ADR-1096-replace-member-born-escape.md  # replace fwd メンバー install が _born エスケープ欠落 + _wTb が _born を clobber — _tmE (entry 渡し _tmb) で統一し _wTb は _born 保持
+│   ├── ADR-1096-replace-member-born-escape.md  # replace fwd メンバー install が _born エスケープ欠落 + _wTb が _born を clobber — _tmE (entry 渡し _tmb) で統一し _wTb は _born 保持
+│   └── ADR-1097-wclock-trim-born.md  # wclock flood trim が _born を落とす (outranking born を tomb-dead 化 + born-only 生レコード全落とし) — 存在時計 (_del + outranking _born) のみ保持へ
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

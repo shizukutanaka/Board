@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.120';   // ADR-1096
+const V='1.8.121';   // ADR-1097
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1700,7 +1700,7 @@ const Store={
         break;}
       case 'del':{
         if(forward){
-          // Snapshot wclock before deletion so undo can restore LWW clocks
+          // snapshot wclock for undo
           op.wc=_wM();for(const sh of op.shapes)if(_wc()[sh.id])op.wc[sh.id]=clone(_wc()[sh.id]);
           for(const sh of op.shapes){
             if(byId(sh.id)?.locked||_bN(sh.id,op.clock))continue;   // ADR-0926: newer born outranks this del
@@ -1710,16 +1710,15 @@ const Store={
             _wc()[sh.id]=_wM({_del:op.clock});   // ADR-0734
             _psc(sh.id);   // ADR-0424/0427
           }
-          if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of _oe(_wc()))if(w._del)t[id]={_del:w._del};state.wclock=t}   // ADR-0734/0738
+          if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of _oe(_wc()))if(w._del||w._born){const n={};if(w._del)n._del=w._del;if(w._born&&clockNewer(w._born,w._del||{}))n._born=w._born;t[id]=n}state.wclock=t}   // ADR-0734/0738/1097: trim keeps existence clocks
           // connector clears after shapes are gone
           if(op.connClears){for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked){const pt={},pb=p.before||{};for(const e of['a','b'])if(pb[e]!=null&&p.after&&!(byId(pb[e])||{}).locked){const x=e==='a'?['x1','y1']:['x2','y2'];pt[e]=null;pt[e+'F']=null;pt[x[0]]=p.after[x[0]];pt[x[1]]=p.after[x[1]]}_oa(sh,pt)}}}
           const fx=this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch);   // ADR-0758: gap-bound conns — same scan peers run
         }else{
-          // ADR-0547: forward skipped locked shapes —
-          // ADR-0551
+          // ADR-0547/0551
           for(const sh of op.shapes)if(!byId(sh.id)&&!_tmb(sh.id,op)&&_shCap()){_sh().push(Net._attachShape(clone(sh)));_bT(sh.id,op.clock)}   // ADR-0922/0926
           _sz();
-          // connector binds restored after shapes are back
+          // conn binds restored
           if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}   // ADR-0921
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
           _selR(op);
