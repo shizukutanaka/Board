@@ -1223,7 +1223,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'beautify':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("const noLock=p=>!('locked' in p);") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_nugPush({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -1402,14 +1402,14 @@ const checks = [
     html.includes("_keepSel(origSel);")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
-    html.includes("case 'beautify':{const noLock=p=>!('locked' in p);")],
+    html.includes("const noLock=p=>!('locked' in p);")&&html.includes("op.after.every(noLock)&&op.before.every(noLock)")],
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
     html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp);")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
-    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)")],
+    html.includes("case 'upd':{\n      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)")&&html.includes("!noLock(op.before)")],
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("_selR(op);") &&
@@ -19819,6 +19819,27 @@ pass += 8;
   console.log('  ✓ ADR-1121 global op-log history boundary (9 asserts)');
 }
 pass += 9;
+// ADR-1122: 'locked' is a dedicated-op prop (align dir:'lock' only) — forged
+// locked keys in upd baselines / move patches are rejected at intake: an
+// upd before.locked would land on the undoer's board while peers' noLock
+// rejects the inverse (divergence); a move after.locked would stamp a phantom
+// lock arbitration clock via _stampWrites (also divergence).
+{
+  const ck={peer:'p9',seq:1,ts:1};
+  const r=Shape.make('rect',{id:'rL',x:0,y:0,w:10,h:10});state.shapes=[r];state.seenOps=new Set();_invalidateGrid();
+  assert.strictEqual(validRemotePayload({op:'upd',id:'rL',after:{x:1},before:{x:0,locked:true}}),false,'ADR-1122: upd before.locked rejected');
+  assert.strictEqual(validRemotePayload({op:'upd',id:'rL',after:{x:1},before:{x:0}}),true,'ADR-1122: legit upd accepted');
+  const mv=(a,b)=>({op:'move',ids:['rL'],dx:1,dy:0,after:a,before:b,clock:ck});
+  assert.strictEqual(validRemotePayload(mv([{id:'rL',x:1,locked:true}],[{id:'rL',x:0}])),false,'ADR-1122: move after.locked rejected');
+  assert.strictEqual(validRemotePayload(mv([{id:'rL',x:1}],[{id:'rL',x:0,locked:true}])),false,'ADR-1122: move before.locked rejected');
+  assert.strictEqual(validRemotePayload(mv([{id:'rL',x:1}],[{id:'rL',x:0}])),true,'ADR-1122: legit move accepted');
+  Net._onRecv({k:'op',peer:'p9',op:mv([{id:'rL',x:9,locked:false}],[{id:'rL',x:0}])},false);
+  assert.strictEqual(r.x,0,'ADR-1122: forged move dropped at intake — shape unmoved');
+  assert.ok(!state.wclock['rL']||!state.wclock['rL'].locked,'ADR-1122: no phantom locked clock stamped');
+  state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ locked keys gated on upd/move patch baselines (ADR-1122)');
+}
+pass += 7;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

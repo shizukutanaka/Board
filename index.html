@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.145';   // ADR-1121
+const V='1.8.146';   // ADR-1122
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1405,6 +1405,7 @@ const _ccOk=q=>q&&_iO(q)&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(
 function validRemotePayload(op){
   const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&validPatch(p));
   const cov=(A,B)=>{const ck=(X,Y)=>{const m={};for(const q of Y)m[q.id]=q;return X.every(p=>{const q=m[p.id];return q&&_ok(p).every(k=>k in q)})};return ck(A,B)&&ck(B,A)};   // ADR-1087
+  const noLock=p=>!('locked' in p);   // ADR-1122
   const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));   // ADR-0726
   switch(op.op){
     case 'add':    return validShape(op.shape);
@@ -1418,21 +1419,21 @@ function validRemotePayload(op){
     case 'replace':   // ADR-0613
       return _iA(op.after)&&_ln(op.after)<=MAX_OP_SHAPES&&op.after.every(validShape)
         &&(op.afterWc==null||wcOk(op.afterWc));
-    case 'upd':{const noLock=p=>!('locked' in p);
-      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&!validPatch(op.before)))return false;
+    case 'upd':{
+      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)||(op.before!=null&&(!validPatch(op.before)||!noLock(op.before))))return false;   // ADR-1122
       // pen pts must be [x,y] tuples — flat arrays or NaN entries die here
       if(op.after.pts!=null&&!_ptsOK(op.after.pts))return false;
       return true;}
     case 'move':   return _iA(op.ids)&&_ln(op.ids)>0&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)&&(op.dx!==0||op.dy!==0)
-      &&patches(op.after)&&patches(op.before)&&cov(op.after,op.before);   // ADR-1086/1087
+      &&patches(op.after)&&patches(op.before)&&op.after.every(noLock)&&op.before.every(noLock)&&cov(op.after,op.before);   // ADR-1086/1087/1122
     case 'zorder':  // ADR-0742
       return _iA(op.changes)&&_ln(op.changes)<=MAX_OP_SHAPES&&op.changes.every(c=>c&&_iS(c.id)&&_ln(c.id)<=64
                 &&_iS(c.after)&&_ln(c.after)<=600&&_iS(c.before)&&_ln(c.before)<=600);   // ADR-0473/0485/1087
     case 'style':
-    case 'resize':{const noLock=p=>!('locked' in p);
+    case 'resize':{
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock)&&cov(op.after,op.before);}   // ADR-1087
-    case 'beautify':{const noLock=p=>!('locked' in p);
+    case 'beautify':{
       return patches(op.after)&&op.after.every(noLock)
           &&patches(op.before)&&op.before.every(noLock);}   // ADR-0730/1087
     case 'align':{const DIRS=_sT(['left','right','cx','top','bottom','cy','hspace','vspace','tidy','swap','gsnap','flip','rotate','lock','gresize','grot','matchw','matchh','matchwh','framefit']);
@@ -1639,7 +1640,7 @@ const Store={
     this._apply(op,false);
     _pgFollow(op);   // ADR-0652
     state.histIdx--;
-    for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};   // dedup needs distinct seqs
+    for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615
       this._stampWrites(w);Net.broadcast(w)}
     _rdb();
