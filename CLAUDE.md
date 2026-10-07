@@ -1132,6 +1132,7 @@ Board/
 │   └── ADR-1103-ro-adoption-folds-open-editors.md  # ro 採用時に開いた text/label エディタを畳む
 │   └── ADR-1104-ro-live-write-revert.md  # ro 棄却 op の live 書き込みを `_roRe` で復元 (orig/before/changes ベースライン) + スライダ早期 return
 │   └── ADR-1105-ro-page-dup-broadcast-leak.md  # _pgDup が ro 下で addMany を無条件 broadcast — 入口ゲートで閉塞 (ADR-1102 同型)
+│   └── ADR-1106-ro-success-feedback-gates.md  # ro 棄却後の成功トースト/ダイアログを入口ゲートで閉塞 (18サイト)
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

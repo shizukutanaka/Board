@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.129';   // ADR-1105
+const V='1.8.130';   // ADR-1106
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2179,7 +2179,7 @@ function _pgFollow(op){   // ADR-0652
     land=land||pg;}
   if(land)switchPage(land);
 }
-function _pgAdd(){if(_pgOn()&&_ln(_pgs())>=64){_wT('pgMax');return}if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});const id=uid();_cmt({op:'pageAdd',id,name:t('pgPage')+' '+(_ln(_pgs())+1)});switchPage(id)}   // ADR-0688
+function _pgAdd(){if(state.ro){_roNo();return}if(_pgOn()&&_ln(_pgs())>=64){_wT('pgMax');return}if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});const id=uid();_cmt({op:'pageAdd',id,name:t('pgPage')+' '+(_ln(_pgs())+1)});switchPage(id)}   // ADR-0688
 function _pgDup(){   // ADR-0651
   if(state.ro){_roNo();return}   // ADR-1105
   if(!_pgOn())_cmt({op:'pageAdd',id:uid(),name:t('pgPage')+' 1'});
@@ -2199,7 +2199,7 @@ function _pgDup(){   // ADR-0651
   Net.broadcast({op:'addMany',shapes:sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});   // ADR-0650/0739
   switchPage(id);
 }
-function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
+function _pgDel(){if(state.ro){_roNo();return}if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646
   _unB();   // ADR-0953
@@ -2214,7 +2214,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646
   state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();_pcR();   // ADR-0985
   const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725
 }
-function _pgRename(){const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
+function _pgRename(){if(state.ro){_roNo();return}const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
 let _pgSig='';
 function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
 const tb=_g('pgTabs');if(!tb)return;
@@ -5610,7 +5610,8 @@ function beginText(wp){
 // ADR-0105: ⌘Enter inside a sticky's editor chains the next note — commit
 // happens on blur, then a same-styled sticky spawns to the right and its
 // editor opens (rapid note-taking like Post-it®/FigJam).
-function _stickyChain(s){
+function _stickyChain(s){   // ADR-0105
+  if(state.ro){_roNo();return}   // ADR-1106
   // ADR-0556: orphaned source (remote del mid-
   if(!(s=byId(s.id))||s.type!=='sticky'||_lk(s))return;
   // ADR-0190: the chain inherits ALL typograph
@@ -5834,8 +5835,7 @@ function flushErase(){
   // ADR-0964: a mid-stroke remote lock lands on the batch clone — peers drop a
   // del for locked shapes, so excluded members stay kept like peers see them.
   const live=_eraseBatch.filter(s=>!s.locked);
-  // Restore shapes so Store.commit's _apply finds & removes them
-  for(const s of _eraseBatch)_sh().push(s);
+    for(const s of _eraseBatch)_sh().push(s);   // restore so commit's _apply finds them
   _sz();_iG();   // ADR-0009
   _eraseBatch=[];
   if(!_ln(live))return;
@@ -6160,6 +6160,7 @@ function doDuplicate(){
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 function doDelete(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const sel=_selUL();
   if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}   // ADR-0396
   const origSel=_selIds();
@@ -6167,8 +6168,7 @@ function doDelete(){
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
   const delIds=_sT(sel.map(s=>s.id));
-  // Resolve connector bindings BEFORE splicing
-  const connClears=computeConnClears(delIds);
+  const connClears=computeConnClears(delIds);   // resolve bindings BEFORE splicing
   const op={op:'del',shapes:clone(sel)};
   if(_ln(connClears))op.connClears=connClears;
   _cmt(op);
@@ -6255,6 +6255,7 @@ function selectSamePaint(){
 // hidden shape is completely non-interactive. Restore via "show all" since
 // hidden shapes can't be re-selected — same convention as Figma's layers.
 function hideSelection(){
+  if(state.ro){_roNo();return}   // ADR-1106
   _cxO();   // ADR-0569: fold any open editor first
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s)||_hd(s))return;
@@ -6268,6 +6269,7 @@ function hideSelection(){
 // quick-link). Makes an arrow bound at BOTH ends …
 // edge-projects), committed as one add op.
 function connectSelection(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const sel=_sb()
     .filter(s=>s&&_ulv(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
   if(_ln(sel)!==2){_wT(_ST);return}
@@ -6287,7 +6289,8 @@ function selectInverse(){
   _ss(inv);
   _aS();_iv();
 }
-function showAllShapes(){
+function showAllShapes(){   // ADR-1106
+  if(state.ro){_roNo();return}
   const before=[],after=[];
   for(const s of _sh()){
     if(_sv(s)||!_pgOk(s))continue;   // ADR-0660
@@ -6310,7 +6313,8 @@ function selectSameType(){
 // ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
-function wrapInFrame(){
+function wrapInFrame(){   // ADR-0102
+  if(state.ro){_roNo();return}   // ADR-1106
   const sel=_selUL();
   if(!_ln(sel)){_wT(_ST);return}
   const b=_bA(sel);if(!b)return;
@@ -6322,6 +6326,7 @@ function wrapInFrame(){
   _iv();_oT('framed');
 }
 function doGroup(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const ids=_usI();
   if(_ln(ids)<2){_wT(_ST);return}
   const gid=uid();
@@ -6332,6 +6337,7 @@ function doGroup(){
   _iv();
 }
 function doUngroup(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const ids=_selIds();
   const origSel=[...ids];
   // find all groupIds touched by selection
@@ -6348,6 +6354,7 @@ function doUngroup(){
   _iv();
 }
 function doClearAll(){
+  if(state.ro){_roNo();return}   // ADR-1106
   if(!_nS())return;
   if(_pgOn()){   // ADR-0646
     const mine=_sh().filter(_pgOk);if(!_ln(mine))return;
@@ -6495,6 +6502,7 @@ function flipShape(s,axis,c){
   if(_rt(s))s.rotate=((axis==='h'?180:360)-_rt(s)+360)%360;
 }
 function doFlip(axis){
+  if(state.ro){_roNo();return}   // ADR-1106
   const sel=_selUL();
   if(!_ln(sel))return;
   const bb=_bA(sel);if(!bb)return;
@@ -6505,17 +6513,13 @@ function doFlip(axis){
   const before=sel.map(clone);
   const flipIds=_sT(sel.map(s=>s.id));
   for(const s of sel)flipShape(s,axis,c);
-  // ADR-0584: aF/bF live in the BOUND shape's bbox fraction frame — when the
-  // bound shape flips with the selection the anchor lands on the mirrored
-  // side unless the fraction mirrors too. Mirror only when that bound shape
-  // was actually flipped (in sel): an unflipped/locked anchor keeps its spot.
+  // ADR-0584: aF/bF live in the bound shape's fraction frame — mirror the
+  // fraction only when that bound shape was actually flipped (in sel).
   for(const s of sel){
     if(s.aF&&flipIds.has(s.a)){if(axis==='h')s.aF.fx=1-s.aF.fx;else s.aF.fy=1-s.aF.fy}
     if(s.bF&&flipIds.has(s.b)){if(axis==='h')s.bF.fx=1-s.bF.fx;else s.bF.fy=1-s.bF.fy}
   }
-  // ADR-0588: a conn OUTSIDE the selection whose bound shape flipped also needs
-  // its fraction mirrored — the bound extent maps fraction f to 1−f across the
-  // flip centre, so an unmirrored {0,·} anchor jumps to the opposite edge.
+  // ADR-0588: mirror aF/bF on unselected conns too — an unmirrored {0,·} anchor jumps edges.
   const _mC=[];for(const s of _sh())if(_conn(s.type)&&!flipIds.has(s.id)&&((s.aF&&flipIds.has(s.a))||(s.bF&&flipIds.has(s.b))))_mC.push(s);
   for(const s of _mC){before.push(clone(s));
     if(s.aF&&flipIds.has(s.a)){if(axis==='h')s.aF.fx=1-s.aF.fx;else s.aF.fy=1-s.aF.fy}
@@ -6529,6 +6533,7 @@ function doFlip(axis){
 }
 
 function doLock(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const sel=_selL(Boolean);
   if(!_ln(sel))return;
   const lk=!sel[0].locked;
@@ -6543,6 +6548,7 @@ function doLock(){
 // accumulate locked shapes across sessions/imports with no bulk way back.
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const locked=_sh().filter(s=>_lk(s)&&_pgOk(s));   // ADR-0661
   if(!_ln(locked)){_wT('nothingLocked');return}
   const before=locked.map(s=>({id:s.id,locked:_lk(s)??null}));
@@ -6556,6 +6562,7 @@ function unlockAll(){
 // (Alt+B). Wire-broadcast since ADR-0730 — peers apply the patch set with
 // structural keys stripped on intake (0917).
 function doBeautify(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const sel=_selL(s=>s&&!_lk(s)&&_pn(s));
   if(!_ln(sel)){_wT('beautifyNone');return}
   const before=[],after=[];
@@ -6575,11 +6582,8 @@ function doBeautify(){
 // ADR-0055: rotate applies to box shapes (orbit + _rt(s) spin) AND point
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
 const _rotatable=s=>_hb(s)||s.pts||s.x1!=null;
-// ADR-0146: s.bend is a world coordinate of the elbow trunk, so a rotate
-// that moves the endpoints leaves the trunk stranded at its old spot.
-// Rotate the trunk segment rigidly with the connector: if the rotated
-// trunk stays axis-aligned the scalar is re-derived, otherwise it can't
-// be represented and falls back to auto (null).
+// ADR-0146: rotate the s.bend trunk rigidly with the connector; axis-aligned
+// re-derives the scalar, otherwise unrepresentable → null.
 function _rotBend(s,tr,rot){
   const a=rot(tr[0].x,tr[0].y),b=rot(tr[1].x,tr[1].y);
   if(_abs(a.x-b.x)<0.01)s.bend=a.x;
@@ -6593,17 +6597,15 @@ function _rotPtsAbout(s,gx,gy,cs,sn){
     if(tr)_rotBend(s,tr,rot);}
 }
 function doRotate(d){
+  if(state.ro){_roNo();return}   // ADR-1106
   const sel=_selL(s=>s&&!_lk(s)&&_rotatable(s));
   if(!_ln(sel))return;
   const bb=_bA(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
-  // Frame-aware: children of selected frames orbit along
-  const frameOf=_frameOf(sel,s=>_rotatable(s));
+  const frameOf=_frameOf(sel,s=>_rotatable(s));   // frame children orbit along
   _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone(_hb(s)?{...s,rotate:_rt(s)||0}:s));
-  // ADR-0586: conns whose bound shapes rotate must re-derive aF/bF — the
-  // fraction lives on the bound shape's (rotated) extent, so pin the anchor
-  // at the same material point: orbit+spin it like the shape, re-normalize.
+  // ADR-0586: re-derive aF/bF for bound conns — orbit+spin the anchor, re-normalize.
   const selIds=_sT(sel.map(s=>s.id)),extB=_mP();for(const s of sel)extB.set(s.id,_bb(s));
   const _bC=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&selIds.has(s.a))||(s.bF&&selIds.has(s.b))))_bC.push(s);
   for(const c of _bC)if(!selIds.has(c.id))before.push(clone(c));
@@ -10107,6 +10109,7 @@ function cycleFillStyle(){
 // applyStyleToSelection uses — and stroke↔color is meaningful there too
 // (border tint vs body). Pen/line/arrow/text/image are stroke-only → skipped.
 function swapFillStroke(){
+  if(state.ro){_roNo();return}   // ADR-1106
   const before=[],after=[];
   _forSel((s,id)=>{if(_lk(s))return;
     const fk=_stk(s)?'color':'fill';

@@ -1,3 +1,11 @@
+## [1.8.130] - 2026-10-01
+
+### Fixed
+- **round856 / ADR-1106 — ro post-rejection success feedback gates**: every apply-then-commit caller whose commit was rejected under `state.ro` still fired its success toast/announce (`grouped`/`deleted`/`cleared`/`framed`/`beautified`/…) and pre-commit `confirm`/`prompt` dialogs (`_pgDel`/`_pgRename`/`doClearAll`) still opened — misleading feedback plus pointless work. Entry gates `if(state.ro){_roNo();return}` applied to 18 feedback-emitting action sites (page ops, group/ungroup, clear, delete, hide/show, connect, frame-wrap, flip/rotate, lock/unlock, beautify, swap, sticky-chain). Also fixes pre-existing `_pgAdd` double `readOnlyMode` toast + `switchPage` to a nonexistent page, `_stickyChain`/`connectSelection` dead-id selection writes. Silent paths (zorder, nudge, style prefs, draw tools) intentionally ungated.
+
+### Tests
+- 12 behavioural pins: under ro, all gated actions are state-no-ops with zero success toasts (readOnlyMode only), no history, no editor opened; editable control applies. 1 source sweep asserts the entry gate exists in all 18 function bodies. 2 stale source pins updated to the new function openings.
+
 ## [1.8.129] - 2026-10-01
 
 ### Fixed
