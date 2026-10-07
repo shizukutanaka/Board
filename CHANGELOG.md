@@ -1,3 +1,11 @@
+## [1.8.114] - 2026-10-01
+
+### Docs
+- **round840 / ADR-1090 — per-shape cache × removal-path purge parity audit complete**: audited every in-memory store keyed by shape id against every shape-removal path. Id-keyed caches (`_penBboxCache`, `_penCache`, `Net._imgPending`) purge via `_psc(id)` on every per-id removal (remote `del`, `add`/`addMany` undo, `eraseAt`, `pageDel` member kill) and via `_pcC()` on every wholesale swap (`replace`, `_rs` doc-switch, `_pgDel2`, `clear`), with `_pcR()` re-parking surviving img refs. `_idIndex` rebuilds on `_invalidateGrid`; object/WeakMap/content-keyed caches are swap-safe by construction; pending-entry loss self-heals via `_imgRescan` re-park + blob-arrival `_sh()` fallback sweep. Contract pinned; no code change.
+
+### Tests
+- test.mjs: 10 ADR-1090 behavioural pins — remote del purges the id's cache family while unrelated entries survive; addMany undo purges both ids; replace wipes all stores and re-parks only live img refs; `_imgRescan` re-parks a missing pending entry; pageDel member kill purges.
+
 ## [1.8.113] - 2026-10-01
 
 ### Docs

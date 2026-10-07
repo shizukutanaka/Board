@@ -1115,7 +1115,8 @@ Board/
 │   ├── ADR-1086-move-requires-before.md  # remote move の `before` 必須化 — before-less 絶対座標は両軸適用で並行単軸 move を破壊
 │   ├── ADR-1087-complete-before-baseline.md  # パッチ系 op の `before` 完全カバレッジ — 欠落キーは _chg で changed 扱い (upd/beautify は設計上 exempt)
 │   ├── ADR-1088-ungroup-before-contract.md  # ungroup の `before` 契約 — 非 iterable/null 要素は例外 drop → intake で棄却 + groupId を wire id bound
-│   └── ADR-1089-wire-wc-carriage.md  # wire `wc` 搬送監査 — 全 consumer が intake 検証・自己消毒・未読の3態に帰着 (clean)
+│   ├── ADR-1089-wire-wc-carriage.md  # wire `wc` 搬送監査 — 全 consumer が intake 検証・自己消毒・未読の3態に帰着 (clean)
+│   └── ADR-1090-cache-purge-parity.md  # shape-id キャッシュ×除去経路監査 — _psc/_pcC が全除去経路をカバー、pending 消失は _imgRescan+到着掃引で治癒 (clean)
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

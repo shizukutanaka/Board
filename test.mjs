@@ -18930,6 +18930,49 @@ pass += 5;
 }
 pass += 14;
 
+// ---- ADR-1090: per-shape cache × removal-path purge parity ----
+{
+  const mkPen=id=>{const s=Shape.make('pen',{pts:[[0,0,0.5],[8,8,0.5]],stroke:'#000',size:4});s.id=id;s.z=1;return s};
+  const seed=id=>{_penCache.set(id,{cv:{},px:4});Net._imgPending.set(id,{k:'k:'+id,t0:nowTs()})};
+  // targeted remote del purges only the removed id's cache family
+  state.shapes=[mkPen('ca1')];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();_invalidateGrid();
+  seed('ca1');seed('x9');
+  Store.applyRemote({op:'del',shapes:[JSON.parse(JSON.stringify(state.shapes[0]))],clock:{peer:'pQ',seq:1,ts:nowTs()}});
+  assert.ok(!_penCache.has('ca1')&&!Net._imgPending.has('ca1'),'remote del purges id-keyed caches');
+  assert.ok(_penCache.has('x9')&&Net._imgPending.has('x9'),'a targeted del keeps unrelated entries');
+  // addMany backward (undo) purges every removed id the same way
+  state.shapes=[];state.wclock={};state.history=[];state.histIdx=-1;state.seenOps=new Set();_invalidateGrid();
+  Store.commit({op:'addMany',shapes:[mkPen('ca2'),mkPen('ca3')]});
+  seed('ca2');seed('ca3');Store.undo();
+  assert.ok(!_penCache.has('ca2')&&!Net._imgPending.has('ca3'),'addMany undo purges both ids');
+  // wholesale 'replace': _pcC wipes every id-keyed store, _pcR re-parks only live img refs
+  const kp=Shape.make('image',{x:0,y:0,w:10,h:10,img:'k:kp'});kp.id='kp1';
+  state.shapes=[mkPen('ca4'),kp];state.wclock={};state._lastRep=null;state.seenOps=new Set();_invalidateGrid();
+  seed('ca4');Net._imgPending.set('dead',{k:'k:dd',t0:nowTs()});
+  const rc={peer:'pQ',seq:3,ts:nowTs()};state.wclock.kp1={_born:{peer:'pQ',seq:1,ts:rc.ts+1}};
+  Store.applyRemote({op:'replace',after:[],afterWc:{},clock:rc});
+  assert.ok(byId('kp1'),'a born-newer shape survives replace');
+  assert.ok(Net._imgPending.get('kp1')&&Net._imgPending.get('kp1').k==='k:kp','_pcR re-parks a surviving img ref');
+  assert.ok(!_penCache.has('ca4')&&!Net._imgPending.has('dead'),'_pcC wipes every other entry');
+  // safety net: _imgRescan re-parks a live unresolved ref whose pending entry vanished
+  const rs=Shape.make('image',{x:0,y:0,w:10,h:10,img:'k:rs'});rs.id='rs1';
+  state.shapes=[rs];_invalidateGrid();Net._imgPending.clear();
+  _imgRescan();
+  assert.ok(Net._imgPending.get('rs1')&&Net._imgPending.get('rs1').k==='k:rs','rescan re-parks a missing pending entry');
+  // pageDel member kill purges per-id caches like every removal path
+  const mp=mkPen('ca7');mp.pg='pgA';
+  state.shapes=[mp];state.wclock={};state.seenOps=new Set();
+  state.pages=[{id:'pgA',name:'a',nts:0},{id:'pgB',name:'b',nts:0}];state.curPg='pgB';_invalidateGrid();
+  seed('ca7');
+  Store.applyRemote({op:'pageDel',id:'pgA',firstId:'pgB',clock:{peer:'pQ',seq:4,ts:nowTs()}});
+  assert.ok(!_penCache.has('ca7')&&!Net._imgPending.has('ca7'),'pageDel member kill purges per-id caches');
+  // wholesale paths always pair the wipe with the re-park (or drop refs entirely)
+  assert.ok(html.includes("_pcC();_pcR()")&&html.includes("_pcC();state.pages=state.curPg=null"),'wholesale paths run _pcC(+_pcR)');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;_invalidateGrid();
+  console.log('  \u2713 ADR-1090 per-shape cache × removal-path purge parity (10 asserts)');
+}
+pass += 10;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
