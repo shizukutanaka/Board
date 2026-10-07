@@ -848,7 +848,7 @@ const _mk=(k,x)=>({k,peer:_pi(),...x}),_pi=()=>state.peerId,_ro=()=>state.readou
 const _sO=()=>state.seenOps,_la=()=>state.lasso,_mq=()=>state.marquee,_dd=()=>state.dupDelta,_w2=p=>G.w2s(p),_s2=p=>G.s2w(p),_cE=connEnds,_o2w=e=>_s2({x:e.offsetX,y:e.offsetY});   // ADR-0382
 const _dpr=()=>window.devicePixelRatio,_cT=clearTimeout,_iA=Array.isArray,_iS=v=>typeof v==='string',_iN=v=>typeof v==='number',_iO=v=>typeof v==='object',_stk=v=>v.type==='sticky',_frm=v=>v.type==='frame',_pn=v=>v.type==='pen',_txt=v=>v.type==='text',_im=v=>v.type==='image',_arw=v=>v.type==='arrow',_ok=Object.keys,_TR='transparent',_ud=void 0,_now=Date.now,_IB='invalidBoard',_EM='empty',_CF='copyFailed',_St=String,_PD='pointerdown',_stO=setTimeout,_NS='noSelection',_ST='selectTwo',_PA='pasted',_EF='exportFailed',_SM='selAllMatches',_KD='keydown',_CH='change',_CK='click',_PM='pointermove',_PU='pointerup',_PC='pointercancel',_lc=s=>s.toLowerCase(),_cos=Math.cos,_sin=Math.sin,_rN=Math.random,_log=Math.log,_rAF=requestAnimationFrame,_pF=parseFloat,_db=document.body,_de=document.documentElement,_wO=window.open,_lg=k=>localStorage.getItem(k),_ls=(k,v)=>localStorage.setItem(k,v),_mP=a=>new Map(a),_sT=a=>new Set(a),_eU=encodeURIComponent,_dU=decodeURIComponent,_un='undefined',_AU='arrowup',_AD='arrowdown',_AL2='arrowleft',_AR2='arrowright',_ES='escape',_RO='readonly',_RW='readwrite',_UT='Untitled',_REC='rectangle',_EN='enter',_TB='tab',_IK='#0F172A',_YW='#FEF08A',_BOX=_sT(['rect','ellipse','diamond']),_BX4=_sT([..._BOX,'sticky']),_BOXF=_sT([..._BOX,'frame','sticky']),_HF4=_sT([..._BOX,'frame']),_RD=_sT(['rect','diamond']),_RDI=_sT([..._RD,'image']),_D6=_sT([..._BOX,'frame','image']),_SH5=_sT([..._BOX,'image','text']),_TS=_sT(['text','sticky']),_TSF=_sT([..._TS,'frame']);   // ADR-0384/../0397/0453
 const _sh=()=>state.shapes;                                                // ADR-0364
-const _shCap=()=>_ln(_sh())<SHARE_MAX_SHAPES;   // ADR-1079: incremental adds share the wholesale ceiling
+const _shCap=()=>_ln(_sh())<SHARE_MAX_SHAPES;   // ADR-1079
 const _sl=()=>state.selection;
 const _ss=ids=>{const s=_sT();for(const id of ids){const h=byId(id);if(h&&_sv(h)&&_pgOk(h))s.add(id)}state.selection=s};   // ADR-0415/0568/0646
 const _st=()=>state.style;
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.133';   // ADR-1109
+const V='1.8.134';   // ADR-1110
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1774,13 +1774,13 @@ const Store={
         break;}
       case 'pageAdd':{   // ADR-0646: multi-page
         if(forward){
-          if(_tmb(op.id,op))break;   // ADR-1095: tombstone outranks a stale pageAdd (add parity)
-          if(!_pgs()){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
-          else{const l=_pgById(op.id);if(l&&l.nts<0){l.name=op.name!=null?op.name:l.name;l.nts=0}   // ADR-0775
+          if(_tmb(op.id,op))break;   // ADR-1095
+          if(!_pgs()){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0,bts:op.clock.ts,btp:op.clock.peer}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
+          else{const l=_pgById(op.id);if(l&&l.nts<0){l.name=op.name!=null?op.name:l.name;l.nts=0;l.bts=op.clock.ts;l.btp=op.clock.peer}   // ADR-0775/1110
           else if(!l&&_ln(_pgs())<64){
             // ADR-0704
             const at=_iN(op.i)&&_fin(op.i)?_max(0,_min(op.i|0,_ln(_pgs()))):_ln(_pgs());
-            _pgs().splice(at,0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
+            _pgs().splice(at,0,{id:op.id,name:op.name!=null?op.name:'?',nts:0,bts:op.clock.ts,btp:op.clock.peer});
           }}
           if(_pgById(op.id))_bT(op.id,op.clock);   // ADR-1093: born-stamp introduced pages
           if(_iA(op.shapes)&&_pgById(op.id)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;if(!byId(sh.id)&&_shCap()){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2);_bT(sh.id,op.clock)}}_sz()}   // ADR-1095
@@ -1802,7 +1802,7 @@ const Store={
           // sender did; refusing here diverges the page sets permanently).
           if(!_pgs()||(_ln(_pgs())<2&&(!op.clock||op.clock.peer===_pi())))break;
           const i=_pgs().findIndex(p=>p.id===op.id);if(i<0)break;
-          if(_bN(op.id,op.clock))break;   // ADR-1094: newer-born page outranks a stale kill (del parity)
+          if(_bN(op.id,op.clock))break;   // ADR-1094
           const first=_pgs().find(q=>q.id!==op.id),firstId=first?first.id:null;
           // ADR-0725: rehome target is the SENDER's first surviving page — peers'
           // page order can diverge, so each peer's own order would split member
@@ -1897,7 +1897,7 @@ const Store={
     // ADR-0568: a remote hide (or redo of one) loses the mirror row;
     // shapes must not stay in selection (0566 invariant)
     if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;const _s=byId(id);if(_s&&_hd(_s))_sdl(id)}
-    if(_pgOn()){_pgHealS();_pgBar()}   // ADR-0778: unknown op-carried pg materializes the '?' stub
+    if(_pgOn()){_pgHealS();_pgBar()}   // ADR-0778
     // ADR-0027: post-mutation bboxes of the same ids join the damage union —
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
@@ -2147,13 +2147,16 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
 const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009/1071
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646
-const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
-const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694
+const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64)&&(p.bts==null||_tsOK(p.bts))&&(p.btp==null||_iS(p.btp)&&_ln(p.btp)<=64))?a:null);   // ADR-0700/0791/1110
+const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){const w=s.pg&&_wc()[s.pg];if(s.pg&&!_pgById(s.pg)&&(!w||!w._del||w._born&&clockNewer(w._born,w._del))&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110: tomb-dead pages get no '?' stub
 const _pgClk=m=>validClock(m.rep)?m.rep:{ts:nowTs(),peer:_pi(),seq:0};   // ADR-1093
-function _pgAdopt(pages,cur,clk){const v=_vPages(pages);state.pages=v?clone(v):null;
-if(clk)for(const p of v||[])_bT(p.id,clk);   // ADR-1093: adopted pages outlive older tombs
+function _pgAdopt(pages,cur,clk){const v=_vPages(pages);
+let keep=v;
+if(clk&&v){keep=[];for(const p of v){const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(!w||!w._del||b&&clockNewer(b,w._del))_pu(keep,p)}}   // ADR-1110: carried birth vs local tomb — no birth → tomb wins
+state.pages=keep&&_ln(keep)?clone(keep):null;
+if(clk)for(const p of state.pages||[]){const b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:clk;_bT(p.id,b);if(p.bts==null){p.bts=b.ts;p.btp=b.peer||''}}   // ADR-1093/1110
 _pgHealS();
-const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
+const nc=state.pages&&_pgById(cur)?cur:(state.pages?state.pages[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
 state.curPg=nc;if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}_pgBar();_iG()}   // ADR-0664/0690/0748/0749/0750
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;_nugEnd();_cxO();_cancelPointerGesture();state.curPg=id;Net.sendCursorHide();_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar();_ps()}   // ADR-0664/0674/0689/0957
 function _pgNav(d){if(!_pgOn())return;const i=_pgIdx(),n=_ln(_pgs());const j=(i+d+n)%n;if(j!==i)switchPage(_pgs()[j].id)}
@@ -2911,7 +2914,7 @@ function _drawMeasure(c){
 let _cssCache=Object.create(null);
 function _gC(v){let x=_cssCache[v];if(x===_ud){x=_trm(getComputedStyle(_de).getPropertyValue(v));_cssCache[v]=x}return x}
 function clearCSSCache(){_cssCache=Object.create(null);_iv()}
-const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}   // ADR-0852/0857: token flips stale the pen bitmaps too
+const _tTk=()=>{clearCSSCache();Minimap.invalidateCache();_penCache.clear();_penCachePx=0}   // ADR-0852/0857
 function drawGrid(W,H){
   const v=_vp();
   const gs=GRID_SIZE;
@@ -4797,7 +4800,7 @@ let _osClip=null,_cpNow=false;
 function _osCopy(e){
   if(e.target.matches&&e.target.matches('input,textarea'))return;
   const cut=e.type==='cut';
-  if(!_cpNow)doCopy();   // ADR-1107: OS-menu copy/cut captures the selection itself
+  if(!_cpNow)doCopy();   // ADR-1107
   if(!_cpNow)return;
   _cpNow=false;
   const cl=_cl();if(!cl)return;
@@ -5933,7 +5936,7 @@ _on(window,_KD,e=>{
   else if(k===_TB){
     // Cycle selection (z-order) for keyboard/SR
     _pd(e);
-    const ids=_sh().filter(s=>_ulv(s)&&_pgOk(s)).map(s=>s.id);   // ADR-0163/0662: hidden+off-page shapes are unreachable
+    const ids=_sh().filter(s=>_ulv(s)&&_pgOk(s)).map(s=>s.id);   // ADR-0163/0662
     if(!_ln(ids))return;
     const id=cycleSel(ids,_selIds()[0],_sK(e)?-1:1);
     _ss([id]);
@@ -6125,7 +6128,7 @@ function _placeCopies(srcShapes,dx,dy){
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;   // ADR-0646/1072: foreign pg on a page-less doc hides the copy
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;   // ADR-0646/1072
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
@@ -6495,7 +6498,7 @@ function flipShape(s,axis,c){
   if(_im(s))s.flip=(s.flip||0)^(axis==='h'?1:2);
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
-  if(s.labelPos!=null)s.labelPos=1-s.labelPos;   // ADR-0583: mirrored path reverses t — keep the same visual spot
+  if(s.labelPos!=null)s.labelPos=1-s.labelPos;   // ADR-0583
   // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
   // ('h' flips x) and θ → 360−θ across the horizontal axis …
   // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
@@ -6849,7 +6852,7 @@ function excScene(shapes){
         if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();_pu(els,_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
-        const _du2=_du(s)||Net._imgIn.get(s.img)||'';   // ADR-1067: dangling fileId marks the unresolved img ref
+        const _du2=_du(s)||Net._imgIn.get(s.img)||'';   // ADR-1067
         const fid='f'+s.id;
         if(_du2)files[fid]={id:fid,mimeType:(_du2.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:_du2,created:0,lastRetrieved:0};
         _pu(els,E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
@@ -7532,7 +7535,7 @@ function excToShapes(txt){
       default:break;   // unknown — skip
     }
     if(s){if(r&&_hb(s))s.rotate=r;if(e.locked)s.locked=1;
-      if(r&&_conn(s.type)){const _rm=r*_PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints+way about midpoint
+      if(r&&_conn(s.type)){const _rm=r*_PI/180,_cx=(s.x1+s.x2)/2,_cy=(s.y1+s.y2)/2;   // ADR-0300: conn angle → rotate endpoints
         for(const p of[[s,'x1','y1'],[s,'x2','y2'],...(s.way||[]).map(w=>[w,'x','y'])]){const dx=p[0][p[1]]-_cx,dy=p[0][p[2]]-_cy;p[0][p[1]]=+(_cx+dx*_cos(_rm)-dy*_sin(_rm)).toFixed(1);p[0][p[2]]=+(_cy+dx*_sin(_rm)+dy*_cos(_rm)).toFixed(1)}}
       if(_iS(e.link)&&/^https?:\/\//.test(e.link))s.link=_s0(e.link,500);   // ADR-0301
       if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round routes are curved
@@ -8129,7 +8132,7 @@ const Net={
   _fragSend(buf,k){   // ADR-0431: 64KB fragment sender for the dc-
     const n=_ceil(_ln(buf)/65536);   // ADR-0603
     if(n>384){_wT('syncTooLarge');return}
-    if(!this._stgOK(this._fragOuts,buf))return;   // ADR-1062: shed the newest stream rather than grow a wedged stage
+    if(!this._stgOK(this._fragOuts,buf))return;   // ADR-1062
     _pu(this._fragOuts,[k,buf]);this._flushFragOuts()   // ADR-1061
   },
   _flushFragOuts(){
@@ -8355,7 +8358,7 @@ const Net={
           if(rm){_iG();_iv()}}
         if(_iA(msg.pages)){   // ADR-0773
           if(!_pgs())_pgAdopt(msg.pages,state.curPg,_pgClk(msg));   // ADR-0672/1093
-          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:''}if(l){if(_ln(np)<64)_pu(np,l)}else{const w=_wc()[p.id];if(_ln(np)<64&&(!w||!w._del||_bN(p.id,w._del))){_pu(np,clone(p));_bT(p.id,{ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0})}}}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773/1093
+          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:''}if(l){if(l.bts==null&&p.bts!=null){l.bts=p.bts;l.btp=_iS(p.btp)?p.btp:''}if(_ln(np)<64)_pu(np,l)}else{const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(_ln(np)<64&&(!w||!w._del||b&&clockNewer(b,w._del))){_pu(np,clone(p));if(b)_bT(p.id,b)}}}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773/1093
         }
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617
         _ps();   // ADR-0973
@@ -8417,7 +8420,7 @@ const Net={
   // known shape → per-property LWW so concurrent edits on both
   // peers converge instead of split-braining (loser reports 'skip').
   _mergeSnapshotOp(op){
-    op=this._attachOp(op,1);                          // ADR-0069/1066: merge arbitrates img×dataUrl by clock
+    op=this._attachOp(op,1);                          // ADR-0069/1066
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
     const ex=byId(op.shape.id);
     if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}   // ADR-0927
@@ -8557,7 +8560,7 @@ const Net={
   _wrtcInit(){
     if(this.rtc){try{this.rtc.close()}catch(_){}}
     if(this.dc){try{this.dc.close()}catch(_){}}
-    this._dcQ=null;this._dcQB=0;   // ADR-1059: superseded-link backlog must not ride the next channel
+    this._dcQ=null;this._dcQB=0;   // ADR-1059
     if(typeof RTCPeerConnection===_un)throw new Error('WebRTC not supported');
     this._rtcConnFailed=false;this._dcKey=null;   // ADR-1056
     this.rtc=new RTCPeerConnection({iceServers:[
@@ -8879,7 +8882,7 @@ const Persist={
         docName:_dn(),
         pages:_pgs(),curPg:state.curPg,   // ADR-0646
         wc:_wc(),          // ADR-0460
-        rep:state._lastRep,nts:_nameTs,ntp:_namePeer,   // ADR-0695/0699: causal markers ride the doc record too
+        rep:state._lastRep,nts:_nameTs,ntp:_namePeer,   // ADR-0695/0699
         rs:state.roomSecret,   // ADR-1056: the wire auth key persists with the doc
         ro:state.ro?1:0,   // ADR-1057
         savedAt:_now()
@@ -8987,7 +8990,7 @@ const Persist={
         _vp().x=+d.viewport.x;_vp().y=+d.viewport.y;_vp().zoom=clampZoom(+d.viewport.zoom);
       }
       _sz();_iv();
-      state.ro=d.ro===1;_roBadge();   // ADR-1069: adopt the record's context before recording
+      state.ro=d.ro===1;_roBadge();   // ADR-1069
       _repC(before,beforeWc,origSel,_bpg,_bcp);
       await this.discardBackup();
       this.schedule();
@@ -9150,7 +9153,7 @@ const UI={
     while(m.firstChild)m.removeChild(m.firstChild);
     const items=customItems||[
       has&&['ctxCut','⌘X',()=>{doCopy();_cpNow=false;doDelete()}],   // ADR-1108
-      has&&['ctxCopy','⌘C',()=>{doCopy();_cpNow=false}],   // ADR-1107: menu copy has no event — clear so the next OS gesture re-captures
+      has&&['ctxCopy','⌘C',()=>{doCopy();_cpNow=false}],   // ADR-1107
       _cl()&&['ctxPaste','⌘V',doPaste],
       _cl()&&['ctxPasteAt','',()=>doPasteAt(m._wx,m._wy)],
       _cl()&&['ctxPasteInPlace','⌘⇧V',doPasteInPlace],
@@ -9599,7 +9602,7 @@ function wire(){
   const _ctxUp=()=>{ctx=_g2(canvas);octx=_g2(ocanvas);_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache();_iv();_ivO()};
   _on(canvas,'contextlost',_pd);_on(ocanvas,'contextlost',_pd);
   _on(canvas,'contextrestored',_ctxUp);_on(ocanvas,'contextrestored',_ctxUp);
-  if(window.visualViewport)_on(visualViewport,'resize',_resizeSoon);   // ADR-0251: iOS url-bar/keyboard shrink fires no resize
+  if(window.visualViewport)_on(visualViewport,'resize',_resizeSoon);   // ADR-0251
   // devicePixelRatio change (window dragged to a denser display)
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
@@ -10324,7 +10327,7 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.statusbar'),'none');
     _qs(document,'.minimap-wrap')?.style.setProperty('display','none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
-    ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too (scene below, presOverlay above)
+    ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024
     // The CSS box just changed to fullscreen but the backing buffer
     // still holds its old smaller size and would be stretched blurry —
     // and the world↔screen transform math _zoomToFrame left is stale.

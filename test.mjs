@@ -5976,7 +5976,7 @@ try {
       state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}'),'_pgAdopt hides cursor + re-validates selection + announces on page move (ADR-0690/0749/0750)');
-      assert.ok(html.includes('for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs()'),'_pgAdopt heals unknown pg → ? page (ADR-0692)');
+      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)&&(!w||!w._del||w._born&&clockNewer(w._born,w._del))&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
       {
@@ -19478,6 +19478,55 @@ pass += 4;
   console.log('  ✓ ADR-1109 page tomb + implicit-member kill parity (5 asserts)');
 }
 pass += 5;
+
+// ---- ADR-1110: page records carry the real birth clock (bts/btp) — adoption
+// arbitrates the carried birth against local tombs instead of stamping the
+// receiver's now-clock, and a birth-less page cannot outrank a tomb.
+{
+  const sF=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sF.id='m2';sF.pg='p2';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  // pageAdd forward records the creator clock on the page record
+  Store.applyRemote({op:'pageAdd',id:'p2',name:'B',clock:{ts:100,peer:'p9',seq:1}});
+  const pg=_pgById('p2');
+  assert.ok(pg&&pg.bts===100&&pg.btp==='p9','pageAdd records the creator clock as bts/btp');
+  // adopt: tomb outranks the carried birth → dropped (receiver clock must not win)
+  state.wclock={p2:{_del:{ts:200,peer:'p9',seq:2}}};state.pages=null;state.curPg=null;
+  _pgAdopt([{id:'p2',name:'B',nts:0,bts:100,btp:'p9'}],'p2',{ts:500,peer:'rx',seq:0});
+  assert.ok(!_pgById('p2'),'tomb outranks carried birth → page dropped');
+  assert.ok(!state.wclock.p2._born||state.wclock.p2._born.ts!==500,'receiver clock did not become the birth clock');
+  // carried birth newer than the tomb → survives at the REAL birth
+  state.wclock={p2:{_del:{ts:50,peer:'p9',seq:2}}};state.pages=null;state.curPg=null;
+  _pgAdopt([{id:'p2',name:'B',nts:0,bts:100,btp:'p9'}],'p2',{ts:500,peer:'rx',seq:0});
+  assert.ok(_pgById('p2')&&state.wclock.p2._born.ts===100&&state.wclock.p2._born.peer==='p9','reborn survives at the carried birth clock');
+  // bts-less page + tomb → tomb wins (no birth → cannot prove rebirth)
+  state.wclock={p3:{_del:{ts:1,peer:'a',seq:0}}};state.pages=null;state.curPg=null;
+  _pgAdopt([{id:'p3',name:'C',nts:0}],'p3',{ts:500,peer:'rx',seq:0});
+  assert.ok(!_pgById('p3'),'bts-less page cannot outrank a tomb');
+  // bts-less + no tomb → adopted, born at clk, record normalized for the wire
+  state.wclock={};state.pages=null;state.curPg=null;
+  _pgAdopt([{id:'p4',name:'D',nts:0}],'p4',{ts:500,peer:'rx',seq:0});
+  const p4=_pgById('p4');
+  assert.ok(p4&&p4.bts===500&&p4.btp==='rx'&&state.wclock.p4._born.ts===500,'bts-less page adopts + normalizes bts to clk');
+  // _pgHealS: shape-carried pg at a tombed page spawns no '?' stub
+  state.wclock={ghost:{_del:{ts:1,peer:'a',seq:0}}};state.pages=[{id:'p1',name:'A',nts:0}];state.curPg='p1';
+  const G=JSON.parse(JSON.stringify(sF));G.id='gm';G.pg='ghost';state.shapes=[G];
+  _pgAdopt([{id:'p1',name:'A',nts:0}],'p1');
+  assert.ok(!_pgById('ghost'),'tomb-dead pg gets no ? stub');
+  // union-heal: a new page whose carried birth loses to the tomb is not pushed
+  state.shapes=[];state.wclock={p2:{_del:{ts:60,peer:'p9',seq:1}}};state.pages=[{id:'p1',name:'A',nts:0}];state.curPg='p1';
+  Net._onRecv({k:'snapshot',peer:'p9',pages:[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0,bts:50,btp:'p9'}]},false);
+  assert.strictEqual(state.pages.length,1,'union-heal drops a tomb-dead carried-birth page');
+  // union-heal: carried birth outranking the tomb stamps the REAL birth, not nts
+  Net._onRecv({k:'snapshot',peer:'p9',pages:[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0,bts:70,btp:'p9'}]},false);
+  assert.ok(_pgById('p2')&&state.wclock.p2._born.ts===70,'union-heal stamps the carried birth clock');
+  // _vPages: bts/btp accepted when sane, rejected when poisoned
+  assert.strictEqual(_vPages([{id:'p',name:'n',nts:0,bts:'x',btp:'p'}]),null,'_vPages rejects a non-numeric bts');
+  assert.strictEqual(_vPages([{id:'p',name:'n',nts:0,bts:1,btp:'x'.repeat(65)}]),null,'_vPages rejects an oversized btp');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1110 page birth-clock wire carriage (11 asserts)');
+}
+pass += 11;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
