@@ -1,3 +1,15 @@
+## [1.8.097]
+
+- **Fix — restore merge-mode import (ADR-1054, round823)**: the `.board` file
+  picker and `#b=` share-link imports could only *replace* the board again —
+  the merge choice (`confirm(importMerge)` → `_placeCopies` merge vs
+  `importConfirm` replace, shipped in v1.8.077 / PR #815) was lost when the
+  PR stack was rebuilt after #811–#813 closed. Restored on the current line:
+  the merge path now also inherits ADR-1072's `pg` scrub and ADR-1073's
+  read-only gate automatically, and its toast is suppressed when the ro gate
+  returns `[]`. `importBoard` additionally gained the replace-confirm it was
+  missing on non-empty boards. ADR-1054 doc restored with a restoration note.
+
 ## [1.8.096]
 
 ### Fixed
