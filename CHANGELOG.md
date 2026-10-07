@@ -1,3 +1,8 @@
+## [1.8.103] - 2026-10-01
+
+### Fixed
+- 逐次 `add`/`addMany`/`pageAdd` op (および `del`/`clear`/`pageDel` の undo 復元) に総図形数の天井がなく、MAC 認証済みピアの op 連打で `state.shapes` が無制限成長 (毎フレーム O(n) のメモリ/CPU 増幅) — 一括経路と同じ `SHARE_MAX_SHAPES` (200K) 天井を共有 `_shCap` ヘルパで全リモート push サイトに適用 (ADR-1079)
+
 ## [1.8.102] - 2026-10-01
 ### Fixed
 - **ADR-1078: `_park` intake bounds** — `_attachOp` parks a shape's `img` ref
