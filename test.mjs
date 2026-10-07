@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec, Share } = api;
+          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -20117,6 +20117,43 @@ pass += 7;
 }
 pass += 9;
 pass += 1959; // prev 1947 + 12 ADR-1124 merge-emit pins
+
+// ---- ADR-1127: proto-key × keyed-map audit — clean pass, contract pinned.
+// JS-reserved keys can't poison the LWW stores: validPatch/_cleanVal rejects
+// __proto__/constructor/prototype own keys at every intake (op patches,
+// snapshot shapes, connClears); the snapshot-merge value gate re-checks
+// rw-carried keys; _wR/_wAdopt/_wK sanitize every wclock restore; _emOK
+// refuses proto keys on the convergence-emit path; and every keyed store is
+// a Map (_mP) or a null-proto record (_wM) — a JS-reserved shape id
+// ('__proto__' etc.) is inert data, never a prototype write.
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock=_wM();
+  // intake: op patches carrying a proto key are rejected outright (JSON.parse
+  // creates a real own '__proto__' prop — a literal {} would only set proto).
+  const pAfter=JSON.parse('{"__proto__":{"x":1},"y":2}');
+  assert.strictEqual(validRemotePayload({op:'upd',id:'s1',after:pAfter,before:{},clock:{peer:'p9',seq:1,ts:1}}),false,'ADR-1127: __proto__ key in an upd patch rejected');
+  const pCtor=JSON.parse('{"constructor":{"x":1},"y":2}');
+  assert.strictEqual(validRemotePayload({op:'upd',id:'s1',after:pCtor,before:{},clock:{peer:'p9',seq:1,ts:1}}),false,'ADR-1127: constructor key in an upd patch rejected');
+  // snapshot merge: a wc-carried proto clock key is skipped, legit keys merge.
+  const s1={id:'s1',type:'rect',x:0,y:0,w:1,h:1,z:1};state.shapes=[s1];state.wclock=_wM();state.wclock.s1=_wM();state.wclock.s1.x={peer:'p8',seq:1,ts:1};
+  const wcm=JSON.parse('{"x":'+JSON.stringify({peer:'p9',seq:1,ts:4000})+',"__proto__":'+JSON.stringify({peer:'p9',seq:2,ts:5000})+'}');
+  Net._mergeSnapshotOp({op:'add',shape:{id:'s1',type:'rect',x:9},clock:{peer:'p9',seq:9,ts:9},wc:wcm});
+  assert.strictEqual(s1.x,9,'ADR-1127: legit merged prop still applies');
+  assert.ok(!Object.keys(state.wclock.s1).includes('__proto__'),'ADR-1127: wc-carried __proto__ clock skipped at the value gate');
+  // a JS-reserved shape id resolves through the Map-backed index, not proto lookup.
+  Store.applyRemote({op:'add',shape:{id:'__proto__',type:'rect',x:0,y:0,w:1,h:1,z:1},clock:{peer:'p9',seq:5,ts:5}});
+  assert.strictEqual(byId('__proto__').x,0,'ADR-1127: id __proto__ resolves via the Map index');
+  assert.strictEqual(Object.getPrototypeOf(state.wclock),null,'ADR-1127: wclock is a null-proto map — reserved-id writes stay own props');
+  // keyed stores: the tomb map is null-proto; a reserved id is inert data.
+  _wD('__proto__',{peer:'p9',seq:1,ts:99});
+  assert.strictEqual(state.wclock['__proto__']._del.ts,99,'ADR-1127: __proto__ lands as an own record key');
+  _wAdopt('r1',{x:{peer:'p9',seq:1,ts:7},...JSON.parse('{"__proto__":{"peer":"p9","seq":1,"ts":8}}')});
+  assert.ok(state.wclock.r1.x.ts===7&&!Object.keys(state.wclock.r1).includes('__proto__'),'ADR-1127: _wAdopt drops proto keys, keeps legit ones');
+  assert.ok(html.includes('wclock:_wM()')&&html.includes("k!=='__proto__'&&k!=='constructor'&&k!=='prototype'"),'ADR-1127: null-proto map + proto-key filters in source');
+  state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ ADR-1127 proto-key × keyed-map contract (9 asserts)');
+}
+pass += 9;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
