@@ -18909,7 +18909,7 @@ pass += 1;
   state.ro=0;state.shapes.length=0;state.history=[];state.histIdx=-1;_invalidateGrid();
   pass += 4;
 }
-assert.ok(html.includes("_nugEnd();   // ADR-0958/0960\n    if(state.ro){_roNo();return}"),'commit gates ro after the nudge flush');
+assert.ok(html.includes("_nugEnd();   // ADR-0958/0960\n    if(state.ro){_roRe(op);_roNo();return}"),'commit gates ro after the nudge flush');
 assert.ok(html.includes("if(state.ro){_roNo();return false}"),'undo+redo gate ro');
 assert.ok(html.includes("state.ro=d.ro===1;_roBadge();   // ADR-1069: adopt the payload's context before recording"),'.board replace adopts ro before repC');
 assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069: adopt before the swap's repC"),'hash replace adopts ro before repC');
@@ -19300,6 +19300,58 @@ pass += 7;
   console.log('  ✓ ADR-1103 ro adoption folds open editors (4 asserts)');
 }
 pass += 4;
+
+// ---- ADR-1104: ro rejects revert the caller's live pre-commit writes (per baseline kind) ----
+{
+  const _roM=/閲覧|View only/,_ot=UI.toast,seen=[];
+  UI.toast=(m,k)=>{seen.push(m)};
+  try{
+    state.shapes.length=0;state.ro=false;_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const mk=(id,x)=>{const s=Shape.make('rect',{x,y:0,w:10,h:10});s.id=id;Store.commit({op:'add',shape:s});return byId(id)};
+    mk('rw-a',0);const B=mk('rw-b',100);B.w=20;mk('rw-c',200);   // unselected: keeps zorder real
+    state.selection=new Set(['rw-a','rw-b']);
+    state.ro=true;
+    const h0=state.history.length;
+    // orig-family: arrow-key nudge (live translate, deferred _nugPush)
+    nudgeSelection(5,0);
+    assert.strictEqual(byId('rw-a').x,0,'ro nudge: live move reverted via orig clones');
+    // changes-family: zorder (live frac, deferred _nugPush)
+    const f0=byId('rw-b').frac;doBringFront();
+    assert.strictEqual(byId('rw-b').frac,f0,'ro zorder: live frac reverted via changes');
+    // full-clone before family: flip/match-size (live geometry, deferred _nugPush/_rcOp)
+    doFlip('h');
+    assert.strictEqual(byId('rw-a').x,0,'ro flip: live geometry reverted via before clones');
+    doMatchSize('w');
+    assert.strictEqual(byId('rw-b').w,20,'ro match-size: live extent reverted via before clones');
+    // sparse-prop before family: style op → _recordCommitted (baseline read first —
+    // style state is session-global, so patch a value guaranteed to differ)
+    const o0=byId('rw-a').opacity,od=o0===.25?.5:.25;
+    applyStyleToSelection({opacity:od});
+    assert.strictEqual(byId('rw-a').opacity,o0,'ro style: live opacity reverted via sparse before');
+    doLock();
+    assert.ok(!byId('rw-a').locked,'ro lock: live flag reverted');
+    // group writes groupId live then _nugPush
+    doGroup();
+    assert.ok(!byId('rw-a').groupId,'ro group: live groupId reverted');
+    // object-form before: 'upd' ops (editor/commit folds)
+    byId('rw-a').label='L';
+    Store._recordCommitted({op:'upd',id:'rw-a',before:{label:null},after:{label:'L'}});
+    assert.strictEqual(byId('rw-a').label,null,'ro upd: object before reverts the live patch');
+    assert.strictEqual(state.history.length,h0,'ro ops record no history');
+    assert.ok(seen.some(m=>_roM.test(m)),'ro reject toasts readOnlyMode');
+    // editable control: the same paths apply normally off-ro
+    state.ro=false;
+    nudgeSelection(5,0);_nugEnd();
+    assert.strictEqual(byId('rw-a').x,5,'editable control: nudge applies');
+    doLock();
+    assert.strictEqual(byId('rw-a').locked,true,'editable control: lock applies');
+  }finally{state.ro=false;state.shapes.length=0;state.selection=new Set();_invalidateGrid();state.history=[];state.histIdx=-1;UI.toast=_ot;try{_nugEnd()}catch(_){}}
+  console.log('  \u2713 ADR-1104 ro live-write revert seam (12 asserts)');
+}
+pass += 12;
+assert.ok(html.includes("if(state.ro){_roRe(op);_roNo();return}")&&html.includes("function _roRe(op)"),'ro gates revert via the shared _roRe seam');
+assert.ok((html.match(/if\(state\.ro\)return/g)||[]).length>=3,'slider preview inputs early-return on ro');
+pass += 2;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

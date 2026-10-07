@@ -1,3 +1,11 @@
+## [1.8.128] - 2026-10-01
+
+### Fixed
+- **round854 / ADR-1104 — ro-rejected commits revert the caller's live pre-commit writes**: the ro funnel rejected ops at `Store.commit`/`_recordCommitted`/`_nugPush` but apply-then-commit callers (nudge, group/ungroup, style, flip, match-size, align, zorder, drag finalizes) had already mutated the live shapes — the rejected write stayed applied locally and ADR-1020 saves persisted the divergence. A shared `_roRe` seam restores each op's baseline (`orig` clones / `before` clones or sparse props / `changes[].before` `frac`) at all three gates; baseline-less ops no-op correctly, and the slider preview inputs (no baseline data) get silent `if(state.ro)return` guards instead of per-event toasts.
+
+### Tests
+- 12 behavioural pins exercise the seam under `state.ro=true` via exported callers — nudge/zorder/flip/match-size/style/lock/group/upd all revert live writes, record no history, toast `readOnlyMode` — plus 2 source pins locking the gate text.
+
 ## [1.8.127] - 2026-10-01
 
 ### Fixed
