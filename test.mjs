@@ -1233,7 +1233,7 @@ const checks = [
   ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /dcRef\.onclose=\(\)=>\{[\s\S]*?this\._dcQ=null/.test(html)],
-  ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();\n      _docN(d);")],
+  ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();   // ADR-1111\n      _pgAdopt(d.pages,d.curPg);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))));") && /_rs\(valid\.map\(s=>Net\._attachShape\(clone\(s\)\)\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
   ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
@@ -19527,6 +19527,30 @@ pass += 5;
   console.log('  ✓ ADR-1110 page birth-clock wire carriage (11 asserts)');
 }
 pass += 11;
+
+// ---- ADR-1111: doc-switch tomb separation — the wclock reset precedes _pgAdopt
+// at every clk-less swap site so old-doc tombs never arbitrate the new doc's
+// page set, and the replace SENDER stamps adopted pages' _born like receivers'
+// _pgAdopt (carried bts wins, else op.clock).
+{
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;state.history=[];state.histIdx=-1;_invalidateGrid();
+  // sender-side _recordCommitted replace: adopted pages born at carried bts / op.clock
+  Store._recordCommitted({op:'replace',before:[],after:[],wc:{},pages:[{id:'p1',name:'A',nts:0,bts:50,btp:'q'},{id:'p2',name:'B',nts:0}],curPg:'p1',beforePages:[{id:'p9',name:'old',nts:0}],clock:{ts:300,peer:state.peerId,seq:0}});
+  assert.ok(state.wclock.p1&&state.wclock.p1._born&&state.wclock.p1._born.ts===50&&state.wclock.p1._born.peer==='q','sender stamps the carried bts as the adopted page birth');
+  assert.ok(state.wclock.p2&&state.wclock.p2._born&&state.wclock.p2._born.ts===300,'bts-less adopted page borns at op.clock');
+  assert.ok(state.wclock.p9&&state.wclock.p9._del&&state.wclock.p9._del.ts===300,'beforePages drop-out keeps its tomb');
+  // clean tomb slate → a new-doc unknown pg heals to a '?' stub (old tomb would suppress it)
+  const g=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));g.id='g1';g.pg='ghost';
+  state.shapes=[g];state.wclock={};
+  _pgAdopt([{id:'pA',name:'A',nts:0}],'pA');
+  assert.ok(_pgById('ghost'),'reset-before-adopt gives the new doc a clean tomb slate (? stub heals)');
+  // every clk-less doc-switch site pairs the reset with _pgAdopt
+  assert.strictEqual((html.match(/state\.wclock=_wM\(\);   \/\/ ADR-1111[^\n]*\n?\s*_pgAdopt\(/g)||[]).length,3,'all 3 clk-less doc-switch sites reset wclock before _pgAdopt');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1111 doc-switch tomb separation (5 asserts)');
+}
+pass += 5;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

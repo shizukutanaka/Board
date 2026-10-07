@@ -1137,6 +1137,7 @@ Board/
 │   └── ADR-1108-ctx-menu-cut.md  # ctx メニューに Cut 項目追加 (キー/OS 専用クリップボード op のメニュー到達性 — ADR-0135 系の残穴)
 │   └── ADR-1109-page-tomb-member-parity.md  # ローカル replace のページ tomb + _pgDel2 の pg0 (削除前先頭ページでの暗黙メンバー解決)
 │   └── ADR-1110-page-birth-clock.md  # ページレコードの誕生時計 bts/btp 搬送 (tomb 仲裁は受信側時計でなく搬送 birth で)
+│   └── ADR-1111-doc-switch-tomb-separation.md  # doc 切替で tomb map を adopt 前にリセット + sender 側の採用ページ _born スタンプ対称化
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
