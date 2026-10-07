@@ -1,3 +1,8 @@
+## [1.8.122] - 2026-10-01
+
+### Docs+Tests
+- **round848 / ADR-1098 — egress MAC coverage × `dels` existence-clock parity audit**: verified (a) every DC egress is tagged before serialization (`_tagDc`/`_bcast`/`broadcast`/`_flushFragOuts`/`_flushImgOuts`/`_sendSnapshot`, with `_dcQ` storing the already-tagged string) and every BC copy is `mac`-stamped inside `_send`; (b) the `dels` tomb-delta channel honors the existence-clock contract on both ends (send-side `!_bN` live-id filter, receive-side locked/`_tAlive` born-escape, LWW-conditional tomb write); (c) every re-introduction site stamps `_born`. Audit-clean — 12 behavioural pins added.
+
 ## [1.8.121] - 2026-10-01
 
 ### Fixed

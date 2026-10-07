@@ -19157,6 +19157,46 @@ pass += 5;
 }
 pass += 6;
 
+// ---- ADR-1098: egress MAC coverage × dels existence-clock parity audit — contracts pinned ----
+{
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  const _os=Net._send,_obc=Net.bc,_odc=Net.dc;
+  Net._send=function(m){if(this.bc){if(!m.mac)m.mac=this._mac(m);try{this.bc.postMessage(m)}catch(_){}}};   // ADR-1098: canonical :8250 — the two-world relay still owns Net._send here
+  let bcCap=[],dcCap=[];
+  Net.bc={postMessage:m=>bcCap.push(m)};
+  Net.dc={readyState:'open',send:m=>dcCap.push(JSON.parse(m))};
+  Net._bcast({k:'cursor',x:1,y:2,peer:'z'});
+  assert.ok(bcCap.some(m=>m.k==='cursor'&&typeof m.mac==='string'),'BC copy of _bcast carries mac');
+  assert.ok(dcCap.some(m=>m.k==='cursor'&&typeof m.dmac==='string'),'DC payload of _bcast carries dmac');
+  dcCap=[];
+  Net._fragSend('x'.repeat(70000),'snap');
+  assert.ok(dcCap.length===2&&dcCap.every(m=>typeof m.dmac==='string'),'every snap fragment carries dmac');
+  dcCap=[];bcCap=[];
+  Net._imgOuts=[['k9','x'.repeat(70000)]];Net._flushImgOuts();
+  assert.ok(dcCap.length===2&&dcCap.every(m=>m.k==='img'&&typeof m.dmac==='string'),'every img chunk carries dmac');
+  assert.ok(bcCap.every(m=>m.k==='img'&&typeof m.mac==='string'),'every img chunk BC copy carries mac');
+  Net._send=_os;Net.bc=_obc;Net.dc=_odc;
+  assert.strictEqual(Net._dmac({k:'ping',peer:'p'}),Net._dmac({k:'ping',peer:'p',mac:'z',dmac:'z'}),'the canon ignores mac/dmac keys');
+  const a1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));a1.id='a1';
+  const l1=JSON.parse(JSON.stringify(Shape.make('rect',{x:9,y:9,w:5,h:5})));l1.id='l1';l1.locked=1;
+  state.shapes=[a1,l1];_invalidateGrid();
+  state.wclock={a1:{_born:{ts:600,peer:'a',seq:0}},l1:{_born:{ts:100,peer:'a',seq:0}},lw:{_del:{ts:700,peer:'a',seq:0}}};
+  Net._onRecv({k:'snapshot',peer:'px',shapes:[],ops:[],dels:{a1:{ts:500,peer:'px',seq:1}}},false);
+  assert.ok(!!byId('a1'),'dels tomb older than _born leaves the live shape (receive-side born escape)');
+  Net._onRecv({k:'snapshot',peer:'px',shapes:[],ops:[],dels:{a1:{ts:700,peer:'px',seq:2},l1:{ts:700,peer:'px',seq:3},lw:{ts:600,peer:'px',seq:4}}},false);
+  assert.ok(!byId('a1'),'dels tomb newer than _born kills the shape');
+  assert.ok(!!byId('l1'),'a locked shape survives dels (del parity)');
+  assert.ok(state.wclock.lw._del.ts===700,'an existing newer tomb is not clobbered by an older dels clock');
+  state.wclock={x:{_del:{ts:500,peer:'a',seq:0},_born:{ts:900,peer:'a',seq:0}},y:{_del:{ts:600,peer:'a',seq:0}}};
+  const msg=Net._snapshotMsg({x:{ts:100,peer:'a',seq:0},y:{ts:100,peer:'a',seq:0}});
+  assert.ok(!msg.dels.x,'a live id (born outranks del) is not advertised as dead');
+  assert.ok(!!msg.dels.y,'a plain dead tomb newer than the horizon is offered');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1098 egress auth coverage + dels existence parity (12 asserts)');
+}
+pass += 12;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
