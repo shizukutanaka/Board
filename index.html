@@ -1408,10 +1408,7 @@ const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
 const _ccOk=q=>q&&_iO(q)&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
   const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&validPatch(p));
-  const cov=(A,B)=>{if(!_iA(A)||!_iA(B))return false;   // ADR-1087
-    const ck=(X,Y)=>{const m={};for(const q of Y)if(q)m[q.id]=q;
-      return X.every(p=>{const q=m[p.id];return q&&_ok(p).every(k=>k==='id'||k in q)})};
-    return ck(A,B)&&ck(B,A)};
+  const cov=(A,B)=>{const ck=(X,Y)=>{const m={};for(const q of Y)m[q.id]=q;return X.every(p=>{const q=m[p.id];return q&&_ok(p).every(k=>k in q)})};return ck(A,B)&&ck(B,A)};   // ADR-1087
   const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));   // ADR-0726
   switch(op.op){
     case 'add':    return validShape(op.shape);
@@ -3685,7 +3682,7 @@ function _grotCommit(){
   _gRL(ptr.gOrig);_gRL(ptr.gAnc);   // ADR-0964
   const after=[...ptr.gOrig.keys()].map(byId).filter(s=>s&&!s.locked).map(clone);
   if(_ln(after)){
-    const before=after.map(a=>ptr.gOrig.get(a.id));
+    const before=after.map(a=>({...'rotate'in a&&{rotate:0},...ptr.gOrig.get(a.id)}));
     if(ptr.gAnc)for(const [cid,oc] of ptr.gAnc){const sh=byId(cid);if(sh&&!sh.locked){before.push(oc);after.push(clone(sh));}}
     if(before.some((b,i)=>_JS(b)!==_JS(after[i]))){
       _rcOp({op:'align',dir:'grot',before,after});
@@ -6599,7 +6596,7 @@ function doRotate(d){
   const frameOf=_frameOf(sel,s=>_rotatable(s));
   _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
-  const before=sel.map(s=>clone({...s,rotate:_rt(s)||0}));
+  const before=sel.map(s=>clone(_hb(s)?{...s,rotate:_rt(s)||0}:s));
   // ADR-0586: conns whose bound shapes rotate must re-derive aF/bF — the
   // fraction lives on the bound shape's (rotated) extent, so pin the anchor
   // at the same material point: orbit+spin it like the shape, re-normalize.
@@ -9865,7 +9862,7 @@ function resetRoute(){
   _forConn((s,id)=>{
     if(!_wayArr(s).length&&!s.bend&&!_el(s)&&!s.curve&&_lP(s)==null&&s.cbend==null)return;   // ADR-0090/0217
     _pu(before,{id,way:s.way??null,bend:s.bend??null,elbow:_el(s)||0,curve:s.curve||0,labelPos:_lP(s)??null,cbend:s.cbend??null});
-    _pu(after,{id,way:null,bend:null,elbow:0,curve:0});
+    _pu(after,{id,way:null,bend:null,elbow:0,curve:0,labelPos:null,cbend:null});
     s.way=null;s.bend=null;s.elbow=0;s.curve=0;s.labelPos=null;s.cbend=null;
     _st().elbow=0;_st().curve=0;                    // ADR-0183: reset clears the remembered route too
   })

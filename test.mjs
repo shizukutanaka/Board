@@ -18449,6 +18449,24 @@ pass += 7;
 console.log('  \u2713 ADR-1086 move requires before (6 asserts)');
 pass += 6;
 
+// ---- ADR-1087: asymmetric local emitters (resetRoute / point-shape rotate / group rotate) stay key-equivalent ----
+{
+  const sent=[];const _ob=Net.broadcast;
+  Net.broadcast=o=>{sent.push(JSON.parse(JSON.stringify(Net._slimOp(o))))};
+  state.shapes.length=0;state.history=[];state.histIdx=-1;
+  const A=Shape.make('arrow',{x1:0,y1:0,x2:50,y2:50});A.id='cvA';A.labelPos=0.3;A.cbend=4;A.curve=1;
+  state.shapes.push(A);_invalidateGrid();
+  state.selection=new Set(['cvA']);resetRoute();Store.undo();Store.redo();
+  state.selection=new Set(['cvA']);doRotate(1);try{_nugEnd()}catch(_){}
+  Store.undo();Store.redo();
+  Net.broadcast=_ob;
+  assert.ok(sent.filter(o=>o.op==='style').length>=3&&sent.filter(o=>o.op==='align'&&o.dir==='rotate').length>=3,'resetRoute + rotate emits and their undo/redo wires captured');
+  for(const o of sent)assert.ok(validRemotePayload(o),'local emit passes cov on the wire: '+o.op+(o.dir?':'+o.dir:''));
+  assert.ok(html.includes("const before=after.map(a=>({...'rotate'in a&&{rotate:0},...ptr.gOrig.get(a.id)}));"),'group rotate baseline seeds rotate:0 for unrotated boxes');
+  state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();_invalidateGrid();
+  console.log('  \u2713 ADR-1087 local emitter key-equivalence ('+(sent.length+2)+' asserts)');
+  pass += sent.length+2;
+}
 // ---- ADR-1087: complete baseline on key-equivalent patch families ----
 {
   // A key missing from the matching `before` entry reads as "changed" at _chg,
