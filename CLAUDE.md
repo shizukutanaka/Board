@@ -1125,7 +1125,8 @@ Board/
 │   ├── ADR-1096-replace-member-born-escape.md  # replace fwd メンバー install が _born エスケープ欠落 + _wTb が _born を clobber — _tmE (entry 渡し _tmb) で統一し _wTb は _born 保持
 │   ├── ADR-1097-wclock-trim-born.md  # wclock flood trim が _born を落とす (outranking born を tomb-dead 化 + born-only 生レコード全落とし) — 存在時計 (_del + outranking _born) のみ保持へ
 │   ├── ADR-1098-mac-egress-dels-parity.md  # egress MAC 網羅性 × dels 存在時計 parity 監査 clean 完走 — 14 挙動ピン (tag 全輸送両端 / dels 送受 _bN・locked・LWW tomb)
-│   └── ADR-1099-name-channel-clock.md  # case 'name' の clockless 採用を _tsOK+_nameWin 必須化 (偽造改名窓口) + change 経路を _commitDocName 統一 (スタンプ/送出欠落)
+│   ├── ADR-1099-name-channel-clock.md  # case 'name' の clockless 採用を _tsOK+_nameWin 必須化 (偽造改名窓口) + change 経路を _commitDocName 統一 (スタンプ/送出欠落)
+│   └── ADR-1100-two-world-egress-restore.md  # two-world ハーネス teardown が Net.broadcast/_send を dead-B 中継のまま残す汚染 — 正規 egress を救出して終端で復元、3 挙動ピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

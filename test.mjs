@@ -7436,6 +7436,7 @@ try {
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
     // ADR-0931: the real 'op' envelope carries peer:_pi() matching clock.peer —
     // wrap _onRecv so crafted ops get the same envelope shape.
+    const _cBc=A.Net.broadcast,_cSd=A.Net._send;   // ADR-1100: canonical egress, restored at teardown
     for(const W of[A,B]){const _r=W.Net._onRecv.bind(W.Net);W.Net._onRecv=(m,v)=>{if(m&&m.k==='op'&&m.peer===undefined&&m.op&&m.op.clock)m.peer=m.op.clock.peer;return _r(m,v)}}
     A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
     B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
@@ -8977,6 +8978,19 @@ try {
     // snapshot into api long after the collab blocks end (a mid-sleep _pgAdopt
     // cancels a live gesture — the ADR-0006 long-press flake). B goes inert here.
     B.Net._send=B.Net.broadcast=()=>{};clearTimeout(B.Net._snapT);B.Net._snapT=0;
+    A.Net.broadcast=_cBc;A.Net._send=_cSd;   // ADR-1100: the main world exits with canonical egress, not a dead-B relay
+    {   // ADR-1100 pins: canonical egress — a post-teardown commit reaches bc/DC only, never the dead world
+      reset(A); reset(B);
+      const rm=A.Shape.make('rect',{x:0,y:0,w:1,h:1});
+      A.Store.commit({op:'add',shape:rm});
+      assert.ok(A.state.shapes.some(s=>s.id===rm.id),'local commit still lands on the main world');
+      assert.ok(!B.state.shapes.some(s=>s.id===rm.id),'canonical broadcast does not relay into the dead world');
+      const _dnB=B.state.docName;
+      A.Net._send({k:'name',name:'ADR1100',ts:nowTs(),peer:'zz'});
+      assert.strictEqual(B.state.docName,_dnB,'canonical _send posts to bc — not into B._onRecv');
+      console.log('  ✓ ADR-1100 two-world teardown restores canonical egress (3 asserts)');
+    }
+    pass += 3;
 
     // ---- ADR-0015: share-link E2E encryption (FT-21) --------------------------------
     // location/history are Function params (fakeWin.location/history) — previously they
@@ -19162,7 +19176,7 @@ pass += 6;
   state.roomId='roomOld';Net.init('roomX');
   state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
   const _os=Net._send,_obc=Net.bc,_odc=Net.dc;
-  Net._send=function(m){if(this.bc){if(!m.mac)m.mac=this._mac(m);try{this.bc.postMessage(m)}catch(_){}}};   // ADR-1098: canonical :8250 — the two-world relay still owns Net._send here
+  Net._send=function(m){if(this.bc){if(!m.mac)m.mac=this._mac(m);try{this.bc.postMessage(m)}catch(_){}}};   // ADR-1098/1100: explicit canonical _send — pin stays self-contained, not reliant on section state
   let bcCap=[],dcCap=[];
   Net.bc={postMessage:m=>bcCap.push(m)};
   Net.dc={readyState:'open',send:m=>dcCap.push(JSON.parse(m))};

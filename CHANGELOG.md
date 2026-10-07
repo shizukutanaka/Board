@@ -1,3 +1,8 @@
+## [1.8.124] - 2026-10-01
+
+### Tests
+- **round850 / ADR-1100 — two-world teardown restores canonical egress**: the two-peer convergence harness (`test.mjs:7424+`) ends by inerting world B (`B.Net._send=B.Net.broadcast=()=>{}`) but left the MAIN world's `Net.broadcast`/`Net._send` wired as cross-world relays (`op => B.Net._onRecv(...)`) — every post-section commit pushed unslimmed ops into the dead world and never exercised the real `_slimOp`/`dmac`/`_sendDC` egress path. Canonical refs are now captured before the first rewire and restored at teardown; 3 behavioural pins assert a post-teardown commit lands locally, never relays into the dead world, and `_send` posts to bc instead of `B._onRecv`.
+
 ## [1.8.123] - 2026-10-01
 
 ### Fixed
