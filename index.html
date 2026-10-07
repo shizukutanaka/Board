@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.148';   // ADR-1124
+const V='1.8.149';   // ADR-1125
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1530,7 +1530,7 @@ const Store={
     // ADR-1026: the dedup stamp precedes the apply — a throw below would wedge
     // the op forever; evict the key so the next snapshot heal can retry it.
     try{
-      if(!this._lwwDrop(op))return;
+      if(!this._lwwDrop(op)){_txFlush();return}   // ADR-1125
       if(op.op==='replace'){   // ADR-0613: same wipe-safety as 'clear'
         if(state._lastRep&&!clockNewer(op.clock,state._lastRep))return;   // ADR-0614
         if(_ln(_sh()))Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
@@ -1560,8 +1560,9 @@ const Store={
     const C=op.clock;
     const filt=(id,after,before)=>{const w=_wc()[id];let kept=0;
       for(const key of _ok(after)){if(key==='id')continue;
-        if(this._chg(before,after,key)&&clockNewer(C,w&&w[key]))kept++;else delete after[key];}
-      return kept;};
+        if(this._chg(before,after,key)&&clockNewer(C,w&&w[key]))kept++;
+        else{const _v=after[key];delete after[key];const s=w&&w[key]&&!clockNewer(C,w[key])&&byId(id);if(s){const _l=s[key];if(_emOK(key,_l)&&_JS(_l)!==_JS(_v))_pu(_txE||(_txE=[]),{id,k:key,b:_v===_ud||validPatch({[key]:_v})?_v:_ud,a:_l})}}}
+      return kept;};   // ADR-1125
     if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after,op.before)>0;}
     if(op.op==='group'||op.op==='ungroup'){
       const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
@@ -1636,8 +1637,7 @@ const Store={
     if(state.ro){_roNo();return false}   // ADR-1057
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
-    // ADR-0717: an undo is a NEW competing write — arbitrating on the original
-    // commit clock diverged
+    // ADR-0717
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
     _pgFollow(op);   // ADR-0652
@@ -1680,13 +1680,11 @@ const Store={
     for(const c of _bc)_u(c);
     switch(op.op){
       case 'add':{
-        // Idempotent on shape id: a remote add for a held id no-ops (snapshots
-        // bypass seenOps). Local commits use fresh uids; undo re-pushes.
+        // Idempotent on shape id
         if(forward){const wid=op.shape.id,wd=_wc()[wid];
           if(_tmb(wid,op)){/*del wins — stay deleted*/}
           else{if(!byId(wid)&&_shCap()){_sh().push(Net._attachShape(clone(op.shape)));_sz()}_bT(wid,op.clock);if(wd)delete wd._del}}
-        // ADR-0713: backward mirrors del-forward's locked gate — a since-locked
-        // shape survives our undo; keep caches too.
+        // ADR-0713
         else{const cur=byId(op.shape.id);if(cur&&cur.locked){_selR(op);break}const i=_idIdx(op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);_wc()[op.shape.id]=_wM({_del:op.clock});_psc(op.shape.id);_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:[op.shape]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}
         break;}
       case 'addMany':{

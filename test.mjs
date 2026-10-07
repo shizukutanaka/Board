@@ -5261,6 +5261,98 @@ try {
     console.log('  ✓ ADR-1124: img/dataUrl/locked/ equal-value exclusions (3 asserts)');
   }
 
+  // ADR-1125: op path — a prop the remote op lost (local clock ≥ op clock) is
+  // dropped from `after`, leaving the remote's value forever stale; the drop now
+  // queues a convergence 'upd' (before = the remote's own value) even when the
+  // whole op drops out (early return flushes _txE).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,text:'local',stroke:'#000'};
+    Store.commit({op:'add',shape:r});
+    state.wclock['S']={text:{peer:'B',seq:5,ts:5000}};   // local newer than the op clock
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    const hlen=state.history.length;
+    try{
+      Store.applyRemote({op:'upd',id:'S',before:{text:'base'},after:{text:'remote'},clock:{peer:'A',seq:1,ts:50}});
+      assert.strictEqual(byId('S').text,'local','local-newer value kept');
+      const emits=sent.filter(o=>o.op==='upd'&&o.id==='S');
+      assert.strictEqual(emits.length,1,'full-drop still emits the local winner');
+      assert.strictEqual(emits[0].after.text,'local','emitted local value');
+      assert.strictEqual(emits[0].before.text,'remote','emit baseline = remote value');
+      assert.strictEqual(emits[0].clock.peer,'B','emit stamped with the local peer clock');
+      assert.strictEqual(state.history.length,hlen+1,'emit is a real op, not silent');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1125: full-drop emits local winner via _txFlush (6 asserts)');
+  }
+
+  // ADR-1125: partial drop — remote-won props still apply while the local winner
+  // rides back; move ops emit per-shape the same way.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,text:'local',stroke:'#000'};
+    Store.commit({op:'add',shape:r});
+    state.wclock['S']={text:{peer:'B',seq:5,ts:5000},x:{peer:'B',seq:6,ts:5000}};
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      Store.applyRemote({op:'upd',id:'S',before:{text:'base',stroke:'#000'},after:{text:'remote',stroke:'#fff'},clock:{peer:'A',seq:2,ts:60}});
+      assert.strictEqual(byId('S').stroke,'#fff','remote-won prop still applied');
+      const e1=sent.filter(o=>o.op==='upd'&&o.id==='S');
+      assert.strictEqual(e1.length,1,'one emit');
+      assert.strictEqual(e1[0].after.text,'local','emitted local text');
+      assert.ok(!('stroke' in e1[0].after),'remote-won prop not emitted');
+      sent.length=0;
+      Store.applyRemote({op:'move',ids:['S'],dx:9,dy:9,before:[{id:'S',x:0,y:0}],after:[{id:'S',x:9,y:9}],clock:{peer:'A',seq:3,ts:70}});
+      const e2=sent.filter(o=>o.op==='upd'&&o.id==='S');
+      assert.strictEqual(e2.length,1,'move emits local-newer x');
+      assert.strictEqual(e2[0].after.x,0,'emitted local x (0)');
+      assert.strictEqual(byId('S').y,9,'remote-won y still applied');
+      assert.strictEqual(e2[0].before.x,9,'emit baseline = remote x');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1125: partial drop + move emit (8 asserts)');
+  }
+
+  // ADR-1125: exclusions — equal values and structural/img/locked keys never emit;
+  // a prop with no local clock applies remote-wins normally.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,text:'same',label:'mine',img:'k1:2'};
+    Store.commit({op:'add',shape:r});
+    state.wclock['S']={text:{peer:'B',seq:5,ts:5000},img:{peer:'B',seq:6,ts:5000},locked:{peer:'B',seq:7,ts:5000}};
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      Store.applyRemote({op:'upd',id:'S',before:{text:'same',label:'base',img:'k0:2',size:2},after:{text:'same',label:'theirs',img:'k9:2',size:4},clock:{peer:'A',seq:4,ts:80}});
+      const emits=sent.filter(o=>o.op==='upd'&&o.id==='S');
+      assert.strictEqual(emits.length,0,'equal-valued + excluded keys emit nothing');
+      assert.strictEqual(byId('S').text,'same','equal text untouched');
+      assert.strictEqual(byId('S').label,'theirs','no local clock → remote applies');
+      assert.strictEqual(byId('S').img,'k1:2','img divergence kept local, unpropagated');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1125: equal/excluded/unclocked props (4 asserts)');
+  }
+
+  // ADR-1125: ro swallows the emit — queue drains but nothing commits/broadcasts.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';state.ro=true;
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,text:'local'};
+    state.shapes=[r];_invalidateGrid();
+    state.wclock['S']={text:{peer:'B',seq:5,ts:5000}};
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      Store.applyRemote({op:'upd',id:'S',before:{text:'base'},after:{text:'remote'},clock:{peer:'A',seq:5,ts:90}});
+      assert.strictEqual(sent.length,0,'ro emits nothing');
+      assert.strictEqual(byId('S').text,'local','local value still kept');
+      state.ro=false;
+      // if the dropped emit had stayed queued, this flush would fire it stale
+      Store.applyRemote({op:'upd',id:'S',before:{stroke:'#000'},after:{stroke:'#fff'},clock:{peer:'A',seq:6,ts:95}});
+      assert.strictEqual(sent.filter(o=>o.op==='upd'&&o.id==='S').length,0,'ro-dropped emit queue was drained, not deferred');
+    }finally{Net.broadcast=_ob;state.ro=false}
+    console.log('  ✓ ADR-1125: ro swallows convergence emit (3 asserts)');
+  }
+
   // ADR-0372: snapshot merge gates values — NaN coords, non-array pts, structural
   // keys (id/type), and pollution keys are skipped even with a newer clock.
   {
@@ -8245,9 +8337,9 @@ try {
     A.state.peerId='peerA';
     const mvS={id:'mv',type:'rect',x:100,y:0,w:10,h:10,z:1};
     A.state.shapes.push(cp(mvS)); B.state.shapes.push(cp(mvS)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
-    const bfAB3=[];
+    const bfAB3=[], bfBA3=[];
     A.Net.broadcast = op => bfAB3.push({k:'op',op:cp(A.Net._slimOp(op))});
-    B.Net.broadcast = () => {};
+    B.Net.broadcast = op => bfBA3.push({k:'op',op:cp(B.Net._slimOp(op))});
     B.Net._onRecv({k:'op',op:{op:'upd',id:'mv',after:{x:150},clock:{peer:'peerX',seq:1,ts:200}}});
     assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 150, 'ADR-0732: racing upd lands at the peer');
     const mv={op:'move',ids:['mv'],dx:10,dy:0,before:[{id:'mv',x:100,y:0}],after:[{id:'mv',x:110,y:0}],clock:{peer:'peerA',seq:1,ts:100}};
@@ -8258,8 +8350,15 @@ try {
     assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 150, 'ADR-0732: forward move lost LWW at the peer (kept 150)');
     A.Store.undo();
     assert.strictEqual(A.state.shapes.find(s=>s.id==='mv').x, 100, 'ADR-0732: local undo restores the recorded x (was: -delta off whatever raced in)');
+    // ADR-1125: B's lost-prop emit restamped its x clock, so the undo-wire now
+    // arbitrates against it — exchange both directions until the emits settle.
     bfAB3.splice(0).forEach(m=>B.Net._onRecv(m));
-    assert.strictEqual(B.state.shapes.find(s=>s.id==='mv').x, 100, 'ADR-0732: absolute undo-wire converges the peer (was: -delta left it at 140)');
+    bfBA3.splice(0).forEach(m=>A.Net._onRecv(m));
+    bfAB3.splice(0).forEach(m=>B.Net._onRecv(m));
+    bfBA3.splice(0).forEach(m=>A.Net._onRecv(m));
+    const ax=A.state.shapes.find(s=>s.id==='mv').x, bx=B.state.shapes.find(s=>s.id==='mv').x;
+    assert.strictEqual(ax, bx, 'ADR-0732/1125: undo-wire vs racing-write emit converges on the clock winner');
+    assert.ok(bx===100||bx===150, 'winner is the undo or the racing write');
     console.log('  ✓ ADR-0732: move undo-wire absolute swap + backward absolute restore');
 
     // ADR-0733: delta-path backward (the real recorded form — local ops carry
@@ -8271,9 +8370,9 @@ try {
     A.state.peerId='peerA';
     const mv2={id:'mv2',type:'rect',x:100,y:0,w:10,h:10,z:1};
     A.state.shapes.push(cp(mv2)); B.state.shapes.push(cp(mv2)); A._invalidateGrid(); B._invalidateGrid(); A.sortZ(); B.sortZ();
-    const bfAB4=[];
+    const bfAB4=[], bfBA4=[];
     A.Net.broadcast = op => bfAB4.push({k:'op',op:cp(A.Net._slimOp(op))});
-    B.Net.broadcast = () => {};
+    B.Net.broadcast = op => bfBA4.push({k:'op',op:cp(B.Net._slimOp(op))});
     const mv3={op:'move',ids:['mv2'],dx:10,dy:5,clock:{peer:'peerA',seq:1,ts:100}};
     A.Store._apply(mv3,true);
     A.Store._recordCommitted(mv3);
@@ -8285,9 +8384,16 @@ try {
     const aS2=A.state.shapes.find(s=>s.id==='mv2');
     assert.strictEqual(aS2.x, 140, 'ADR-0733/0926: undo observed the remote write first → strictly-newer undo clock wins the axis back (HLC +1)');
     assert.strictEqual(aS2.y, 0, 'ADR-0733: unarbitrated axis still un-moves');
+    // ADR-1125: the forward move's arrival makes B emit its racing winner at a
+    // fresh clock (T0+1, tied with ut → 'peerB' wins the tiebreak), so the undo-
+    // wire arbitrates against it — exchange until the emits settle.
     bfAB4.splice(0).forEach(m=>B.Net._onRecv(m));
-    const bS2=B.state.shapes.find(s=>s.id==='mv2');
-    assert.strictEqual(bS2.x, 140, 'ADR-0926: peer applies the same arbitration — converged on the undo');
+    bfBA4.splice(0).forEach(m=>A.Net._onRecv(m));
+    bfAB4.splice(0).forEach(m=>B.Net._onRecv(m));
+    bfBA4.splice(0).forEach(m=>A.Net._onRecv(m));
+    const bS2=B.state.shapes.find(s=>s.id==='mv2'), aS3=A.state.shapes.find(s=>s.id==='mv2');
+    assert.strictEqual(bS2.x, 150, 'ADR-0926/1125: B keeps its emit-clock winner (the racing write)');
+    assert.strictEqual(aS3.x, 150, 'ADR-0926/1125: B emit reaches A — converged on the racing write');
     assert.strictEqual(bS2.y, 0, 'ADR-0733: peer un-moves y — converged');
     state._lastTs=0; B.state._lastTs=0;   // the far-future race raised both HLC floors — restore them or later local commits get poisoned clocks (A IS api — shares `state`)
     console.log('  ✓ ADR-0733: delta backward arbitrates per axis via _lwwSkip');
@@ -16613,7 +16719,9 @@ try {
       assert.ok(state.wclock[r29.id]&&state.wclock[r29.id].x,'applied write stamped wclock[id].x');
       Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:1},before:{x:5},clock:{peer:'p9',seq:2,ts:50}}},false);
       assert.strictEqual(r29.x,5,'stale-clock upd dropped by _lwwDrop');
-      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:9},before:{x:5},clock:{peer:'p9',seq:3,ts:200}}},false);
+      // ADR-1125: the drop emits the local winner at a fresh local clock, so a
+      // "newer" remote op must now beat that emit (within the wall+5min bound).
+      Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:9},before:{x:5},clock:{peer:'p9',seq:3,ts:Date.now()+200000}}},false);
       assert.strictEqual(r29.x,9,'newer-clock upd applied + restamped');
       state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
       console.log('  ✓ stamp/drop coverage symmetry holds (ADR-1029)');
@@ -19921,7 +20029,7 @@ pass += 7;
   assert.ok(!ops.some(o=>o.op==='upd'&&o.id==='t1'),'ADR-1123: no union emit when nothing survives');
   Net.broadcast=_ob;
   assert.ok(html.includes('_mT3='),'ADR-1123: 3-way text merger exists');
-  assert.ok(html.split('_txFlush();').length-1===4,'ADR-1123: emit flush on every commit path (commit/applyRemote/undo/redo)');
+  assert.ok(html.split('_txFlush();').length-1===5,'ADR-1123/1125: emit flush on every commit path (commit/applyRemote+drop-return/undo/redo)');
   assert.ok((html.match(/_mT3\(sh\[_tk\]/g)||[]).length===2,'ADR-1123: merge hooks at the upd + patch-list apply sites');
   state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
   console.log('  \u2713 ADR-1123 disjoint text merge + convergence emit (9 asserts)');
