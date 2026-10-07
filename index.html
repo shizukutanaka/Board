@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.114';   // ADR-1090
+const V='1.8.115';   // ADR-1091
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8329,17 +8329,12 @@ const Net={
         break;
       case 'snapshot':
         this._snapRx=true;   // ADR-0475
-        // ADR-0617: a snapshot predating our newest swap carries pre-swap shapes —
-        // merging it re-adds what the winning swap removed.
+        // ADR-0617: a snapshot predating our newest swap is stale — merging re-adds it.
         if(msg.rep&&validClock(msg.rep)&&state._lastRep&&clockNewer(state._lastRep,msg.rep))break;
         if(_nS()===0)this._applySnapshot(msg);
-        // Already have shapes: merge — adopt only shapes we don't have yet.
-        // Restrict to 'add' ops: _snapshotMsg() only
-        // op types here would let a malicious peer embed 'clear'/'del' inside a
-        // snapshot message and execute them under the snapshot path.
+        // Merge path: snapshot ops are 'add' only — any other kind would execute unchecked.
         else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){if(op.clock?.peer===msg.peer)this._mergeSnapshotOp(op)}   // ADR-0474/0932
-        // ADR-1055: responder's tomb deltas — ids we hold that it deleted at a newer
-        // clock. del parity: locked survives; the clock still lands.
+        // ADR-1055: tomb deltas — newer _del clocks land; locked survives.
         if(_iO(msg.dels)){const de=_oe(msg.dels);let rm=false;
           if(_ln(de)<=SHARE_MAX_SHAPES)for(const[id,c]of de)if(_idOK(id)&&validClock(c)){
             const w=_wc()[id]||(_wc()[id]=_wM());
@@ -8353,6 +8348,7 @@ const Net={
           if(!_pgs())_pgAdopt(msg.pages,state.curPg);   // ADR-0672
           else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:''}if(_ln(np)<64)_pu(np,l||clone(p))}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773
         }
+        if(_iS(msg.name)&&_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')){_nameTs=msg.nameTs;if(_idOK(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name))}   // ADR-1091
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617
         _ps();   // ADR-0973
         break;
