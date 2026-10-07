@@ -281,7 +281,7 @@ const checks = [
   ["addMany validates the wc clock snapshot (ADR-0726)", html.includes("op.wc==null||wcOk(op.wc)") && html.includes("const wcOk=m=>_iO(m)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
-  ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
+  ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_idOK(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
   ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_nugPush({op:'move',ids,dx,dy,orig})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
@@ -5102,7 +5102,7 @@ try {
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
     assert.ok(html.includes("_nameTs=ts;_namePeer=_pi();Net._bcast(_mk('name',{name:state.docName,ts})"),'rename stamps its own writer clock + broadcasts k:name (ADR-0581/0938)');
-    assert.ok(html.includes("(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped; non-finite/future ts rejected (ADR-0581/0699/0701/0791)');
+    assert.ok(html.includes("_iN(msg.ts)&&_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:'')"),'stale/clockless remote rename dropped; non-finite/future ts rejected (ADR-0581/0699/0701/0791/1099)');
     assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
     console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
@@ -6181,7 +6181,7 @@ try {
       // ADR-0707: pageDel gets 'del' parity — locked members survive (rehomed) and
       // bound connectors get connClears endpoints + undo/wire restore.
       {
-        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';state.wclock={};
         const victim=Shape.make('rect',{x:0,y:0,w:10,h:10});victim.pg='pB';
         const lk=Shape.make('rect',{x:20,y:0,w:10,h:10});lk.pg='pB';lk.locked=true;
         const conn=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});conn.pg='pA';conn.a=victim.id;conn.aF=0.5;
@@ -6191,7 +6191,7 @@ try {
         assert.ok(byId(lk.id)&&byId(lk.id).pg==='pA','locked member survives, rehomed to firstId (ADR-0707)');
         assert.ok(conn.a===null&&conn.aF==null,'bound connector endpoint cleared (ADR-0707)');
         // undo re-binds via the recorded connClears (local path)
-        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';state.wclock={};
         const v2=Shape.make('rect',{x:0,y:0,w:10,h:10});v2.pg='pB';
         const c2=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});c2.pg='pA';c2.a=v2.id;c2.aF=0.5;
         state.shapes=[v2,c2];
@@ -7436,6 +7436,7 @@ try {
     // wire each peer's outbound to the other's _onRecv (deep-copied, like a real wire)
     // ADR-0931: the real 'op' envelope carries peer:_pi() matching clock.peer —
     // wrap _onRecv so crafted ops get the same envelope shape.
+    const _cBc=A.Net.broadcast,_cSd=A.Net._send;   // ADR-1100: canonical egress, restored at teardown
     for(const W of[A,B]){const _r=W.Net._onRecv.bind(W.Net);W.Net._onRecv=(m,v)=>{if(m&&m.k==='op'&&m.peer===undefined&&m.op&&m.op.clock)m.peer=m.op.clock.peer;return _r(m,v)}}
     A.Net.broadcast = op => B.Net._onRecv({k:'op',op:cp(op)});
     B.Net.broadcast = op => A.Net._onRecv({k:'op',op:cp(op)});
@@ -8977,6 +8978,19 @@ try {
     // snapshot into api long after the collab blocks end (a mid-sleep _pgAdopt
     // cancels a live gesture — the ADR-0006 long-press flake). B goes inert here.
     B.Net._send=B.Net.broadcast=()=>{};clearTimeout(B.Net._snapT);B.Net._snapT=0;
+    A.Net.broadcast=_cBc;A.Net._send=_cSd;   // ADR-1100: the main world exits with canonical egress, not a dead-B relay
+    {   // ADR-1100 pins: canonical egress — a post-teardown commit reaches bc/DC only, never the dead world
+      reset(A); reset(B);
+      const rm=A.Shape.make('rect',{x:0,y:0,w:1,h:1});
+      A.Store.commit({op:'add',shape:rm});
+      assert.ok(A.state.shapes.some(s=>s.id===rm.id),'local commit still lands on the main world');
+      assert.ok(!B.state.shapes.some(s=>s.id===rm.id),'canonical broadcast does not relay into the dead world');
+      const _dnB=B.state.docName;
+      A.Net._send({k:'name',name:'ADR1100',ts:nowTs(),peer:'zz'});
+      assert.strictEqual(B.state.docName,_dnB,'canonical _send posts to bc — not into B._onRecv');
+      console.log('  ✓ ADR-1100 two-world teardown restores canonical egress (3 asserts)');
+    }
+    pass += 3;
 
     // ---- ADR-0015: share-link E2E encryption (FT-21) --------------------------------
     // location/history are Function params (fakeWin.location/history) — previously they
@@ -11095,6 +11109,23 @@ try {
     assert.ok(lastToast && lastToast.kind === 'ok',
       'SW controllerchange: shows ok toast when new SW activates');
     console.log('  ✓ SW update notification: controllerchange → reload toast (web.dev SW lifecycle)');
+  }
+
+  // ADR-1101: exportPDF empty-page feedback — a hidden-only board has shapes
+  // (_nS()>0) but no visible bbox; the second gate must toast 'empty' like
+  // every other export path instead of silently returning.
+  {
+    const _emSave=UI.toast;let _tk=null;
+    UI.toast=(m,k)=>{_tk={m,k}};
+    state.shapes.length=0;_invalidateGrid();
+    const hs=api.Shape.make('rect',{x:0,y:0,w:10,h:10});
+    api.Store.commit({op:'add',shape:hs});
+    byId(hs.id).visible=0;
+    try{api.exportPDF()}finally{UI.toast=_emSave;state.shapes.length=0;_invalidateGrid()}
+    assert.ok(_tk&&_tk.k==='warn','exportPDF warns on a hidden-only board');
+    assert.ok(_tk&&/(Canvas is empty|キャンバスが空)/.test(_tk.m),"exportPDF toasts the 'empty' message, not a silent return");
+    console.log('  ✓ ADR-1101 exportPDF empty-page toast parity (2 asserts)');
+    pass += 2;
   }
 
   // v1.6.94: _esc single-quote encoding — must fail before fix, pass after
@@ -16657,7 +16688,7 @@ try {
       // ops on the op's own clock, so convergence still applies).
       assert.ok(html.includes("if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}"),'existence clocks merge pairwise');
       assert.ok(html.includes("if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}"),'unknown ids adopt wc then re-run applyRemote');
-      assert.ok(html.includes("!(wd._born&&clockNewer(wd._born,wd._del))"),'a newer birth supersedes a tomb');
+      assert.ok(html.includes("!(w._born&&clockNewer(w._born,w._del))"),'a newer birth supersedes a tomb');
       reset();
       const mk=id=>({id,type:'rect',x:0,y:0,w:10,h:10,z:1}),clk=(seq,ts)=>({peer:'q',seq,ts});
       state.shapes.push(mk('a1'));state.wclock['a1']={_born:clk(1,100),x:clk(2,200)};
@@ -17156,9 +17187,9 @@ try {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     _pgAdd();const dp1=state.pages[0].id,dp2=state.pages[1].id;
     switchPage(dp1);
-    Store.applyRemote({op:'pageDel',id:dp1,clock:{peer:'rp',seq:14,ts:14}});
+    Store.applyRemote({op:'pageDel',id:dp1,clock:{peer:'rp',seq:14,ts:Date.now()+1000}});   // newer than the local pageAdd's born (ADR-1094 gate)
     assert.ok(state.curPg===dp2,'remote pageDel of the viewed page falls onto a survivor via switchPage');
-    state.pages=null;state.curPg=null;
+    state.pages=null;state.curPg=null;state._lastTs=0;   // restore the HLC floor for downstream fixtures
     console.log('  ✓ page nav: PgUp/PgDn through the real key listener, wraps (ADR-0648, 4 asserts)');
     // ADR-0650: pageAdd carries member shapes — one op creates the page + its content
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
@@ -17385,7 +17416,7 @@ try {
     assert.strictEqual(Net._snapshotMsg().namePeer,'base','baseline namePeer stored');
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'SnapName',nameTs:Date.now()+6000,namePeer:'A'.repeat(200)},false);
     assert.strictEqual(state.docName,'SnapName','snapshot name still applies on ts win');
-    assert.strictEqual(Net._snapshotMsg().namePeer,'base','oversized namePeer rejected at intake');
+    assert.strictEqual(Net._snapshotMsg().namePeer,'','oversized namePeer normalized to absent at intake (ADR-1092)');
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'Snap2',nameTs:Date.now()+7000,namePeer:'ok'},false);
     assert.strictEqual(Net._snapshotMsg().namePeer,'ok','valid namePeer still stored');
     console.log('  ✓ snapshot namePeer bounded like every wire id (ADR-0780)');
@@ -18996,6 +19027,233 @@ pass += 10;
   console.log('  \u2713 ADR-1091 merge-path docName parity (4 asserts)');
 }
 pass += 4;
+
+// ---- ADR-1092: stale-rep snapshot still arbitrates docName + writer normalization ----
+{
+  const sE=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sE.id='n1';
+  state.roomId='roomOld';Net.init('roomX');   // resets _nameTs/_namePeer (ADR-0619)
+  state.shapes=[sE];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  // a snapshot whose rep marker loses still gets its winning docName arbitrated
+  Net._onRecv({k:'name',name:'OldName',ts:1,peer:'p9'},false);
+  state._lastRep={ts:200,peer:'p1',seq:1};
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'NewName',nameTs:5,rep:{ts:100,peer:'p9',seq:1}},false);
+  assert.strictEqual(state.docName,'NewName','stale-rep snapshot still arbitrates docName');
+  assert.deepStrictEqual(state._lastRep,{ts:200,peer:'p1',seq:1},'stale rep marker is not adopted');
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'Loser',nameTs:1,rep:{ts:99,peer:'p9',seq:1}},false);
+  assert.strictEqual(state.docName,'NewName','stale-rep losing name is rejected');
+  // a namePeer-less adoption does not inherit the previous writer (merge path)
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[sE];state._lastRep=null;
+  Net._onRecv({k:'name',name:'W1',ts:9,peer:'z9'},false);
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'Snap',nameTs:10},false);
+  Net._onRecv({k:'name',name:'Tie',ts:10,peer:'a'},false);
+  assert.strictEqual(state.docName,'Tie','namePeer-less adopt resets writer (merge path)');
+  // same normalization on the empty-path adopt
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state._lastRep=null;
+  Net._onRecv({k:'name',name:'W2',ts:9,peer:'z9'},false);
+  Net._onRecv({k:'snapshot',peer:'p9',shapes:[sE],ops:[],name:'Snap2',nameTs:10},false);
+  Net._onRecv({k:'name',name:'Tie2',ts:10,peer:'a'},false);
+  assert.strictEqual(state.docName,'Tie2','namePeer-less adopt resets writer (empty path)');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1092 stale-rep name arbitration + writer normalization (5 asserts)');
+}
+pass += 5;
+
+// ---- ADR-1093: page-id tombstones converge zombie pages over the delta channel ----
+{
+  const sF=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sF.id='m2';sF.pg='p2';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[sF];state.wclock={};state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  // responder: a deleted page emits its id tomb via `dels` (Gap B)
+  Store.applyRemote({op:'pageDel',id:'p2',clock:{ts:50,peer:'p9',seq:1}});
+  assert.strictEqual(state.pages.length,1,'pageDel removes the page');
+  assert.ok(state.wclock.p2&&state.wclock.p2._del,'pageDel tombs the page id itself');
+  assert.ok(Net._snapshotMsg({p2:{ts:1,peer:'a',seq:0}}).dels.p2,'delta snapshot carries the page tomb');
+  // joiner: the same dels entry splices the zombie page + kills its members
+  const sG=JSON.parse(JSON.stringify(sF));
+  state.shapes=[sG];state.wclock={};state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.seenOps=new Set();
+  Net._onRecv({k:'snapshot',peer:'p9',dels:{p2:{ts:50,peer:'p9',seq:1}}},false);
+  assert.deepStrictEqual(state.pages.map(p=>p.id),['p1'],'dels tomb removes the zombie page');
+  assert.ok(!byId('m2'),'dels tomb kills the zombie page members');
+  // union-heal cannot resurrect a page tombed in the same message
+  state.wclock={};state.pages=[{id:'p1',name:'A',nts:0}];
+  Net._onRecv({k:'snapshot',peer:'p9',dels:{p2:{ts:60,peer:'p9',seq:1}},pages:[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}]},false);
+  assert.strictEqual(state.pages.length,1,'union-heal skips a just-tombed page');
+  // a born-newer rebirth suppresses the stale tomb on both emit and intake
+  state.wclock={p2:{_del:{ts:1,peer:'a',seq:0},_born:{ts:9,peer:'a',seq:0}}};state.pages=[{id:'p2',name:'B',nts:0}];state.curPg='p2';
+  const msg2=Net._snapshotMsg({p2:{ts:1,peer:'a',seq:0}});
+  assert.ok(!msg2.dels||!msg2.dels.p2,'reborn page suppresses its stale tomb');
+  Net._onRecv({k:'snapshot',peer:'p9',dels:{p2:{ts:2,peer:'p9',seq:1}}},false);
+  assert.strictEqual(state.pages.length,1,'reborn page survives a stale tomb');
+  // pageAdd born-stamps an introduced page
+  state.wclock={pX:{_del:{ts:1,peer:'a',seq:0}}};state.pages=[{id:'p1',name:'A',nts:0}];state.curPg='p1';
+  Store.applyRemote({op:'pageAdd',id:'pX',name:'X',clock:{ts:9,peer:'p9',seq:1}});
+  assert.ok(state.wclock.pX._born,'pageAdd born-stamps the introduced page');
+  // pageDel + undo rebirths the page above its tomb (fresh undo clock)
+  const pd={op:'pageDel',id:'pX',clock:{ts:10,peer:'p9',seq:1}};
+  Store._apply(pd,true);assert.ok(!_pgById('pX'),'pageDel forward removes the page');
+  pd.clock={ts:11,peer:'p9',seq:1};Store._apply(pd,false);
+  assert.ok(_pgById('pX')&&clockNewer(state.wclock.pX._born,state.wclock.pX._del),'pageDel undo reborns above the tomb');
+  // wholesale replace tombs page ids the swap dropped
+  state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.wclock={};
+  Store.applyRemote({op:'replace',after:[sF],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:20,peer:'p9',seq:2}});
+  assert.ok(state.wclock.p2&&state.wclock.p2._del,'replace tombs a dropped page id');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1093 page-id tombstones over the delta channel (12 asserts)');
+}
+pass += 12;
+
+// ---- ADR-1094: pageDel/replace page tomb loses to a newer _born (del parity) ----
+{
+  const sF=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sF.id='m2';sF.pg='p2';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[sF];state.wclock={p2:{_born:{ts:200,peer:'a',seq:0}}};state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  Store.applyRemote({op:'pageDel',id:'p2',clock:{ts:100,peer:'p9',seq:1}});
+  assert.ok(_pgById('p2'),'a stale pageDel cannot splice a newer-born page');
+  assert.ok(byId('m2'),'a stale pageDel cannot kill born-newer page members');
+  assert.ok(!state.wclock.p2._del&&state.wclock.p2._born.ts===200,'a stale pageDel writes no tomb and keeps the _born');
+  Store.applyRemote({op:'pageDel',id:'p2',clock:{ts:300,peer:'p9',seq:2}});
+  assert.ok(!_pgById('p2')&&state.wclock.p2._del,'a fresh pageDel still tombs the page');
+  // replace's dropped-page tomb reads the pre-wipe clock snapshot (wc0)
+  const sG=JSON.parse(JSON.stringify(sF));sG.id='m3';
+  state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.wclock={p2:{_born:{ts:300,peer:'a',seq:0}}};state._lastRep=null;
+  Store.applyRemote({op:'replace',after:[sG],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:200,peer:'p9',seq:3}});
+  assert.ok(!state.wclock.p2||!state.wclock.p2._del,'a stale replace writes no tomb over a newer _born');
+  state.wclock={p2:{_born:{ts:300,peer:'a',seq:0}}};state._lastRep=null;state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];
+  Store.applyRemote({op:'replace',after:[sG],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:400,peer:'p9',seq:4}});
+  assert.ok(state.wclock.p2&&state.wclock.p2._del,'a fresh replace still tombs a dropped page id');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1094 page tomb vs newer _born parity (6 asserts)');
+}
+pass += 6;
+
+// ---- ADR-1095: pageAdd forward lacks 'add' parity — no _tmb gate on the page id, member loop misses the _born escape ----
+{
+  const m9=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));m9.id='m9';m9.pg='p9';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.pages=null;state.curPg=null;state.wclock={p9:{_del:{ts:200,peer:'a',seq:0}}};state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'pageAdd',id:'p9',name:'X',shapes:[m9],clock:{ts:100,peer:'p9',seq:5}});
+  assert.ok(!_pgById('p9')&&state.pages==null,'a stale pageAdd cannot resurrect a tombed page (add parity)');
+  assert.ok(!byId('m9'),'a stale pageAdd lands no members either');
+  Store.applyRemote({op:'pageAdd',id:'p9',name:'X',clock:{ts:300,peer:'p9',seq:6}});
+  assert.ok(_pgById('p9')&&state.wclock.p9._born&&state.wclock.p9._born.ts===300,'a newer pageAdd rebirths over the tomb');
+  // member loop unifies on _tmb: a member reborn after its tomb must be admitted even when the op clock predates the tomb
+  const m10=JSON.parse(JSON.stringify(m9));m10.id='m10';const m11=JSON.parse(JSON.stringify(m9));m11.id='m11';
+  state.wclock={m10:{_del:{ts:500,peer:'a',seq:0},_born:{ts:600,peer:'a',seq:0}},m11:{_del:{ts:500,peer:'a',seq:0}}};
+  Store.applyRemote({op:'pageAdd',id:'p9',name:'X',shapes:[m10,m11],clock:{ts:400,peer:'p9',seq:7}});
+  assert.ok(byId('m10'),'a member reborn after its tomb is admitted via the _born escape');
+  assert.ok(!byId('m11'),'a member whose tomb outranks the op clock is still skipped');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1095 pageAdd tomb/_born parity (5 asserts)');
+}
+pass += 5;
+
+// ---- ADR-1096: 'replace' member loop used a hand-rolled tomb check missing the _born escape — unified on _tmE ----
+{
+  const x1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));x1.id='x1';
+  const x2=JSON.parse(JSON.stringify(x1));x2.id='x2';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.pages=null;state.curPg=null;state.wclock={x1:{_del:{ts:500,peer:'a',seq:0},_born:{ts:600,peer:'a',seq:0}},x2:{_del:{ts:500,peer:'a',seq:0}}};state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'replace',after:[x1,x2],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:400,peer:'p9',seq:8}});
+  assert.ok(byId('x1'),'replace admits a member reborn after its tomb (the _born escape)');
+  assert.ok(!byId('x2'),'replace still skips a member whose tomb outranks the op clock');
+  assert.ok(state.wclock.x1&&state.wclock.x1._born&&state.wclock.x1._born.ts===600,'_wTb restores the real _born, not the op clock');
+  state.wclock={x2:{_del:{ts:500,peer:'a',seq:0}}};
+  Store.applyRemote({op:'replace',after:[x2],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:700,peer:'p9',seq:9}});
+  assert.ok(byId('x2'),'an op newer than the tomb still installs the member');
+  assert.ok(state.wclock.x2&&state.wclock.x2._born&&state.wclock.x2._born.ts===700,'the install stamps its own born over the older tomb');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1096 replace member _born escape + _wTb born preserve (5 asserts)');
+}
+pass += 5;
+
+// ---- ADR-1097: wclock flood trim rebuilt tomb-only entries — dropped an outranking _born, advertising live ids as dead ----
+{
+  const x1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));x1.id='x1';
+  const d1=JSON.parse(JSON.stringify(x1));d1.id='d1';
+  const wc={x1:{_del:{ts:500,peer:'a',seq:0},_born:{ts:600,peer:'a',seq:0}},x2:{_del:{ts:500,peer:'a',seq:0}},x3:{_born:{ts:600,peer:'a',seq:0}}};
+  for(let i=0;i<8200;i++)wc['f'+i]={_del:{ts:1,peer:'a',seq:0}};
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[x1];state.pages=null;state.curPg=null;state.wclock=wc;state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'del',shapes:[d1],clock:{ts:700,peer:'p9',seq:8}});
+  assert.ok(state.wclock.x1&&state.wclock.x1._born&&state.wclock.x1._born.ts===600,'trim preserves an outranking _born');
+  assert.ok(state.wclock.x1._del&&state.wclock.x1._del.ts===500,'trim preserves the tomb itself');
+  assert.ok(!state.wclock.x2._born,'a plain tomb keeps no _born (dead weight trimmed)');
+  assert.ok(state.wclock.x2._del&&state.wclock.x2._del.ts===500,'plain tombs still survive the trim');
+  assert.ok(state.wclock.x3&&state.wclock.x3._born&&state.wclock.x3._born.ts===600,'a born-only record survives — still gates a stale del');
+  assert.ok(clockNewer(state.wclock.x1._born,{ts:550,peer:'a',seq:0}),'the born still outranks — a dels sweep would not offer the live id as dead');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1097 wclock flood trim keeps outranking _born (6 asserts)');
+}
+pass += 6;
+
+// ---- ADR-1098: egress MAC coverage × dels existence-clock parity audit — contracts pinned ----
+{
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  const _os=Net._send,_obc=Net.bc,_odc=Net.dc;
+  Net._send=function(m){if(this.bc){if(!m.mac)m.mac=this._mac(m);try{this.bc.postMessage(m)}catch(_){}}};   // ADR-1098/1100: explicit canonical _send — pin stays self-contained, not reliant on section state
+  let bcCap=[],dcCap=[];
+  Net.bc={postMessage:m=>bcCap.push(m)};
+  Net.dc={readyState:'open',send:m=>dcCap.push(JSON.parse(m))};
+  Net._bcast({k:'cursor',x:1,y:2,peer:'z'});
+  assert.ok(bcCap.some(m=>m.k==='cursor'&&typeof m.mac==='string'),'BC copy of _bcast carries mac');
+  assert.ok(dcCap.some(m=>m.k==='cursor'&&typeof m.dmac==='string'),'DC payload of _bcast carries dmac');
+  dcCap=[];
+  Net._fragSend('x'.repeat(70000),'snap');
+  assert.ok(dcCap.length===2&&dcCap.every(m=>typeof m.dmac==='string'),'every snap fragment carries dmac');
+  dcCap=[];bcCap=[];
+  Net._imgOuts=[['k9','x'.repeat(70000)]];Net._flushImgOuts();
+  assert.ok(dcCap.length===2&&dcCap.every(m=>m.k==='img'&&typeof m.dmac==='string'),'every img chunk carries dmac');
+  assert.ok(bcCap.every(m=>m.k==='img'&&typeof m.mac==='string'),'every img chunk BC copy carries mac');
+  Net._send=_os;Net.bc=_obc;Net.dc=_odc;
+  assert.strictEqual(Net._dmac({k:'ping',peer:'p'}),Net._dmac({k:'ping',peer:'p',mac:'z',dmac:'z'}),'the canon ignores mac/dmac keys');
+  const a1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));a1.id='a1';
+  const l1=JSON.parse(JSON.stringify(Shape.make('rect',{x:9,y:9,w:5,h:5})));l1.id='l1';l1.locked=1;
+  state.shapes=[a1,l1];_invalidateGrid();
+  state.wclock={a1:{_born:{ts:600,peer:'a',seq:0}},l1:{_born:{ts:100,peer:'a',seq:0}},lw:{_del:{ts:700,peer:'a',seq:0}}};
+  Net._onRecv({k:'snapshot',peer:'px',shapes:[],ops:[],dels:{a1:{ts:500,peer:'px',seq:1}}},false);
+  assert.ok(!!byId('a1'),'dels tomb older than _born leaves the live shape (receive-side born escape)');
+  Net._onRecv({k:'snapshot',peer:'px',shapes:[],ops:[],dels:{a1:{ts:700,peer:'px',seq:2},l1:{ts:700,peer:'px',seq:3},lw:{ts:600,peer:'px',seq:4}}},false);
+  assert.ok(!byId('a1'),'dels tomb newer than _born kills the shape');
+  assert.ok(!!byId('l1'),'a locked shape survives dels (del parity)');
+  assert.ok(state.wclock.lw._del.ts===700,'an existing newer tomb is not clobbered by an older dels clock');
+  state.wclock={x:{_del:{ts:500,peer:'a',seq:0},_born:{ts:900,peer:'a',seq:0}},y:{_del:{ts:600,peer:'a',seq:0}}};
+  const msg=Net._snapshotMsg({x:{ts:100,peer:'a',seq:0},y:{ts:100,peer:'a',seq:0}});
+  assert.ok(!msg.dels.x,'a live id (born outranks del) is not advertised as dead');
+  assert.ok(!!msg.dels.y,'a plain dead tomb newer than the horizon is offered');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1098 egress auth coverage + dels existence parity (12 asserts)');
+}
+pass += 12;
+
+// ---- ADR-1099: wire 'name' requires a (ts,peer) clock; _CH producer parity — contracts pinned ----
+{
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state.ro=false;_invalidateGrid();
+  state.docName='Base';
+  Net._onRecv({k:'name',name:'NoTs',peer:'zz'},false);
+  assert.strictEqual(state.docName,'Base','a clockless name message is rejected');
+  Net._onRecv({k:'name',name:'BadTs',ts:'x',peer:'zz'},false);
+  assert.strictEqual(state.docName,'Base','a non-numeric ts is rejected');
+  const t1=nowTs();
+  Net._onRecv({k:'name',name:'First',ts:t1,peer:'zz'},false);
+  assert.strictEqual(state.docName,'First','a valid (ts,peer) name lands and stamps the writer pair');
+  Net._onRecv({k:'name',name:'Stale',ts:t1-1,peer:'zz'},false);
+  assert.strictEqual(state.docName,'First','an older-ts rename loses the arbitration');
+  Net._onRecv({k:'name',name:'Future',ts:t1+6e8,peer:'zz'},false);
+  assert.strictEqual(state.docName,'First','a far-future ts is rejected by _tsOK');
+  const dEl=fakeDoc.getElementById('docName');dEl.value='Typed';
+  for(const f of dEl._L.change||[])f({});
+  assert.strictEqual(state.docName,'Typed','a change-only edit commits through the shared funnel');
+  const _os=Net._send;let sent=0;Net._send=()=>sent++;
+  dEl.value=state.docName;
+  for(const f of dEl._L.change||[])f({});
+  assert.strictEqual(sent,0,'an unchanged change event is a no-op — no rebroadcast');
+  Net._send=_os;
+  console.log('  ✓ ADR-1099 name-channel clock + change-path parity (9 asserts)');
+}
+pass += 9;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

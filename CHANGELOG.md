@@ -1,3 +1,96 @@
+## [1.8.125] - 2026-10-01
+
+### Fixed
+- **round851 / ADR-1101 — exportPDF toasts 'empty' on a visible-less page**: exportPDF gated on `_nS()` (any shapes at all) but a second `_bA(_shV())` null — shapes exist yet all hidden/off-page — silently `return`ed with no feedback while every sibling exporter (`_renderPngBlob`, viewport PNG, `exportSVG` via `buildSVG===null`, `.board`, `.excalidraw`, `.drawio`) toasts `_wT(_EM)`; the second gate now toasts identically.
+
+### Tests
+- Behavioural pin: exportPDF on a hidden-only board warns with the `empty` message instead of a silent return.
+- Docs: ADR-1101 records the full export-pipeline audit — hidden parity, page scope, remote-string escaping, payload bounds, parked-img behaviour, and import-side born-clock convergence all verified clean.
+
+## [1.8.124] - 2026-10-01
+
+### Tests
+- **round850 / ADR-1100 — two-world teardown restores canonical egress**: the two-peer convergence harness (`test.mjs:7424+`) ends by inerting world B (`B.Net._send=B.Net.broadcast=()=>{}`) but left the MAIN world's `Net.broadcast`/`Net._send` wired as cross-world relays (`op => B.Net._onRecv(...)`) — every post-section commit pushed unslimmed ops into the dead world and never exercised the real `_slimOp`/`dmac`/`_sendDC` egress path. Canonical refs are now captured before the first rewire and restored at teardown; 3 behavioural pins assert a post-teardown commit lands locally, never relays into the dead world, and `_send` posts to bc instead of `B._onRecv`.
+
+## [1.8.123] - 2026-10-01
+
+### Fixed
+- **round849 / ADR-1099 — wire `name` requires a writer clock + `change`-only doc-name edits broadcast**: two gaps on the docName channel. (1) `case 'name'` adopted a name message unconditionally when `msg.ts` wasn't a number — every legitimate producer (`_bName`) stamps `{ts,peer}`, so a clockless name could only be forged: the guard now requires `_iN(msg.ts)&&_tsOK(msg.ts)&&_nameWin(...)` like every other writer-clock channel, and stamps the (ts, peer) pair on adoption only. (2) The doc-name `change` handler re-applied the field value but never stamped a writer clock or broadcast — an input-less field change (assistive tech, composition-cancel edge) landed locally while peers never learned it and `_nameTs` stayed stale; it now funnels through `_commitDocName` gated on `value!==_dn()` (an unchanged `change` is a no-op — no re-broadcast), so every name write ends up stamped + advertised.
+
+### Tests
+- Behavioural pins for the `name` intake gate (clockless/non-numeric-ts/far-future rejection, older-ts arbitration loss) and the `change` path (diverged value commits + stamps, unchanged value is a no-op).
+
+## [1.8.122] - 2026-10-01
+
+### Docs+Tests
+- **round848 / ADR-1098 — egress MAC coverage × `dels` existence-clock parity audit**: verified (a) every DC egress is tagged before serialization (`_tagDc`/`_bcast`/`broadcast`/`_flushFragOuts`/`_flushImgOuts`/`_sendSnapshot`, with `_dcQ` storing the already-tagged string) and every BC copy is `mac`-stamped inside `_send`; (b) the `dels` tomb-delta channel honors the existence-clock contract on both ends (send-side `!_bN` live-id filter, receive-side locked/`_tAlive` born-escape, LWW-conditional tomb write); (c) every re-introduction site stamps `_born`. Audit-clean — 12 behavioural pins added.
+
+## [1.8.121] - 2026-10-01
+
+### Fixed
+- **round847 / ADR-1097 — wclock flood trim preserves existence clocks**: the `del`-forward flood cap (>8192 entries) rebuilt the map as `t[id]={_del:w._del}`, dropping `_born` in two clobber modes (same class as ADR-1096's `_wTb` fix): (1) an outranking `_born` on `{_del@500,_born@600}` degenerated to a plain tomb — a live shape stayed installed while `dels` advertised the id as dead to joining peers and a re-delivered stale `del` could tomb it again; (2) `_born`-only live records (canonical after `add` clears the tomb) were dropped entirely, erasing the `_bN`/`_tmb` protection record. The trim now keeps `_del` plus any `_born` that outranks it (`clockNewer(w._born,w._del||{})`) and still drops all prop clocks — bounded at the two existence clocks per entry.
+
+### Docs
+- `docs/ADR-1097-wclock-trim-born.md`.
+
+### Tests
+- test.mjs: 6 ADR-1097 behavioural pins — outranking `_born` survives; tomb survives; plain tomb gains no `_born`; plain tombs survive; `_born`-only record survives; surviving `_born` still outranks a dels clock.
+
+## [1.8.120] - 2026-10-01
+
+### Fixed
+- **round846 / ADR-1096 — `replace` member install gets the `_born` escape; `_wTb` preserves `_born`**: the `replace` forward member loop re-implemented the tomb check by hand (`wd._del&&clockNewer`), missing `_tmb`'s `_born` escape — a member of `op.after` with `{_del@500,_born@600}` was skipped whenever the op clock predated the tomb, dropping a shape the sender holds. Separately, `_wTb` (the pre-wipe tomb restore used by `replace`/`clear`/`_repC`) wrote whole-value `_wD` entries, clobbering `_born`: an admitted member ended `{_del,_born@op.clock}` (tomb-dead, advertised to the room on the next `dels`), and `keep` survivors restored verbatim by `_wR` had their `{_del,_born}` clobbered to `{_del}` right after. The predicate is now entry-parameterized — `_tmE(w,op)` with `_tmb(id,op)` delegating — the member loop gates on `_tmE(wc0[s.id],op)`, and `_wTb` preserves a valid `_born` alongside the re-written `_del`.
+
+### Docs
+- `docs/ADR-1096-replace-member-born-escape.md`.
+
+### Tests
+- test.mjs: 5 ADR-1096 behavioural pins — born-escape member admitted; plain-tomb member skipped; `_wTb` restores the real `_born`; an op newer than the tomb installs and stamps its own `_born`.
+
+## [1.8.119] - 2026-10-01
+
+### Fixed
+- **round845 / ADR-1095 — `pageAdd` forward gets `add` parity (`_tmb` on the page id + member loop)**: shape `add`/`addMany` reject stale adds behind a newer `_del` tomb (ADR-0734), but `pageAdd` had no gate — a stale `pageAdd` spliced the page back (plus `curPg` move, `s.pg` re-attribution, member attach) despite a newer tomb, leaving a zombie until the next `dels` exchange. The member loop also re-implemented the check without `_tmb`'s `_born` escape, dropping members that were reborn after their tomb. `pageAdd` forward now breaks on `_tmb(op.id,op)` and the member loop uses `_tmb(sh.id,op)` — a newer `pageAdd` still rebirths over its tomb, and a reborn member is admitted even when the op clock predates the tomb.
+
+### Docs
+- `docs/ADR-1095-pageadd-tomb-parity.md`.
+
+### Tests
+- test.mjs: 5 ADR-1095 behavioural pins — stale `pageAdd` rejected (no page, no members); newer `pageAdd` rebirths and stamps `_born`; reborn member admitted via the `_born` escape; tombed member still skipped.
+
+## [1.8.118] - 2026-10-01
+
+### Fixed
+- **round844 / ADR-1094 — page tomb loses to a newer `_born` (del parity)**: shape `del` has the ADR-0926 born-gate but the page-id kill paths added in ADR-1093 had none — a stale `pageDel` could splice a page that was reborn (pageDel-undo `_bT`, union-heal stamp, re-`pageAdd`), and `_pgDel2`'s `_wD` clobbered the newer `_born` entry, letting a stale tomb outrank the real birth on the next `dels` exchange. `pageDel` forward now breaks on `_bN(op.id,op.clock)` (no splice, no member kill, no tomb), `_pgDel2` gates its page tomb the same way, and `replace` forward gates the dropped-page tomb loop on the pre-wipe `wc0` snapshot (the live map is wiped before the loop, so `_bN` would read empty). Kill ops now lose to newer births on both key spaces.
+
+### Docs
+- `docs/ADR-1094-page-tomb-born-parity.md`.
+
+### Tests
+- test.mjs: 6 ADR-1094 behavioural pins — stale `pageDel` can't splice/kill/tomb a born-newer page; fresh `pageDel` still tombs; stale `replace` writes no tomb over `_born`; fresh `replace` still tombs a dropped page id. Two fixture updates for the new contract: ADR-0707 remote pageDel fixtures clear `state.wclock` (their ts:6 kill predates a leaked ~nowTs `_born`), and ADR-0649's remote pageDel uses `Date.now()+1000` (must outrank the local `_pgAdd` born) with `_lastTs` restored for downstream fixtures.
+
+## [1.8.117] - 2026-10-01
+
+### Fixed
+- **round843 / ADR-1093 — page-id tombstones over the delta channel (Gap B, ADR-1091)**: `pageDel` tombed the deleted page's member shapes but never the page id itself, so a joiner holding a stale copy of the page got it re-added as a zombie by the `msg.pages` union-heal. Page ids now reuse the shape tomb machinery (`_wD`/`_bT`/`_bN`): `_pgDel2` tombs the page id, `replace` forward tombs ids the swap dropped, `sync-req`/`_snapshotMsg` `dels` emit and intake cover page tombs with `_bN` reborn suppression, union-heal skips a just-tombed page and born-stamps adopted ones, and `pageAdd`/`pageDel`-undo born-stamp so resurrected pages outrank their tombs. Zero new wire fields — the existing `dels` channel carries them.
+
+### Docs
+- `docs/ADR-1093-page-id-tombstones.md`.
+
+### Tests
+- test.mjs: 12 ADR-1093 behavioural pins — pageDel page tomb, `dels` emit, joiner splice + member kill, union-heal tomb gate, born-newer suppression both directions, `pageAdd` born-stamp, `pageDel`-undo rebirth, `replace` page-id tomb.
+
+## [1.8.116] - 2026-10-01
+
+### Fixed
+- **round842 / ADR-1092 — rep-independent docName arbitration + writer-clock normalization**: closes the two residual defects Devin Review found in ADR-1091's merge-path fix. (F1) The strict name line sat at the `case 'snapshot'` tail — *after* the ADR-0617 stale-`rep` `break` — so a snapshot whose swap marker predated `_lastRep` skipped name arbitration too: a peer that renamed after missing our swap kept a divergence forever. The arbitration now runs before the rep gate (names are an independent LWW domain) and persists via `_ps()` on the stale path. (F2) Writer-less adoption adopted the new `nameTs` but kept the previous `_namePeer` — a `(ts, peer)` clock nobody wrote, misattributing later equal-ts arbitration. All adoption sites (`case 'snapshot'`, `_applySnapshot`, IDB restore) now adopt the writer clock as a normalized pair gated on the ts adopt: `_namePeer=_idOK(peer)?peer:''`, and arbitration compares against the same `_idOK`-normalized input so an oversized writer is treated as absent (ADR-0780 bound preserved).
+
+### Docs
+- `docs/ADR-1092-rep-independent-docname-arbitration.md`.
+
+### Tests
+- test.mjs: 5 ADR-1092 behavioural pins — stale-rep snapshot still arbitrates a winning docName (rep marker untouched), losing name rejected, writer-less adoption resets `_namePeer` on merge and empty paths; the ADR-0780 pin now expects normalization to `''`.
+
 ## [1.8.115] - 2026-10-01
 
 ### Fixed
