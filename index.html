@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.146';   // ADR-1122
+const V='1.8.147';   // ADR-1123
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1490,6 +1490,7 @@ const Store={
     }
     _rdb();
     if(op.clock.peer===_pi())Net.broadcast(op);   // outbound only
+    _txFlush();   // ADR-1123
   },
   // ADR-0760
   _remoteDelConnFix(op){
@@ -1546,6 +1547,7 @@ const Store={
       }
       this._stampWrites(op);
       _rdb();
+      _txFlush();   // ADR-1123
     }catch(_){_sO().delete(k)}
   },
   // Per-property write clocks in _wc() (side-channel); group LWW only 'groupId'.
@@ -1643,6 +1645,7 @@ const Store={
     for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615
       this._stampWrites(w);Net.broadcast(w)}
+    _txFlush();   // ADR-1123
     _rdb();
     return true;
   },
@@ -1657,6 +1660,7 @@ const Store={
     this._apply(op,true);
     _pgFollow(op);   // ADR-0652
     if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615
+    _txFlush();   // ADR-1123
     _rdb();
     return true;
   },
@@ -1672,27 +1676,27 @@ const Store={
     for(const v of [op.shape,op.shapes,op.before,op.after]){
       if(_iA(v))for(const x of v)_u(x);else _u(v);   // payload side (add/del/clear/replace)
     }
-    const _bc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&_ids.has(s.a))||(s.bF&&_ids.has(s.b))))_pu(_bc,s);   // ADR-0598
+    const _bc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&_ids.has(s.a))||(s.bF&&_ids.has(s.b))))_pu(_bc,s);
     for(const c of _bc)_u(c);
     switch(op.op){
       case 'add':{
         // Idempotent on shape id: a remote add for a held id no-ops (snapshots
         // bypass seenOps). Local commits use fresh uids; undo re-pushes.
-        if(forward){const wid=op.shape.id,wd=_wc()[wid];   // ADR-0734
+        if(forward){const wid=op.shape.id,wd=_wc()[wid];
           if(_tmb(wid,op)){/*del wins — stay deleted*/}
-          else{if(!byId(wid)&&_shCap()){_sh().push(Net._attachShape(clone(op.shape)));_sz()}_bT(wid,op.clock);if(wd)delete wd._del}}   // ADR-1043
+          else{if(!byId(wid)&&_shCap()){_sh().push(Net._attachShape(clone(op.shape)));_sz()}_bT(wid,op.clock);if(wd)delete wd._del}}
         // ADR-0713: backward mirrors del-forward's locked gate — a since-locked
         // shape survives our undo; keep caches too.
-        else{const cur=byId(op.shape.id);if(cur&&cur.locked){_selR(op);break}const i=_idIdx(op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);_wc()[op.shape.id]=_wM({_del:op.clock});_psc(op.shape.id);_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:[op.shape]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
+        else{const cur=byId(op.shape.id);if(cur&&cur.locked){_selR(op);break}const i=_idIdx(op.shape.id);if(i>=0)_sh().splice(i,1);_sdl(op.shape.id);_wc()[op.shape.id]=_wM({_del:op.clock});_psc(op.shape.id);_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:[op.shape]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}
         break;}
       case 'addMany':{
         // Atomic multi-add (paste/duplicate): N copies → one 'addMany';
         // undo is 'add' (idempotent on id); reverse mirrors del.
         if(forward){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;   // ADR-0734: tombstone beats a stale add
-          if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id)&&_shCap())_sh().push(Net._attachShape(clone(sh)));}_sz();   // ADR-1043
-          if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);}   // ADR-0721
-        else{for(const sh of op.shapes){const cur=byId(sh.id);if(cur&&cur.locked)continue;   // ADR-0713
-          const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);_wc()[sh.id]=_wM({_del:op.clock});_psc(sh.id);}_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:op.shapes});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}   // ADR-0734/0759
+          if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id)&&_shCap())_sh().push(Net._attachShape(clone(sh)));}_sz();
+          if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);}
+        else{for(const sh of op.shapes){const cur=byId(sh.id);if(cur&&cur.locked)continue;
+          const i=_idIdx(sh.id);if(i>=0)_sh().splice(i,1);_sdl(sh.id);_wc()[sh.id]=_wM({_del:op.clock});_psc(sh.id);}_selR(op);const fx=this._remoteDelConnFix({op:'del',shapes:op.shapes});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);}
         break;}
       case 'del':{
         if(forward){
@@ -1703,8 +1707,8 @@ const Store={
             const i=_idIdx(sh.id);
             if(i>=0)_sh().splice(i,1);
             _sdl(sh.id);
-            _wc()[sh.id]=_wM({_del:op.clock});   // ADR-0734
-            _psc(sh.id);   // ADR-0424/0427
+            _wc()[sh.id]=_wM({_del:op.clock});
+            _psc(sh.id);
           }
           if(_ok(_wc()).length>8192){const t=_wM();for(const[id,w]of _oe(_wc()))if(w._del||w._born){const n={};if(w._del)n._del=w._del;if(w._born&&clockNewer(w._born,w._del||{}))n._born=w._born;t[id]=n}state.wclock=t}   // ADR-0734/0738/1097: trim keeps existence clocks
           // connector clears after shapes are gone
@@ -1712,10 +1716,10 @@ const Store={
           const fx=this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch);   // ADR-0758: gap-bound conns — same scan peers run
         }else{
           // ADR-0547/0551
-          for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id)&&_shCap())_sh().push(Net._attachShape(clone(sh)))}   // ADR-0922/0926/1116
+          for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id)&&_shCap())_sh().push(Net._attachShape(clone(sh)))}
           _sz();
           // conn binds restored
-          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}   // ADR-0921
+          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
           _selR(op);
         }
@@ -1727,72 +1731,73 @@ const Store={
         if(sh.locked)break;
         const raw=forward?op.after:op.before;
         if(!raw)break;
-        const p=_stripStruct(clone(raw),1);   // ADR-0373
+        const p=_stripStruct(clone(raw),1);
         // Only skip restoring if a *remote* peer wrote a newer value.
         // Local-peer writes (same peerId) are also bound by it —
         if(!forward)for(const k of _ok(p)){if(_lwwSkip(op.id,k,op))delete p[k];}
+        {const _bs=forward?op.before:op.after;for(const _tk of['text','label'])if(p[_tk]!=null&&_iS(sh[_tk])&&_bs!=null&&_iS(_bs[_tk])){const _m=_mT3(sh[_tk],_bs[_tk],p[_tk]);if(_m!==p[_tk]){_pu(_txE||(_txE=[]),{id:sh.id,k:_tk,b:p[_tk],a:_m});p[_tk]=_m}}}   // ADR-1123
         _oa(sh,p);
         if(!forward)_selR(op);
         break;}
       case 'move':{
         const _mp=forward?op.after:op.before;
-        if(_iA(_mp)){   // ADR-0729/0732
+        if(_iA(_mp)){
           for(const raw of _mp){const sh=byId(raw.id);if(!sh||sh.locked)continue;
             const p=forward?raw:clone(raw);
             if(!forward){if(p.x!=null&&_lwwSkip(raw.id,'x',op))delete p.x;if(p.y!=null&&_lwwSkip(raw.id,'y',op))delete p.y}
-            if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y;_gTouch(sh.id,['x','y'])}   // ADR-0969
+            if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y;_gTouch(sh.id,['x','y'])}
         }else{
           const d=forward?1:-1;
           if(forward)op.moved=[];   // ADR-0548: undo un-moves only forward-moved
-          for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(sh.locked)continue;   // ADR-0716/0971
-            if(!forward){const ux=_lwwSkip(id,'x',op),uy=_lwwSkip(id,'y',op);   // ADR-0733
+          for(const id of forward?op.ids:(op.moved||op.ids)){const sh=byId(id);if(!sh)continue;if(sh.locked)continue;
+            if(!forward){const ux=_lwwSkip(id,'x',op),uy=_lwwSkip(id,'y',op);
               if(ux&&uy)continue;_sT2(sh,ux?0:op.dx*d,uy?0:op.dy*d)}
             else{_sT2(sh,op.dx*d,op.dy*d);op.moved.push(id)}}
         }
         if(!forward)_selR(op);
         break;}
       case 'clear':{
-        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.measure=null;state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}   // ADR-0626/0736/0926/0953/0985/1009
-        else{for(const s of op.shapes){const wd=_wc()[s.id];if(_tmb(s.id,op))continue;if(wd)delete wd._del;_bT(s.id,op.clock);if(!byId(s.id)&&_shCap())_sh().push(Net._attachShape(clone(s)))}_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}   // ADR-0723/0922/0926/1116
+        if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.measure=null;state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}
+        else{for(const s of op.shapes){const wd=_wc()[s.id];if(_tmb(s.id,op))continue;if(wd)delete wd._del;_bT(s.id,op.clock);if(!byId(s.id)&&_shCap())_sh().push(Net._attachShape(clone(s)))}_sz();if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op);}
         break;}
       case 'replace':{
         // Whole-board swap; on the wire since ADR-0613 (_lastRep orders swaps).
         const next=forward?op.after:op.before;
-        _unB();   // ADR-0953
-        if(op.clock)state._lastRep=op.clock;   // ADR-0614
-        const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock)),pg0=_pgs()||[];   // ADR-0736/0926/1093
-        _sh().length=0;_scl();state.measure=null;state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646/1009
-        for(const s of _uniq(next))if(!_tmE(wc0[s.id],op))_sh().push(Net._attachShape(clone(s)))   // ADR-0736/0790/0922/1096
-        for(const s of keep)_sh().push(s);_pcR();   // ADR-0926/0985
-        _iG();   // ADR-0613
+        _unB();
+        if(op.clock)state._lastRep=op.clock;
+        const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock)),pg0=_pgs()||[];
+        _sh().length=0;_scl();state.measure=null;state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();
+        for(const s of _uniq(next))if(!_tmE(wc0[s.id],op))_sh().push(Net._attachShape(clone(s)))
+        for(const s of keep)_sh().push(s);_pcR();
+        _iG();
         _sz();
-        if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);   // ADR-1039
-        if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);   // ADR-1039
+        if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);
+        if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
         if(forward)for(const s of keep)_wR(s.id,wc0[s.id]);
         for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);   // ADR-0736/0926/1112: undo tombs the swapped-out set like the peers' forward does
         _wTb(wc0,op.clock,inN);   // ADR-0736/1096/1112: interim existence clocks survive the undo too (peer parity)
-        {const inP=_sT(((forward?op.pages:op.beforePages)||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id)&&!(wc0[p.id]&&wc0[p.id]._born&&clockNewer(wc0[p.id]._born,op.clock)))_wD(p.id,op.clock)}   // ADR-1093/1112
-        for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928
+        {const inP=_sT(((forward?op.pages:op.beforePages)||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id)&&!(wc0[p.id]&&wc0[p.id]._born&&clockNewer(wc0[p.id]._born,op.clock)))_wD(p.id,op.clock)}
+        for(const s of _sh())_bT(s.id,op.clock);
         if(forward)_pgAdopt(op.pages,op.curPg,op.clock);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock);   // ADR-0646/1093: the swap carries the page set
         if(!forward)_selR(op);
         break;}
       case 'pageAdd':{   // ADR-0646: multi-page
         if(forward){
-          if(_tmb(op.id,op))break;   // ADR-1095
+          if(_tmb(op.id,op))break;
           if(!_pgs()){state.pages=[{id:op.id,name:op.name!=null?op.name:'?',nts:0,bts:op.clock.ts,btp:op.clock.peer}];for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id}
-          else{const l=_pgById(op.id);if(l&&l.nts<0){l.name=op.name!=null?op.name:l.name;l.nts=0;l.bts=op.clock.ts;l.btp=op.clock.peer}   // ADR-0775/1110
+          else{const l=_pgById(op.id);if(l&&l.nts<0){l.name=op.name!=null?op.name:l.name;l.nts=0;l.bts=op.clock.ts;l.btp=op.clock.peer}
           else if(!l&&_ln(_pgs())<64){
             // ADR-0704
             const at=_iN(op.i)&&_fin(op.i)?_max(0,_min(op.i|0,_ln(_pgs()))):_ln(_pgs());
             _pgs().splice(at,0,{id:op.id,name:op.name!=null?op.name:'?',nts:0,bts:op.clock.ts,btp:op.clock.peer});
           }}
-          if(_pgById(op.id))_bT(op.id,op.clock);   // ADR-1093
-          if(_iA(op.shapes)&&_pgById(op.id)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;if(!byId(sh.id)&&_shCap()){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2);_bT(sh.id,op.clock)}}_sz()}   // ADR-1095
+          if(_pgById(op.id))_bT(op.id,op.clock);
+          if(_iA(op.shapes)&&_pgById(op.id)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;if(!byId(sh.id)&&_shCap()){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2);_bT(sh.id,op.clock)}}_sz()}
         }else{
           // ADR-0724/1109
           if(_pgs()){const i=_pgs().findIndex(p=>p.id===op.id);if(i>=0)_pgs().splice(i,1);
-            if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id,null,undefined,i===0?op.id:null);   // ADR-1109
-            else{const die=new Set((op.shapes||[]).map(s=>s.id));_pgDel2(op,null,die);for(const s of _sh())if(s.pg===op.id)s.pg=null;state.pages=null;state.curPg=null;_pgHealS()}}   // ADR-0663/0724
+            if(_ln(_pgs()))_pgDel2(op,_pgs()[0].id,null,undefined,i===0?op.id:null);
+            else{const die=new Set((op.shapes||[]).map(s=>s.id));_pgDel2(op,null,die);for(const s of _sh())if(s.pg===op.id)s.pg=null;state.pages=null;state.curPg=null;_pgHealS()}}
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
         break;}
@@ -1801,34 +1806,34 @@ const Store={
           // ADR-0703
           if(!_pgs()||(_ln(_pgs())<2&&(!op.clock||op.clock.peer===_pi())))break;
           const i=_pgs().findIndex(p=>p.id===op.id);if(i<0)break;
-          if(_bN(op.id,op.clock))break;   // ADR-1094
+          if(_bN(op.id,op.clock))break;
           const first=_pgs().find(q=>q.id!==op.id),firstId=first?first.id:null;
           // ADR-0725: rehome target is the SENDER's first surviving page — peers'
           // page order can diverge, so each peer's own order would split member
           // attribution permanently. `unpage` forces null: the undoer holds no
           // other page; receivers with extra pages must converge on null.
           const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId);
-          const die=op.unpage?new Set((op.shapes||[]).map(s=>s.id)):null;   // ADR-0724
+          const die=op.unpage?new Set((op.shapes||[]).map(s=>s.id)):null;
           op.shapes=[];op.i=i;op.name=_pgs()[i].name;   // recorded for undo
           for(const s of _sh())if((s.pg||_pgs()[0].id)===op.id)op.shapes.push(clone(s));
           _pgs().splice(i,1);
-          op.firstId=rehome;   // ADR-0725
-          if(op.unpage){_pgDel2(op,null,die,firstId,i===0?op.id:null);for(const s of _sh())if((s.pg||firstId)===op.id)s.pg=null}   // ADR-0724/0725/1109
-          else _pgDel2(op,rehome,null,firstId,i===0?op.id:null);   // ADR-0707/0725/1109
-          if(!_ln(_pgs())){state.pages=null;state.curPg=null;_pgHealS()}   // ADR-0703
+          op.firstId=rehome;
+          if(op.unpage){_pgDel2(op,null,die,firstId,i===0?op.id:null);for(const s of _sh())if((s.pg||firstId)===op.id)s.pg=null}
+          else _pgDel2(op,rehome,null,firstId,i===0?op.id:null);
+          if(!_ln(_pgs())){state.pages=null;state.curPg=null;_pgHealS()}
         }else{
           if(!_pgs())state.pages=[];   // heal
-          _pgs().splice(_min(op.i!=null?op.i:_ln(_pgs()),_ln(_pgs())),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0,bts:op.clock.ts,btp:op.clock.peer});_bT(op.id,op.clock);   // ADR-1093/1111
-          for(const sh of op.shapes||[]){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id)&&_shCap())_sh().push(Net._attachShape(clone(sh)))}   // ADR-0922/0926/1116
+          _pgs().splice(_min(op.i!=null?op.i:_ln(_pgs()),_ln(_pgs())),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0,bts:op.clock.ts,btp:op.clock.peer});_bT(op.id,op.clock);
+          for(const sh of op.shapes||[]){const wd=_wc()[sh.id];if(_tmb(sh.id,op))continue;if(wd)delete wd._del;_bT(sh.id,op.clock);if(!byId(sh.id)&&_shCap())_sh().push(Net._attachShape(clone(sh)))}
           _sz();
-          if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);   // ADR-0722
+          if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
           _selR(op);
-          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}   // ADR-0707/0711/0921
-          switchPage(op.id);   // ADR-0663
+          if(op.connClears)for(const p of op.connClears){const sh=byId(p.id);if(sh&&!sh.locked)_ccRest(sh,p.before,op)}
+          switchPage(op.id);
         }
         _ss(_selIds());_iG();_iv();_ivO();_pgBar();
         break;}
-      case 'pageName':{   // ADR-0646/0698/0702/1117
+      case 'pageName':{
         const p=_pgById(op.id);if(!p)break;
         const ts=forward?(op.clock&&_iN(op.clock.ts)?op.clock.ts:_now()):(op.bts!=null?op.bts:0);
         // ADR-0702: gate on CURRENT name's write — newer-vs-snapshot loses a field.
@@ -1872,7 +1877,7 @@ const Store={
       case 'style':
       case 'resize':
       case 'align':
-      case 'beautify':{     // ADR-0005
+      case 'beautify':{
         const patches=forward?op.after:op.before;
         if(!_iA(patches))break;
         for(const raw of patches){
@@ -1882,9 +1887,10 @@ const Store={
           // apply of our undo-wire skips it → diverged props. The forward
           // gate still applies so an unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
-          const p=clone(raw);delete p.pg;delete p.frac;delete p.groupId;if(p.type!=null&&!_typOK(p.type,p,sh))delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];   // ADR-0373/0730/0912/0913/0916/0917/0990
+          const p=clone(raw);delete p.pg;delete p.frac;delete p.groupId;if(p.type!=null&&!_typOK(p.type,p,sh))delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];
           // Same LWW guard as 'upd' (_lwwSkip): undo must not clobber a newer remote write
           if(!forward)for(const k of _ok(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
+          {const _bw=forward?op.before:op.after,_bp=_iA(_bw)&&_bw.find(e=>e&&e.id===sh.id);for(const _tk of['text','label'])if(p[_tk]!=null&&_iS(sh[_tk])&&_bp!=null&&_iS(_bp[_tk])){const _m=_mT3(sh[_tk],_bp[_tk],p[_tk]);if(_m!==p[_tk]){_pu(_txE||(_txE=[]),{id:sh.id,k:_tk,b:p[_tk],a:_m});p[_tk]=_m}}}   // ADR-1123
           _oa(sh,p);
         }
         if(!forward)_selR(op);
@@ -1895,7 +1901,7 @@ const Store={
     // ADR-0568: a remote hide (or redo of one) loses the mirror row;
     // shapes must not stay in selection (0566 invariant)
     if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;const _s=byId(id);if(_s&&_hd(_s))_sdl(id)}
-    if(_pgOn()){_pgHealS();_pgBar()}   // ADR-0778
+    if(_pgOn()){_pgHealS();_pgBar()}
     // ADR-0027: post-mutation bboxes of the same ids join the damage union —
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
@@ -1910,13 +1916,13 @@ const Store={
 let _idIndex=null;
 function byId(id){
   if(!_idIndex||_idIndex.size!==_nS()){_idIndex=_mP();for(const s of _sh())_idIndex.set(s.id,s);}
-  return _idIndex.get(id)||_eraseBatch.find(s=>s.id===id);   // ADR-0952
+  return _idIndex.get(id)||_eraseBatch.find(s=>s.id===id);
 }
 function clone(o){return _JP(_JS(o))}
 // Monotonic local timestamp (HLC-lite) — clockNewer orders ts first, so a
 // backwards wall jump between same-peer edits diverges. ADR-0926: it also
 // strictly outranks every observed ts (a del beats the born it saw).
-function nowTs(){state._lastTs=_max(Date.now(),state._lastTs+1);return state._lastTs}   // ADR-0926
+function nowTs(){state._lastTs=_max(Date.now(),state._lastTs+1);return state._lastTs}
 // Total order on op clocks for per-property LWW (ADR-0002): "newer" = larger by
 // (ts, then peer, then seq). Every peer compares identical clock triples, so the
 // winner is deterministic regardless of arrival order (the latest
@@ -1937,6 +1943,25 @@ function _lwwSkip(id,key,op){
 function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
 const _tmE=(w,op)=>!!(w&&w._del&&clockNewer(w._del,op.clock||{})&&!(w._born&&clockNewer(w._born,w._del)));   // ADR-1096
 function _tmb(id,op){return _tmE(_wc()[id],op)}   // ADR-0922/0927: newer tomb outranks restore
+// ADR-1123: text props merge 3-way on remote-wins — the winning op replays
+// its disjoint hunks into local text, so concurrent edits in different
+// regions both survive (W19); overlapping hunks still lose wholesale to the
+// remote prop clock (LWW parity). A merge that keeps local content emits an
+// 'upd' carrying the union — its `before` is the remote's text so every
+// peer's own disjoint diff lands cleanly; clocks order the last emit, which
+// becomes the deterministic end state.
+const _cpl=(a,b)=>{const n=_min(_ln(a),_ln(b));let i=0;while(i<n&&a[i]===b[i])i++;return i},
+_csl=(a,b)=>{const n=_min(_ln(a),_ln(b));let i=0;while(i<n&&a[_ln(a)-1-i]===b[_ln(b)-1-i])i++;return i},
+_mT3=(l,b,r)=>{
+  if(l==null||l===r||b==null||b===l)return r;
+  const rp=_cpl(b,r),rs=_min(_csl(b,r),_ln(b)-rp,_ln(r)-rp),R1=_ln(b)-rs,Hr=r.slice(rp,_ln(r)-rs),
+        lp=_cpl(b,l),ls=_min(_csl(b,l),_ln(b)-lp,_ln(l)-lp),L1=_ln(b)-ls,Hl=l.slice(lp,_ln(l)-ls);
+  if(L1<=rp)return b.slice(0,lp)+Hl+b.slice(L1,rp)+Hr+b.slice(R1);
+  if(R1<=lp)return b.slice(0,rp)+Hr+b.slice(R1,lp)+Hl+b.slice(L1);
+  return r;
+};
+let _txE=null;
+function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;for(const e of q)Store.commit({op:'upd',id:e.id,before:{[e.k]:e.b},after:{[e.k]:e.a}})}}
 // Bound connectors: s.a/s.b (shape id) derive from the bound shape's edge
 // at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
@@ -5491,9 +5516,9 @@ function beginRectLike(wp){
   const extras={x:sp.x,y:sp.y,w:0,h:0};
   if(_tl()==='sticky'){
     extras.color=STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))];
-    extras.text='';extras.fontSize=_st().fontSize||14;          // ADR-0180
+    extras.text='';extras.fontSize=_st().fontSize||14;
   }else if(_tl()==='frame'){
-    const n=_sh().filter(s=>_frm(s)&&_pgOk(s)).length+1;   // ADR-0667
+    const n=_sh().filter(s=>_frm(s)&&_pgOk(s)).length+1;
     extras.label=`Frame ${n}`;
     extras.stroke=_gC('--brand')||'#00C4CC';
     extras.fill=null;extras.size=1.5;
@@ -5514,8 +5539,8 @@ function contRectLike(wp,uniform,center){
     if(w<0){d.x=sx0+w;d.w=-w}else{d.x=sx0;d.w=w}
     if(h<0){d.y=sy0+h;d.h=-h}else{d.y=sy0;d.h=h}
   }
-  state.readout={x:d.x+d.w/2,y:d.y+d.h,label:`${_rnd(d.w)} × ${_rnd(d.h)}`};   // ADR-0202
-  _iD(_dmgPair(_b0,_bb(d),(d.size||2)+16));   // ADR-0026
+  state.readout={x:d.x+d.w/2,y:d.y+d.h,label:`${_rnd(d.w)} × ${_rnd(d.h)}`};
+  _iD(_dmgPair(_b0,_bb(d),(d.size||2)+16));
 }
 function endRectLike(){
   if(!_df())return;
@@ -5552,7 +5577,7 @@ function contLineLike(wp,uniform){
   _df().x2=x2;_df().y2=y2;
   const _mx=(ptr.wx0+x2)/2,_my=_max(ptr.wy0,y2);   // ADR-0202: draft-length readout
   state.readout={x:_mx,y:_my,label:`↔ ${_rnd(_hp(x2-ptr.wx0,y2-ptr.wy0))}`};
-  _iD(_dmgPair(_b0,_bb(_df()),(_df().size||2)+16));   // ADR-0026
+  _iD(_dmgPair(_b0,_bb(_df()),(_df().size||2)+16));
 }
 function endLineLike(){
   if(!_df())return;
@@ -5583,7 +5608,7 @@ function _endPointBind(sh,handle,alt){
 // Topmost non-connector shape whose bbox contains (x,y), for connector binding.
 // ADR-0214: _queryGrid like pickTop — endpoint drags call this per pointermove.
 function _bindAt(x,y){
-  const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&_sv(s)&&_pgOk(s)};   // ADR-0150/0646
+  const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&_sv(s)&&_pgOk(s)};
   const has=s=>{const b=_bb(s);return b&&x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h};
   if(_nS()>40){
     if(!_grid)_grid=_buildGrid(_sh());
@@ -5602,9 +5627,9 @@ function _bindAt(x,y){
 
 // ---- text ----
 function beginText(wp){
-  if(state.ro){_roNo();return}   // ADR-1057
+  if(state.ro){_roNo();return}
   const sp=snapPt(wp);
-  const s=_smk('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:_st().fontSize||16});   // ADR-0180
+  const s=_smk('text',{x:sp.x,y:sp.y,w:120,h:24,text:'',fontSize:_st().fontSize||16});
   _cOp({op:'add',shape:s});
   openTextEditor(s,true);
   pickTool('select');
@@ -5612,8 +5637,8 @@ function beginText(wp){
 // ADR-0105: ⌘Enter inside a sticky's editor chains the next note — commit
 // happens on blur, then a same-styled sticky spawns to the right and its
 // editor opens (rapid note-taking like Post-it®/FigJam).
-function _stickyChain(s){   // ADR-0105
-  if(state.ro){_roNo();return}   // ADR-1106
+function _stickyChain(s){
+  if(state.ro){_roNo();return}
   // ADR-0556: orphaned source (remote del mid-
   if(!(s=byId(s.id))||s.type!=='sticky'||_lk(s))return;
   // ADR-0190: the chain inherits ALL typograph
@@ -5639,9 +5664,9 @@ function createShapeKbd(){
     s=_smk(tool,{x1:cx-80,y1:cy,x2:cx+80,y2:cy});
   }else if(tool==='sticky'){
     s=_smk('sticky',{x:cx-80,y:cy-80,w:160,h:160,
-      color:STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))],text:'',fontSize:_st().fontSize||14});   // ADR-0180
+      color:STICKY_COLORS[_fl(_rN()*_ln(STICKY_COLORS))],text:'',fontSize:_st().fontSize||14});
   }else if(tool==='frame'){
-    const n=_sh().filter(s=>_frm(s)&&_pgOk(s)).length+1;   // ADR-0667
+    const n=_sh().filter(s=>_frm(s)&&_pgOk(s)).length+1;
     s=_smk('frame',{x:cx-400,y:cy-250,w:800,h:500,
       label:`Frame ${n}`,stroke:_gC('--brand')||'#00C4CC',fill:null,size:1.5});
   }else if(tool==='text'){
@@ -5664,7 +5689,7 @@ function createShapeKbd(){
 function resizeAfterTextEdit(s,text,c){
   s.text=text;
   const fs=_fS(s)||14;
-  c.font=`${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;c.letterSpacing=(_sp(s)||0)+'px';   // ADR-0205
+  c.font=`${fs}px Hiragino Sans,Helvetica Neue,system-ui,sans-serif`;c.letterSpacing=(_sp(s)||0)+'px';
   if(_stk(s)){
     const pad=8;
     const wl=wrapText(_txx(s)||'',_abs(s.w)-pad*2,t=>_mTX(c,t).width);
@@ -5697,8 +5722,8 @@ function _syncTextFinalize(s,before,deleted){
   Net.broadcast(op);
 }
 function openTextEditor(s,isNew){
-  if(state.ro){_roNo();return}   // ADR-1057
-  _cxO();   // ADR-0560
+  if(state.ro){_roNo();return}
+  _cxO();
   s=byId(s.id)||s;   // ADR-0533: add commits clone — bind the liv
   state.editing=s.id;_iv();
   const ta=_ce('textarea');
@@ -5706,7 +5731,7 @@ function openTextEditor(s,isNew){
   const origText=_txx(s)||'';
   const orig=clone(s);
   ta.value=origText;
-  ta.spellcheck=false;ta.maxLength=5e3;   // ADR-0797
+  ta.spellcheck=false;ta.maxLength=5e3;
   positionTextEditor(ta,s);
   _ap(_db,ta);
   _fc(ta);
@@ -5764,7 +5789,7 @@ function openTextEditor(s,isNew){
   _on(ta,_KD,ev=>{
     if(ev.isComposing)return;
     if(ev.key==='Escape'){_pd(ev);ta.blur()}
-    if(ev.key==='Enter'&&(_mod(ev))){_pd(ev);ta.blur();_stickyChain(s)}   // ADR-0105
+    if(ev.key==='Enter'&&(_mod(ev))){_pd(ev);ta.blur();_stickyChain(s)}
     // ADR-0236: ⌘B/I/U/⇧X inside the editor toggles the flag;
     // the global keydown skips input/textarea targets
     const mk=_lc(ev.key),fl={b:'bold',i:'italic',u:'under'}[mk]||(mk==='x'&&_sK(ev)?'strike':null);
@@ -5775,7 +5800,7 @@ function openTextEditor(s,isNew){
       const cur=_ix(_sh(),s),dir=_sK(ev)?-1:1;
       for(let k=1;k<=_nS();k++){
         const nx=_sh()[(cur+dir*k+_nS())%_nS()];
-        if(nx&&(_txt(nx)||_stk(nx))&&!nx.locked&&nx.visible!==0&&_pgOk(nx)){   // ADR-0662
+        if(nx&&(_txt(nx)||_stk(nx))&&!nx.locked&&nx.visible!==0&&_pgOk(nx)){
           ta.blur();_ss([nx.id]);_aS();openTextEditor(nx,false);return;
         }
       }
@@ -5783,7 +5808,7 @@ function openTextEditor(s,isNew){
     }
   });
   auto();
-  _teTa=ta;_teVp='';   // ADR-0053
+  _teTa=ta;_teVp='';
 }
 // ADR-0053: while the inline editor is open, pan/zoom moves the scene but the
 // textarea is DOM-anchored — re-position it whenever the viewport signature
@@ -5796,8 +5821,8 @@ function _teFollow(){
   // us (remote del/clear/replace/hide/lock, local del) — fold
   // once instead of dangling until blur. No commit;
   // upd anyway, so the typed text can't be applied.
-  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}   // ADR-0574/0709/1103
-  const v=_vp(),sig=v.x+','+v.y+','+v.zoom+','+_gridVer;   // ADR-0892
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}
+  const v=_vp(),sig=v.x+','+v.y+','+v.zoom+','+_gridVer;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
 }
@@ -5808,10 +5833,10 @@ function positionTextEditor(ta,s){
   ta.style.top=(r.top+sp.y)+'px';
   ta.style.fontSize=(_fS(s)*_vp().zoom)+'px';
   ta.style.color=_sk(s)||_IK;
-  ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';   // ADR-0073
-  ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';ta.style.textDecoration=[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ');   // ADR-0078/0095/0100
-  ta.style.fontFamily=_fontFam(s);                                          // ADR-0173
-  ta.style.letterSpacing=(_sp(s)||0)+'px';ta.style.lineHeight=s.lineH||'';   // ADR-0873
+  ta.style.textAlign=s.align==='center'?'center':s.align==='right'?'right':'left';
+  ta.style.fontWeight=s.bold?'600':'';ta.style.fontStyle=s.italic?'italic':'';ta.style.textDecoration=[s.under?'underline':'',s.strike?'line-through':''].filter(Boolean).join(' ');
+  ta.style.fontFamily=_fontFam(s);
+  ta.style.letterSpacing=(_sp(s)||0)+'px';ta.style.lineHeight=s.lineH||'';
   ta.style.minWidth='20px';
 }
 
@@ -5822,11 +5847,11 @@ const _unB=()=>{for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[]};
 function eraseAt(wp){
   const hit=pickTop(wp);
   if(hit&&!hit.locked){
-    for(const id of withFrameChildren([hit.id])){   // ADR-0830
+    for(const id of withFrameChildren([hit.id])){
       const s=byId(id);
       if(!s||s.locked||_eraseBatch.some(e=>e.id===id))continue;
       const i=_idIdx(id);
-      if(i>=0){const _eb=_bb(s);_sh().splice(i,1);_iD(_dmgPair(_eb,null,(s.size||2)+16));_psc(id);}   // ADR-0009/0427/0026
+      if(i>=0){const _eb=_bb(s);_sh().splice(i,1);_iD(_dmgPair(_eb,null,(s.size||2)+16));_psc(id);}
       _pu(_eraseBatch,clone(s));
     }
     _iG();
@@ -5838,7 +5863,7 @@ function flushErase(){
   // del for locked shapes, so excluded members stay kept like peers see them.
   const live=_eraseBatch.filter(s=>!s.locked);
     for(const s of _eraseBatch)_sh().push(s);   // restore so commit's _apply finds them
-  _sz();_iG();   // ADR-0009
+  _sz();_iG();
   _eraseBatch=[];
   if(!_ln(live))return;
   // Resolve connector bindings once erased shapes are out
@@ -5888,7 +5913,7 @@ _on(window,_KD,e=>{
   // mid-slideshow before the early return.
   if(_pA()){
     if(k===_AR2||k===_AD||k===' '||k==='pagedown'){_pd(e);Presentation.next()}
-    else if(k===_AL2||k===_AU||k==='pageup'){_pd(e);Presentation.prev()}   // ADR-0768
+    else if(k===_AL2||k===_AU||k==='pageup'){_pd(e);Presentation.prev()}
     else if(k===_ES){Presentation.leave()}
     return;
   }
@@ -5904,16 +5929,16 @@ _on(window,_KD,e=>{
   if(meta&&(k==='z'||k==='y')&&ptr.down)_cancelPointerGesture();   // ADR-0574: undo mid-gesture applies a stale before
   if(meta&&k==='z'&&!_sK(e)){_pd(e);if(Store.undo())_tst(t('undone'))}
   else if(meta&&(k==='y'||(k==='z'&&_sK(e)))){_pd(e);if(Store.redo())_tst(t('redone'))}
-  else if(meta&&k==='a'){_pd(e);_ss(_shV().map(s=>s.id));if(_selN())_aS();_iv()}   // ADR-0037
-  else if(!meta&&(k==='pagedown'||k==='pageup')){_pd(e);_pgNav(k==='pagedown'?1:-1)}   // ADR-0648
+  else if(meta&&k==='a'){_pd(e);_ss(_shV().map(s=>s.id));if(_selN())_aS();_iv()}
+  else if(!meta&&(k==='pagedown'||k==='pageup')){_pd(e);_pgNav(k==='pagedown'?1:-1)}
   if(k==='p'&&_sK(e)&&!meta&&!_aK(e)){_pd(e);Presentation.enter();return}
   else if(meta&&k===_EN){_pd(e);Presentation.enter()}
-  else if(meta&&k==='c'){doCopy()}   // ADR-0516
-  else if(meta&&k==='v'&&_sK(e)){_pd(e);doPasteInPlace()}   // ADR-0113
+  else if(meta&&k==='c'){doCopy()}
+  else if(meta&&k==='v'&&_sK(e)){_pd(e);doPasteInPlace()}
   // ADR-0516: plain ⌘V lets the 'paste' event
   // (images/SVG/.board/excalidraw/drawio/text)
-  else if(meta&&k==='x'&&_sK(e)){_pd(e);toggleTextFlag('strike')}   // ADR-0100
-  else if(meta&&k==='x'){doCopy();doDelete()}   // ADR-0516
+  else if(meta&&k==='x'&&_sK(e)){_pd(e);toggleTextFlag('strike')}
+  else if(meta&&k==='x'){doCopy();doDelete()}
   else if(meta&&k==='d'){_pd(e);doDuplicate()}
   else if(meta&&k==='e'&&_sK(e)){_pd(e);exportSVG()}
   else if(meta&&k==='e'&&!_sK(e)){_pd(e);exportPNG()}
@@ -5924,17 +5949,17 @@ _on(window,_KD,e=>{
   else if(meta&&k==='p'){_pd(e);exportPDF()}
   else if(meta&&(k==='='||k==='+')){_pd(e);zoomBy(1.2)}
   else if(meta&&k==='-'){_pd(e);zoomBy(1/1.2)}
-  else if(meta&&_sK(e)&&(k===','||k==='<')){_pd(e);fontSizeStep(-1)}   // ADR-0075
-  else if(meta&&_sK(e)&&(k==='.'||k==='>')){_pd(e);fontSizeStep(1)}    // ADR-0075
-  else if(meta&&k==='b'&&!_sK(e)){_pd(e);toggleTextFlag('bold')}   // ADR-0078
-  else if(meta&&k==='i'&&!_sK(e)){_pd(e);toggleTextFlag('italic')} // ADR-0078
-  else if(meta&&k==='u'&&!_sK(e)){_pd(e);toggleTextFlag('under')}   // ADR-0095
+  else if(meta&&_sK(e)&&(k===','||k==='<')){_pd(e);fontSizeStep(-1)}
+  else if(meta&&_sK(e)&&(k==='.'||k==='>')){_pd(e);fontSizeStep(1)}
+  else if(meta&&k==='b'&&!_sK(e)){_pd(e);toggleTextFlag('bold')}
+  else if(meta&&k==='i'&&!_sK(e)){_pd(e);toggleTextFlag('italic')}
+  else if(meta&&k==='u'&&!_sK(e)){_pd(e);toggleTextFlag('under')}
   else if(meta&&k==='0'){_pd(e);zoomReset()}
   else if(k==='delete'||k==='backspace'){_pd(e);doDelete()}
   else if(k===_TB){
     // Cycle selection (z-order) for keyboard/SR
     _pd(e);
-    const ids=_sh().filter(s=>_ulv(s)&&_pgOk(s)).map(s=>s.id);   // ADR-0163/0662
+    const ids=_sh().filter(s=>_ulv(s)&&_pgOk(s)).map(s=>s.id);
     if(!_ln(ids))return;
     const id=cycleSel(ids,_selIds()[0],_sK(e)?-1:1);
     _ss([id]);
@@ -5999,7 +6024,7 @@ _on(window,_KD,e=>{
     // mid-drag mutations are in-place, so withou
     // displaced until pointerup committed them.
     else if(ptr.down&&ptr.dragKind)_cancelPointerGesture();
-    else{if(_selN())_tst(t('selNone'));_scl();ptr.lineClick=false;_zR();_penPred=null;_iv()}   // ADR-0037
+    else{if(_selN())_tst(t('selNone'));_scl();ptr.lineClick=false;_zR();_penPred=null;_iv()}
   }
   else if(k==='?'||(_sK(e)&&e.key==='/')){_pd(e);UI.toggleHelp()}
   else if(k===']'&&!meta&&_sK(e)){_pd(e);doBringFront()}
@@ -6016,7 +6041,7 @@ _on(window,_KD,e=>{
   else if(_sK(e)&&(k==='1'||k==='!')){_pd(e);fitToContent()}
   else if(_sK(e)&&(k==='2'||k==='@')){_pd(e);zoomToSelection()}
   else if(_sK(e)&&!meta&&!_aK(e)&&(k==='h'||k==='v')&&_selN()){_pd(e);doFlip(k)}
-  else if(k==='x'&&_sK(e)&&!meta&&_selN()){_pd(e);swapFillStroke()}   // ADR-0166
+  else if(k==='x'&&_sK(e)&&!meta&&_selN()){_pd(e);swapFillStroke()}
   else if(k===','&&!meta&&_selN()){_pd(e);doRotate(-15)}
   else if(k==='.'&&!meta&&_selN()){_pd(e);doRotate(15)}
   else if(meta&&k==='f'){_pd(e);toggleSq()}
@@ -6024,14 +6049,14 @@ _on(window,_KD,e=>{
   else if(k==='h'&&_sK(e)&&meta&&!_aK(e)){_pd(e);hideSelection()}   // ADR-0137: ⌘⇧H
   else if(k==='i'&&_sK(e)&&meta&&!_aK(e)){_pd(e);selectInverse()}   // ADR-0139: ⌘⇧I
   else if(!meta&&!_sK(e)&&/^[0-9]$/.test(k)&&_selN()){_pd(e);applyStyleToSelection({opacity:k==='0'?1:+k/10})}   // ADR-0167: Figma digit-opacity
-  else if(!meta&&KEYMAP[k]&&!ptr.down){pickTool(KEYMAP[k],k==='i')}   // ADR-0942
-  else if(k===' '&&!meta){_pd(e);if(!ptr.down)pickTool('hand',true)}   // ADR-0942
+  else if(!meta&&KEYMAP[k]&&!ptr.down){pickTool(KEYMAP[k],k==='i')}
+  else if(k===' '&&!meta){_pd(e);if(!ptr.down)pickTool('hand',true)}
 });
 _on(window,'keyup',e=>{
   if(e.key===' '&&_tl()==='hand'&&window._prevTool){
     pickTool(window._prevTool);window._prevTool=null;
   }
-  if(e.key==='Alt'&&state.measure){state.measure=null;_ivO()}   // ADR-0151
+  if(e.key==='Alt'&&state.measure){state.measure=null;_ivO()}
 });
 // ADR-0135: view toggles were keyboard-only (G/⇧G) — extracted so the
 // ctx menu's touch path can reach them too.
@@ -6046,10 +6071,10 @@ function toggleSq(){
   else{_setSq('');_ivO();}
 }
 function pickTool(tool,temporary){
-  if(state.ro&&tool!=='select'&&tool!=='hand'){_roNo();return}   // ADR-1057
+  if(state.ro&&tool!=='select'&&tool!=='hand'){_roNo();return}
   if(temporary&&!window._prevTool)window._prevTool=_tl();
-  state._ehov=null;                                                     // ADR-0177
-  if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;_iv()}   // ADR-0126
+  state._ehov=null;
+  if(ptr.lineClick&&tool!=='line'&&tool!=='arrow'){ptr.lineClick=false;state.draft=null;_iv()}
   state.tool=tool;canvas.dataset.tool=tool;
   _sa(canvas,_AL,(T.k[tool]||tool)+' — '+t('canvasHint'));   // localized (was hardcoded English)
   _ann(T.k[tool]||tool);   // tool switches were SR-silent
@@ -6064,7 +6089,7 @@ function doCopy(){
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
   if(!_ln(sel))return;
   state.clipboard={shapes:clone(sel)};
-  _cpNow=true;   // ADR-0516
+  _cpNow=true;
   _tst(t('copied')+' '+_ln(sel));
 }
 // v1.6.97: paste cascade counter — resets when a new clipboard is captured so that
@@ -6126,7 +6151,7 @@ function _placeCopies(srcShapes,dx,dy){
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;   // ADR-0646/1072
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
@@ -6164,7 +6189,7 @@ function doDuplicate(){
 function doDelete(){
   if(state.ro){_roNo();return}   // ADR-1106
   const sel=_selUL();
-  if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}   // ADR-0396
+  if(!_ln(sel)){if(_selAny())_wT('lockedNoop');return}
   const origSel=_selIds();
   // Frame-aware: shapes in a selected frame descend
   const frameOf=_frameOf(sel);
@@ -6185,7 +6210,7 @@ function doDelete(){
 function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
   if(!_ln(changes)){_iv();return}
-  if(_sh().some(s=>_ln(s.frac)>48)){const m=_mP(changes.map(c=>[c.id,c.before])),o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:m.has(s.id)?m.get(s.id):o[i],after:s.frac}))}   // ADR-0471
+  if(_sh().some(s=>_ln(s.frac)>48)){const m=_mP(changes.map(c=>[c.id,c.before])),o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:m.has(s.id)?m.get(s.id):o[i],after:s.frac}))}
   _sz();
   _nugPush({op:'zorder',changes});   // ADR-0960: held [ ] folds into one zorder op
   _ivp();
@@ -6271,7 +6296,7 @@ function hideSelection(){
 // quick-link). Makes an arrow bound at BOTH ends …
 // edge-projects), committed as one add op.
 function connectSelection(){
-  if(state.ro){_roNo();return}   // ADR-1106
+  if(state.ro){_roNo();return}
   const sel=_sb()
     .filter(s=>s&&_ulv(s)&&s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen');
   if(_ln(sel)!==2){_wT(_ST);return}
@@ -6287,15 +6312,15 @@ function connectSelection(){
 // complement over unlocked, visible shapes (marquee/select-all rules).
 function selectInverse(){
   const inv=_sT();
-  for(const s of _sh())if(_ulv(s)&&_pgOk(s)&&!_hasS(s.id))inv.add(s.id);   // ADR-0665
+  for(const s of _sh())if(_ulv(s)&&_pgOk(s)&&!_hasS(s.id))inv.add(s.id);
   _ss(inv);
   _aS();_iv();
 }
-function showAllShapes(){   // ADR-1106
+function showAllShapes(){
   if(state.ro){_roNo();return}
   const before=[],after=[];
   for(const s of _sh()){
-    if(_sv(s)||!_pgOk(s))continue;   // ADR-0660
+    if(_sv(s)||!_pgOk(s))continue;
     _pu(before,{id:s.id,visible:0});_pu(after,{id:s.id,visible:null});
     delete s.visible;
   }
@@ -6315,8 +6340,8 @@ function selectSameType(){
 // ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
-function wrapInFrame(){   // ADR-0102
-  if(state.ro){_roNo();return}   // ADR-1106
+function wrapInFrame(){
+  if(state.ro){_roNo();return}
   const sel=_selUL();
   if(!_ln(sel)){_wT(_ST);return}
   const b=_bA(sel);if(!b)return;
@@ -6328,7 +6353,7 @@ function wrapInFrame(){   // ADR-0102
   _iv();_oT('framed');
 }
 function doGroup(){
-  if(state.ro){_roNo();return}   // ADR-1106
+  if(state.ro){_roNo();return}
   const ids=_usI();
   if(_ln(ids)<2){_wT(_ST);return}
   const gid=uid();
@@ -6339,7 +6364,7 @@ function doGroup(){
   _iv();
 }
 function doUngroup(){
-  if(state.ro){_roNo();return}   // ADR-1106
+  if(state.ro){_roNo();return}
   const ids=_selIds();
   const origSel=[...ids];
   // find all groupIds touched by selection
@@ -6356,13 +6381,13 @@ function doUngroup(){
   _iv();
 }
 function doClearAll(){
-  if(state.ro){_roNo();return}   // ADR-1106
+  if(state.ro){_roNo();return}
   if(!_nS())return;
-  if(_pgOn()){   // ADR-0646
+  if(_pgOn()){
     const mine=_sh().filter(_pgOk);if(!_ln(mine))return;
     if(!confirm(t('confirmClear')))return;
     const origSel=_selIds();
-    Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004
+    Persist.saveBackup(clone(_sh()),{..._vp()},_dn());
     _cOp({op:'del',shapes:clone(mine)});
     _tst(t('cleared'));return;
   }
@@ -6482,11 +6507,11 @@ function flipShape(s,axis,c){
   const trVert=tr&&_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);
   if(axis==='h'){
     if(s.pts)for(const p of s.pts)p[0]=m(p[0]);
-    else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.x=m(w.x)}}   // ADR-0090
+    else if(s.x1!=null){s.x1=m(s.x1);s.x2=m(s.x2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.x=m(w.x)}}
     else s.x=m(s.x+s.w);
   }else{
     if(s.pts)for(const p of s.pts)p[1]=m(p[1]);
-    else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}   // ADR-0090
+    else if(s.y1!=null){s.y1=m(s.y1);s.y2=m(s.y2);if(s.way){s.way=_wayArr(s);for(const w of s.way)w.y=m(w.y)}}
     else s.y=m(s.y+s.h);
   }
   // ADR-0149: images mirror their PIXELS, not
@@ -6496,7 +6521,7 @@ function flipShape(s,axis,c){
   if(_im(s))s.flip=(s.flip||0)^(axis==='h'?1:2);
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
-  if(s.labelPos!=null)s.labelPos=1-s.labelPos;   // ADR-0583
+  if(s.labelPos!=null)s.labelPos=1-s.labelPos;
   // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
   // ('h' flips x) and θ → 360−θ across the horizontal axis …
   // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
@@ -6504,7 +6529,7 @@ function flipShape(s,axis,c){
   if(_rt(s))s.rotate=((axis==='h'?180:360)-_rt(s)+360)%360;
 }
 function doFlip(axis){
-  if(state.ro){_roNo();return}   // ADR-1106
+  if(state.ro){_roNo();return}
   const sel=_selUL();
   if(!_ln(sel))return;
   const bb=_bA(sel);if(!bb)return;
@@ -6535,7 +6560,7 @@ function doFlip(axis){
 }
 
 function doLock(){
-  if(state.ro){_roNo();return}   // ADR-1106
+  if(state.ro){_roNo();return}
   const sel=_selL(Boolean);
   if(!_ln(sel))return;
   const lk=!sel[0].locked;
@@ -6550,8 +6575,8 @@ function doLock(){
 // accumulate locked shapes across sessions/imports with no bulk way back.
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
-  if(state.ro){_roNo();return}   // ADR-1106
-  const locked=_sh().filter(s=>_lk(s)&&_pgOk(s));   // ADR-0661
+  if(state.ro){_roNo();return}
+  const locked=_sh().filter(s=>_lk(s)&&_pgOk(s));
   if(!_ln(locked)){_wT('nothingLocked');return}
   const before=locked.map(s=>({id:s.id,locked:_lk(s)??null}));
   for(const s of locked)s.locked=null;
@@ -6564,7 +6589,7 @@ function unlockAll(){
 // (Alt+B). Wire-broadcast since ADR-0730 — peers apply the patch set with
 // structural keys stripped on intake (0917).
 function doBeautify(){
-  if(state.ro){_roNo();return}   // ADR-1106
+  if(state.ro){_roNo();return}
   const sel=_selL(s=>s&&!_lk(s)&&_pn(s));
   if(!_ln(sel)){_wT('beautifyNone');return}
   const before=[],after=[];
@@ -6595,7 +6620,7 @@ function _rotBend(s,tr,rot){
 function _rotPtsAbout(s,gx,gy,cs,sn){
   const rot=(px,py)=>({x:_xC(gx+(px-gx)*cs-(py-gy)*sn),y:_xC(gy+(px-gx)*sn+(py-gy)*cs)});
   if(s.pts)for(const p of s.pts){const q=rot(p[0],p[1]);p[0]=q.x;p[1]=q.y}
-  else if(s.x1!=null){const tr=s.bend!=null?_elbowTrunk(s):null;const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}   // ADR-0090
+  else if(s.x1!=null){const tr=s.bend!=null?_elbowTrunk(s):null;const a=rot(s.x1,s.y1),b=rot(s.x2,s.y2);s.x1=a.x;s.y1=a.y;s.x2=b.x;s.y2=b.y;if(s.way){s.way=_wayArr(s).map(p=>rot(p.x,p.y))}
     if(tr)_rotBend(s,tr,rot);}
 }
 function doRotate(d){

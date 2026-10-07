@@ -1,3 +1,8 @@
+## [1.8.147] - 2026-10-01
+
+### Fixed
+- **round873 / ADR-1123 — remote-wins text props merge 3-way + convergence emit**: concurrent edits to the same `text`/`label` prop silently lost the local edit whenever the remote prop-clock won — whole-string LWW overwrote it even for disjoint regions. `_mT3` now replays the winner's hunks against the op's `before` baseline: disjoint hunks union (both edits survive; remote clock still wins for determinism), overlapping hunks lose wholesale. A union-preserving merge queues a convergence `upd` (`before` = the remote's text) drained by `_txFlush()` on every commit path, so every peer's own disjoint diff lands on the same union — deterministic end state. Comment-tail compression keeps raw size under the ceiling. 9 behavioural pins.
+
 ## [1.8.146] - 2026-10-01
 
 ### Fixed
