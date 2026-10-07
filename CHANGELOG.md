@@ -1,3 +1,7 @@
+## [1.8.100] - 2026-10-01
+### Fixed
+- ADR-1076: read-only (閲覧のみ) 変異漏斗の網羅性監査 (docs+pin、code 変更なし) — `Store.commit`/`_recordCommitted`/`undo`/`redo`/`_repC`/`_placeCopies`/`importBoardText`/draw arming/editor が全て `state.ro` ゲート済み、doc-switch swap は payload の `ro` 採用が `_repC` 記録に先行 (editable インポートは unlock 経路) として契約をピン化。
+
 ## [1.8.099] - 2026-10-01
 ### Fixed
 - ADR-1075: img-heal ページ横断 + `:prev` バックアップペイロードの監査 (docs+pin、code 変更なし) — img heal (`_imgRescan`/`_pcR`/`_imgqSweep`/blob 到着) は `_sh()` 全域走査で非閲覧ページの parked ref も heal、`:prev` は pages/curPg/rs/ro 完備・因果 marker 非保持は「新 clock で復元」の意図的設計として契約化。
