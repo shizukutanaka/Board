@@ -1,3 +1,11 @@
+## [1.8.113] - 2026-10-01
+
+### Docs
+- **round839 / ADR-1089 — wire `wc` carriage audit complete**: audited every path that carries or consumes an op-embedded wclock snapshot on remote intake. Every consumer resolves to one of three states: intake-validated (`addMany.wc` and `replace.afterWc` via `wcOk` — bounded map, all-props `validClock` with the wall+5min ts bound), self-sanitizing (`_wR`/`_wAdopt` — ≤64 props, `_wK` whitelist + `frac`/`groupId`/`_born`/`_del`, per-value `validClock`), or never read remotely (`del`/`pageDel` overwrite `op.wc` with the receiver's own snapshot before anything reads it, `'clear'` is outside `REMOTE_OPS`, and remote `'replace'` consumes `afterWc` only — `op.wc` is `_recordCommitted`-local). A forged far-future `_del` tomb (permanent id murder) therefore has no reachable writer; contract pinned.
+
+### Tests
+- test.mjs: 13 ADR-1089 behavioural pins — forged far-future/non-clock/non-object `wc` rejected at intake; valid `wc` adopts clock props and drops junk; forged `del`/`replace`/`pageDel`/`clear` `wc` never lands.
+
 ## [1.8.112] - 2026-10-01
 
 ### Fixed

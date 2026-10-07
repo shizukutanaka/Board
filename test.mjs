@@ -18885,6 +18885,51 @@ assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069: ad
 assert.ok(html.includes("function importBoardText(txt,wp){\n  if(state.ro){_roNo();return true}"),'clipboard .board import is ro-gated');
 pass += 5;
 
+// ---- ADR-1089: wire `wc` carriage audit ----
+{
+  // Every remote consumer of an op-carried wclock snapshot is either
+  // intake-validated (addMany.wc + replace.afterWc via wcOk), self-sanitizing
+  // (_wR/_wAdopt: ≤64 props, _wK whitelist, validClock each), or never read:
+  // del/pageDel overwrite op.wc with the receiver's own snapshot before any
+  // read, 'clear' is outside REMOTE_OPS, and remote 'replace' reads afterWc
+  // only (op.wc is _recordCommitted-local).
+  const S=id=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.z=1;return s};
+  const T={_del:{ts:1e15,peer:'p',seq:0}};   // forged far-future tomb
+  assert.ok(!validRemotePayload({op:'addMany',shapes:[S('a')],wc:{a:T}}),'addMany wc: far-future _del rejected');
+  assert.ok(!validRemotePayload({op:'addMany',shapes:[S('a')],wc:{a:{_del:5}}}),'addMany wc: non-clock _del rejected');
+  assert.ok(!validRemotePayload({op:'addMany',shapes:[S('a')],wc:'junk'}),'addMany wc: non-object rejected');
+  assert.ok(!validRemotePayload({op:'addMany',shapes:[S('a')],wc:{a:{y:5}}}),'addMany wc: non-clock prop rejects the whole op');
+  assert.ok(!validRemotePayload({op:'replace',after:[],afterWc:{a:T}}),'replace afterWc: far-future _del rejected');
+  // intake-valid wc lands via sanitized _wR — clocks adopted per entry
+  state.shapes=[];state.wclock={};state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'addMany',shapes:[S('wA')],wc:{wA:{x:{peer:'p',seq:1,ts:2},_born:{peer:'p',seq:1,ts:1}}},clock:{peer:'peerW',seq:1,ts:nowTs()}});
+  assert.ok(state.wclock.wA&&state.wclock.wA.x&&state.wclock.wA._born,'addMany wc adopts clock props');
+  // forged del.wc is dead weight — forward snapshots its own before reading
+  state.shapes=[S('wD')];state.wclock={};state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'del',shapes:[{id:'wD',type:'rect',x:0,y:0,w:10,h:10,z:1}],wc:{victim:T},clock:{peer:'peerD',seq:1,ts:nowTs()}});
+  assert.ok(!state.wclock.victim&&state.wclock.wD._del.ts!==1e15,'forged del.wc never lands');
+  // forged replace.wc is never read remotely — only afterWc is consumed
+  state.shapes=[S('wR'),S('wR2')];state.wclock={};state._lastRep=null;state.seenOps=new Set();_invalidateGrid();
+  const rc={peer:'peerR',seq:1,ts:nowTs()};
+  Store.applyRemote({op:'replace',after:[S('wR')],afterWc:{},wc:{wR:T},clock:rc});
+  assert.ok(state.wclock.wR2._del.ts===rc.ts,'replace dead ids tomb at the op clock');
+  assert.ok(!Object.values(state.wclock).some(w=>w._del&&w._del.ts===1e15),'forged replace.wc never lands');
+  // forged pageDel.wc — _pgDel2 overwrites op.wc with the receiver's snapshot
+  const p0=S('wP');p0.pg='pgA';state.shapes=[p0];state.wclock={};state.seenOps=new Set();
+  state.pages=[{id:'pgA',name:'a',nts:0},{id:'pgB',name:'b',nts:0}];state.curPg='pgB';_invalidateGrid();
+  const pc={peer:'peerP',seq:1,ts:nowTs()};
+  Store.applyRemote({op:'pageDel',id:'pgA',firstId:'pgB',wc:{victim2:T},clock:pc});
+  assert.ok(!state.wclock.victim2&&state.wclock.wP._del.ts===pc.ts,'forged pageDel.wc never lands');
+  // 'clear' rides no wire at all — its wc can never reach a consumer
+  state.shapes=[S('wC')];state.wclock={};state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'clear',shapes:[],wc:{victim3:T},clock:{peer:'peerC',seq:1,ts:nowTs()}});
+  assert.strictEqual(state.shapes.length,1,'remote clear stays outside REMOTE_OPS');
+  assert.ok(!state.wclock.victim3,'remote clear wc never lands');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();_invalidateGrid();
+  console.log('  \u2713 ADR-1089 wire wc carriage audit (14 asserts)');
+}
+pass += 14;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
