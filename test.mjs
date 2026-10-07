@@ -780,7 +780,7 @@ const checks = [
   ['Presentation.enter folds open editor first (ADR-0582)', html.includes("function enter(){\n    _cxO();")],
   ['editors close a still-open overlay first (ADR-0560)', html.includes("const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()}")],
   ['resize resets overlay follow sigs (ADR-0561)', html.includes("_teVp=_lblVp=''")],
-  ['hide folds an open editor first (ADR-0569)', html.includes("function hideSelection(){\n  _cxO()")],
+  ['hide folds an open editor first (ADR-0569)', html.includes("function hideSelection(){\n  if(state.ro){_roNo();return}   // ADR-1106\n  _cxO()")],
   ['all-locked hide toasts lockedNoop (ADR-0570)', html.includes("else if(_selN())_wT('lockedNoop')")],
   ['undo/redo cancels in-flight gesture (ADR-0574)', html.includes("k==='y')&&ptr.down)_cancelPointerGesture()")],
   ['selection writes only via _sad chokepoint (ADR-0568)', (html.match(/_sl\(\)\.add\(/g)||[]).length===1],
@@ -1119,7 +1119,7 @@ const checks = [
   ['search Escape returns focus to canvas', html.includes("_ivO();_fc(canvas);}") && html.includes("_sqAdvance(_sK(ev)?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
-  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  const sel=_selUL();")],
+  ['doDelete skips locked shapes', html.includes("function doDelete(){\n  if(state.ro){_roNo();return}   // ADR-1106\n  const sel=_selUL();")],
   ['eraser skips locked shapes', html.includes("if(!s||s.locked||_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
   ['_edgePt is rotation-aware (projects to true rotated edge)', html.includes("const ub=sh.w!=null?{x:sh.x,y:sh.y,w:sh.w,h:sh.h}:_bb(sh)") && html.includes("const cx=ub.x+ub.w/2,cy=ub.y+ub.h/2,rot=sh.rotate")],
@@ -19377,6 +19377,53 @@ pass += 2;
 }
 pass += 5;
 assert.ok(html.includes("function _pgDup(){   // ADR-0651\n  if(state.ro){_roNo();return}"),'ro gate on _pgDup entry');
+
+// ---- ADR-1106: every post-rejection success feedback/prompt is entry-gated ----
+{
+  const _roM=/\u95b2\u89a7|View only/,_ot=UI.toast,seen=[];
+  UI.toast=(m,k)=>{seen.push(m)};
+  try{
+    state.shapes.length=0;state.ro=false;_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const mk=id=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;Store.commit({op:'add',shape:s})};
+    mk('g-a');mk('g-b');
+    state.selection=new Set(['g-a','g-b']);
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+    state.ro=true;
+    const h0=state.history.length;
+    doGroup();
+    assert.ok(!byId('g-a').groupId,'ro doGroup: no live write, no commit');
+    assert.ok(!seen.some(m=>/group/i.test(m)&&!_roM.test(m)),'ro doGroup: no grouped toast');
+    doUngroup();
+    assert.ok(!seen.some(m=>/ungroup/i.test(m)&&!_roM.test(m)),'ro doUngroup: no ungrouped toast');
+    doDelete();
+    assert.ok(byId('g-a'),'ro doDelete: shape survives');
+    assert.ok(!seen.some(m=>/deleted|削除/i.test(m)&&!_roM.test(m)),'ro doDelete: no deleted toast');
+    doClearAll();
+    assert.ok(byId('g-a'),'ro doClearAll: shapes survive');
+    showAllShapes();
+    wrapInFrame();
+    doFlip('h');doLock();unlockAll();doRotate(90);doBeautify();
+    _pgDel();_pgRename();_pgAdd();
+    assert.strictEqual(state.pages.length,2,'ro: page ops no-op');
+    _stickyChain(byId('g-a'));
+    assert.ok(!state.editing,'ro sticky-chain: no editor opened');
+    const fb=seen.filter(m=>!_roM.test(m));
+    assert.strictEqual(fb.length,0,'ro: zero success toasts, readOnlyMode only — got '+JSON.stringify(fb));
+    assert.ok(seen.some(m=>_roM.test(m)),'ro: readOnlyMode toasted');
+    assert.strictEqual(state.history.length,h0,'ro: no history recorded');
+    state.ro=false;
+    doGroup();
+    assert.ok(byId('g-a').groupId,'editable control: group applies');
+  }finally{state.ro=false;state.shapes.length=0;state.selection=new Set();state.pages=null;state.curPg=null;_invalidateGrid();state.history=[];state.histIdx=-1;UI.toast=_ot}
+  console.log('  \u2713 ADR-1106 ro success-feedback gates (11 asserts)');
+}
+pass += 11;
+{
+  const gated=['_pgAdd','_pgDel','_pgRename','_stickyChain','hideSelection','connectSelection','showAllShapes','wrapInFrame','doGroup','doUngroup','doClearAll','doBeautify','doDelete','doFlip','doLock','unlockAll','doRotate','swapFillStroke'];
+  const missing=gated.filter(n=>{const i=html.indexOf('function '+n+'(');return i<0||!html.slice(i,i+140).includes('_roNo')});
+  assert.strictEqual(missing.length,0,'every feedback-emitting action has the ro entry gate — missing '+missing.join(','));
+}
+pass += 1;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
