@@ -19771,6 +19771,26 @@ pass += 6;
 }
 pass += 10;
 
+// ADR-1119: doc-switch × IDB-migration page-clock audit — clean pass, contract pinned.
+// The three clk-less _pgAdopt sites (local .board import, share-link import, backup
+// restore) are each preceded by `state.wclock=_wM()` (clean tomb slate) and followed
+// by `_repC` → `_recordCommitted`, which stamps _bT for adopted pages with the same
+// carried bts / op.clock receivers' _pgAdopt uses. The IDB upgrade guards both
+// stores with contains() so v1→v2 is safe from any earlier version, and the
+// 'replace' undo-wire swaps the page sets (pages→beforePages).
+{
+  assert.ok(html.includes("!d.objectStoreNames.contains(DB_STORE))d.createObjectStore(DB_STORE)"),'ADR-1119: docs store guarded on upgrade');
+  assert.ok(html.includes("objectStoreNames.contains(DB_IMG_STORE)"),'ADR-1119: imgs store guarded on upgrade (v1→v2)');
+  assert.ok(html.split("state.wclock=_wM()").length-1>=3,'ADR-1119: clean tomb slate precedes every clk-less _pgAdopt');
+  assert.ok(html.includes("for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null"),'ADR-1119: sender stamps adopted pages\' _born like receivers');
+  assert.ok(html.includes("_pgAdopt(d.pages,d.curPg,_pgClk(d))"),'ADR-1119: Persist.load passes the rep clock');
+  assert.ok(html.includes("pages:op.beforePages,curPg:op.beforeCurPg"),'ADR-1119: undo-wire swaps the page sets');
+  assert.ok(html.includes("rs:state.roomSecret"),'ADR-1119: room secret persists on the doc records');
+  assert.ok(html.includes("wc:_wc()"),'ADR-1119: doc record persists the tomb map');
+  console.log('  ✓ ADR-1119 doc-switch × IDB-migration page clocks (8 asserts)');
+}
+pass += 8;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
