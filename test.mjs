@@ -16657,7 +16657,7 @@ try {
       // ops on the op's own clock, so convergence still applies).
       assert.ok(html.includes("if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}"),'existence clocks merge pairwise');
       assert.ok(html.includes("if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}"),'unknown ids adopt wc then re-run applyRemote');
-      assert.ok(html.includes("!(wd._born&&clockNewer(wd._born,wd._del))"),'a newer birth supersedes a tomb');
+      assert.ok(html.includes("!(w._born&&clockNewer(w._born,w._del))"),'a newer birth supersedes a tomb');
       reset();
       const mk=id=>({id,type:'rect',x:0,y:0,w:10,h:10,z:1}),clk=(seq,ts)=>({peer:'q',seq,ts});
       state.shapes.push(mk('a1'));state.wclock['a1']={_born:clk(1,100),x:clk(2,200)};
@@ -19115,6 +19115,25 @@ pass += 6;
   assert.ok(!byId('m11'),'a member whose tomb outranks the op clock is still skipped');
   state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
   console.log('  ✓ ADR-1095 pageAdd tomb/_born parity (5 asserts)');
+}
+pass += 5;
+
+// ---- ADR-1096: 'replace' member loop used a hand-rolled tomb check missing the _born escape — unified on _tmE ----
+{
+  const x1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));x1.id='x1';
+  const x2=JSON.parse(JSON.stringify(x1));x2.id='x2';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.pages=null;state.curPg=null;state.wclock={x1:{_del:{ts:500,peer:'a',seq:0},_born:{ts:600,peer:'a',seq:0}},x2:{_del:{ts:500,peer:'a',seq:0}}};state.seenOps=new Set();_invalidateGrid();
+  Store.applyRemote({op:'replace',after:[x1,x2],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:400,peer:'p9',seq:8}});
+  assert.ok(byId('x1'),'replace admits a member reborn after its tomb (the _born escape)');
+  assert.ok(!byId('x2'),'replace still skips a member whose tomb outranks the op clock');
+  assert.ok(state.wclock.x1&&state.wclock.x1._born&&state.wclock.x1._born.ts===600,'_wTb restores the real _born, not the op clock');
+  state.wclock={x2:{_del:{ts:500,peer:'a',seq:0}}};
+  Store.applyRemote({op:'replace',after:[x2],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:700,peer:'p9',seq:9}});
+  assert.ok(byId('x2'),'an op newer than the tomb still installs the member');
+  assert.ok(state.wclock.x2&&state.wclock.x2._born&&state.wclock.x2._born.ts===700,'the install stamps its own born over the older tomb');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1096 replace member _born escape + _wTb born preserve (5 asserts)');
 }
 pass += 5;
 

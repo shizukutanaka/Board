@@ -1,3 +1,14 @@
+## [1.8.120] - 2026-10-01
+
+### Fixed
+- **round846 / ADR-1096 — `replace` member install gets the `_born` escape; `_wTb` preserves `_born`**: the `replace` forward member loop re-implemented the tomb check by hand (`wd._del&&clockNewer`), missing `_tmb`'s `_born` escape — a member of `op.after` with `{_del@500,_born@600}` was skipped whenever the op clock predated the tomb, dropping a shape the sender holds. Separately, `_wTb` (the pre-wipe tomb restore used by `replace`/`clear`/`_repC`) wrote whole-value `_wD` entries, clobbering `_born`: an admitted member ended `{_del,_born@op.clock}` (tomb-dead, advertised to the room on the next `dels`), and `keep` survivors restored verbatim by `_wR` had their `{_del,_born}` clobbered to `{_del}` right after. The predicate is now entry-parameterized — `_tmE(w,op)` with `_tmb(id,op)` delegating — the member loop gates on `_tmE(wc0[s.id],op)`, and `_wTb` preserves a valid `_born` alongside the re-written `_del`.
+
+### Docs
+- `docs/ADR-1096-replace-member-born-escape.md`.
+
+### Tests
+- test.mjs: 5 ADR-1096 behavioural pins — born-escape member admitted; plain-tomb member skipped; `_wTb` restores the real `_born`; an op newer than the tomb installs and stamps its own `_born`.
+
 ## [1.8.119] - 2026-10-01
 
 ### Fixed
