@@ -19029,6 +19029,50 @@ pass += 4;
 }
 pass += 5;
 
+// ---- ADR-1093: page-id tombstones converge zombie pages over the delta channel ----
+{
+  const sF=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sF.id='m2';sF.pg='p2';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[sF];state.wclock={};state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  // responder: a deleted page emits its id tomb via `dels` (Gap B)
+  Store.applyRemote({op:'pageDel',id:'p2',clock:{ts:50,peer:'p9',seq:1}});
+  assert.strictEqual(state.pages.length,1,'pageDel removes the page');
+  assert.ok(state.wclock.p2&&state.wclock.p2._del,'pageDel tombs the page id itself');
+  assert.ok(Net._snapshotMsg({p2:{ts:1,peer:'a',seq:0}}).dels.p2,'delta snapshot carries the page tomb');
+  // joiner: the same dels entry splices the zombie page + kills its members
+  const sG=JSON.parse(JSON.stringify(sF));
+  state.shapes=[sG];state.wclock={};state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.seenOps=new Set();
+  Net._onRecv({k:'snapshot',peer:'p9',dels:{p2:{ts:50,peer:'p9',seq:1}}},false);
+  assert.deepStrictEqual(state.pages.map(p=>p.id),['p1'],'dels tomb removes the zombie page');
+  assert.ok(!byId('m2'),'dels tomb kills the zombie page members');
+  // union-heal cannot resurrect a page tombed in the same message
+  state.wclock={};state.pages=[{id:'p1',name:'A',nts:0}];
+  Net._onRecv({k:'snapshot',peer:'p9',dels:{p2:{ts:60,peer:'p9',seq:1}},pages:[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}]},false);
+  assert.strictEqual(state.pages.length,1,'union-heal skips a just-tombed page');
+  // a born-newer rebirth suppresses the stale tomb on both emit and intake
+  state.wclock={p2:{_del:{ts:1,peer:'a',seq:0},_born:{ts:9,peer:'a',seq:0}}};state.pages=[{id:'p2',name:'B',nts:0}];state.curPg='p2';
+  const msg2=Net._snapshotMsg({p2:{ts:1,peer:'a',seq:0}});
+  assert.ok(!msg2.dels||!msg2.dels.p2,'reborn page suppresses its stale tomb');
+  Net._onRecv({k:'snapshot',peer:'p9',dels:{p2:{ts:2,peer:'p9',seq:1}}},false);
+  assert.strictEqual(state.pages.length,1,'reborn page survives a stale tomb');
+  // pageAdd born-stamps an introduced page
+  state.wclock={pX:{_del:{ts:1,peer:'a',seq:0}}};state.pages=[{id:'p1',name:'A',nts:0}];state.curPg='p1';
+  Store.applyRemote({op:'pageAdd',id:'pX',name:'X',clock:{ts:9,peer:'p9',seq:1}});
+  assert.ok(state.wclock.pX._born,'pageAdd born-stamps the introduced page');
+  // pageDel + undo rebirths the page above its tomb (fresh undo clock)
+  const pd={op:'pageDel',id:'pX',clock:{ts:10,peer:'p9',seq:1}};
+  Store._apply(pd,true);assert.ok(!_pgById('pX'),'pageDel forward removes the page');
+  pd.clock={ts:11,peer:'p9',seq:1};Store._apply(pd,false);
+  assert.ok(_pgById('pX')&&clockNewer(state.wclock.pX._born,state.wclock.pX._del),'pageDel undo reborns above the tomb');
+  // wholesale replace tombs page ids the swap dropped
+  state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.wclock={};
+  Store.applyRemote({op:'replace',after:[sF],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:20,peer:'p9',seq:2}});
+  assert.ok(state.wclock.p2&&state.wclock.p2._del,'replace tombs a dropped page id');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1093 page-id tombstones over the delta channel (12 asserts)');
+}
+pass += 12;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {

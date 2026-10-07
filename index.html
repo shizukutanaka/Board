@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.116';   // ADR-1092
+const V='1.8.117';   // ADR-1093
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1281,7 +1281,7 @@ const G={
     const b=_bb(s);
     const tol=_max(6/_vp().zoom,(_szz(s)||0)/2);
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
-    // Rotation is box-only: un-rotate about the centre; the per-type check reads s.x/s.w.
+    // Rotation is box-only
     // `_hb(s)` guards crafted non-box shapes carrying rot — their missing s.w
     // would un-rotate p to {NaN,NaN} and kill hit-testing.
     if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
@@ -1343,7 +1343,7 @@ function distToSeg(p,a,b){
 // An op is a reversible change. History = reversed chronology of ops.
 // Undo = apply inverse. Redo = re-apply.
 
-// Structural validation shared by every intake path (a remote `upd` gates on validPatch alone).
+// Structural validation shared by every intake path
 function validPatch(p){
   if(!p||!_iO(p)||_ok(p).length>64)return false;   // ADR-0858
   if(!_cleanVal(p,0))return false;
@@ -1639,7 +1639,7 @@ const Store={
     if(_hx()<0)return false;
     const op=_hi()[_hx()];
     // ADR-0717: an undo is a NEW competing write — arbitrating on the original
-    // commit clock diverged (remote write between commit+undo won locally, lost on peers).
+    // commit clock diverged
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
     _pgFollow(op);   // ADR-0652
@@ -1765,7 +1765,7 @@ const Store={
         const next=forward?op.after:op.before;
         _unB();   // ADR-0953
         if(op.clock)state._lastRep=op.clock;   // ADR-0614
-        const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock));   // ADR-0736/0926
+        const wc0=state.wclock||{},old0=_sh().map(s=>s.id),inN=_sT(next.map(s=>s.id)),keep=_sh().filter(s=>!inN.has(s.id)&&_bN(s.id,op.clock)),pg0=_pgs()||[];   // ADR-0736/0926/1093
         _sh().length=0;_scl();state.measure=null;state.wclock=_wM();_pcC();state.pages=state.curPg=null;_pgBar();   // ADR-0646/1009
         for(const s of _uniq(next)){const wd=wc0[s.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock))continue;_sh().push(Net._attachShape(clone(s)))}   // ADR-0736/0790/0922
         for(const s of keep)_sh().push(s);_pcR();   // ADR-0926/0985
@@ -1773,9 +1773,9 @@ const Store={
         _sz();
         if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);   // ADR-1039
         if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
-        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN)}   // ADR-0736/0926
+        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id))_wD(p.id,op.clock)}   // ADR-0736/0926/1093
         for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928
-        if(forward)_pgAdopt(op.pages,op.curPg);else _pgAdopt(op.beforePages,op.beforeCurPg);   // ADR-0646: the swap carries the page set
+        if(forward)_pgAdopt(op.pages,op.curPg,op.clock);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock);   // ADR-0646/1093: the swap carries the page set
         if(!forward)_selR(op);
         break;}
       case 'pageAdd':{   // ADR-0646: multi-page
@@ -1787,6 +1787,7 @@ const Store={
             const at=_iN(op.i)&&_fin(op.i)?_max(0,_min(op.i|0,_ln(_pgs()))):_ln(_pgs());
             _pgs().splice(at,0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
           }}
+          if(_pgById(op.id))_bT(op.id,op.clock);   // ADR-1093: born-stamp introduced pages
           if(_iA(op.shapes)&&_pgById(op.id)){for(const sh of op.shapes){const wd=_wc()[sh.id];if(wd&&wd._del&&clockNewer(wd._del,op.clock||{}))continue;if(wd)delete wd._del;if(!byId(sh.id)&&_shCap()){const c2=Net._attachShape(clone(sh));c2.pg=op.id;_sh().push(c2);_bT(sh.id,op.clock)}}_sz()}   // ADR-0650/0708/0734/0735/0834/0926: no page ⇒ no members
         }else{
           // ADR-0724: purge by CURRENT membership via _pgDel2, not op.shapes — a shape
@@ -1822,7 +1823,7 @@ const Store={
           if(!_ln(_pgs())){state.pages=null;state.curPg=null;_pgHealS()}   // ADR-0703
         }else{
           if(!_pgs())state.pages=[];   // heal
-          _pgs().splice(_min(op.i!=null?op.i:_ln(_pgs()),_ln(_pgs())),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});
+          _pgs().splice(_min(op.i!=null?op.i:_ln(_pgs()),_ln(_pgs())),0,{id:op.id,name:op.name!=null?op.name:'?',nts:0});_bT(op.id,op.clock);   // ADR-1093
           for(const sh of op.shapes||[])if(!byId(sh.id)&&!_tmb(sh.id,op)&&_shCap()){_sh().push(Net._attachShape(clone(sh)));_bT(sh.id,op.clock)}   // ADR-0922/0926
           _sz();
           if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);   // ADR-0722
@@ -2006,9 +2007,9 @@ function _svgHatch(els,s,ox,oy,stroke,shapeTag,rT){
   const lns=segs.map(g=>`<line x1="${_num(g[0])}" y1="${_num(g[1])}" x2="${_num(g[2])}" y2="${_num(g[3])}" stroke="${stroke}" stroke-width="${_num(lw)}"/>`).join('');
   _pu(els,`<defs><clipPath id="${hid}">${shapeTag}</clipPath></defs><g clip-path="url(#${hid})" opacity="0.55"${rT}>${lns}</g>`);
 }
-// Shared by doDelete/flushErase/openTextEditor/_syncTextFinalize: resolve endpoint
-// coords BEFORE the referenced shapes are gone, so undo can restore exact bindings.
-// delIds = ids being removed; returns [{id,before:{a|b,x1,y1|x2,y2},after:{...}}].
+// Shared by delete/erase/text-finalize: resolve endpoint
+// coords BEFORE the referenced shapes are gone
+// returns [{id,before:{a|b,x1,y1|x2,y2},after:{...}}]
 function computeConnClears(delIds){
   const connClears=[];
   for(const sh of _sh()){
@@ -2138,7 +2139,7 @@ function getImg(dataUrl){
 const STICKY_COLORS=[_YW,'#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
 
 // ====================== PEN BITMAP CACHE (ADR-0018) ======================
-// Committed strokes are immutable — rasterize once (bbox-relative, supersample R).
+// Committed strokes are immutable — rasterize once
 // Validity: O(1) signature of ref+len+first/mid/last pts+stroke+size.
 const _penCache=_mP(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
 let _penCachePx=0;
@@ -2151,7 +2152,10 @@ const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64))?a:null);   // ADR-0700/0791
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694
-function _pgAdopt(pages,cur){const v=_vPages(pages);state.pages=v?clone(v):null;_pgHealS();
+const _pgClk=m=>validClock(m.rep)?m.rep:{ts:nowTs(),peer:_pi(),seq:0};   // ADR-1093
+function _pgAdopt(pages,cur,clk){const v=_vPages(pages);state.pages=v?clone(v):null;
+if(clk)for(const p of v||[])_bT(p.id,clk);   // ADR-1093: adopted pages outlive older tombs
+_pgHealS();
 const nc=v&&_pgById(cur)?cur:(v?v[0].id:null);const oc=state.curPg;if(nc!==oc){_cancelPointerGesture();_cxO()}   // ADR-0684
 state.curPg=nc;if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}_pgBar();_iG()}   // ADR-0664/0690/0748/0749/0750
 function switchPage(id){if(!_pgById(id)||state.curPg===id)return;_nugEnd();_cxO();_cancelPointerGesture();state.curPg=id;Net.sendCursorHide();_iG();_zR();_ss(_selIds());_iv();_ivO();_ann(_pgById(id).name);_pgBar();_ps()}   // ADR-0664/0674/0689/0957
@@ -2197,10 +2201,11 @@ function _pgDel(){if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId){   // ADR-0646
   _unB();   // ADR-0953
-  // ADR-0707/0724/0725: 'del' parity — locked survive; `only` caps the kill set; wire rehome.
+  // ADR-0707/0724/0725: 'del' parity — locked survive; `only` caps kill
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722
   for(const id of dead){_wc()[id]=_wM({_del:op.clock});_sdl(id)}   // ADR-0679/0734/0954
+  _wD(op.id,op.clock);   // ADR-1093: tomb the page id itself so `dels` carries it
   for(const s of _sh())if((s.pg||firstId)===op.id&&(s.locked||_bN(s.id,op.clock)))s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}
@@ -3484,7 +3489,7 @@ function _qdotAt(wp){
   }
   return null;
 }
-// Variable stroke width from spacing (velocity proxy); render-only, no model change.
+// Variable stroke width from spacing; render-only
 function penWidths(pts,size){
   const n=_ln(pts),base=_max(0.5,size||2),REF=base*3+8,LO=0.45;
   // Use varying pointer pressure if available;
@@ -3618,7 +3623,7 @@ function hitHandle(wp,s){
   return null;
 }
 // Rotation handle: a knob above the (possibly rotated) top-centre.
-// Returns world {x,y} of the knob, {ax,ay} of its anchor on the shape, and {cx,cy}
+// Returns world {x,y} of the knob + anchor
 // the rotation pivot. null for locked shapes. ADR-0057: generalised to point
 // geometry — pen/line/arrow anchor over their (unrotated) bbox top edge.
 function getRotHandle(s){
@@ -3696,10 +3701,10 @@ function hitRotHandle(wp,s){
   const tol=HANDLE_SIZE/_vp().zoom;
   return(_abs(wp.x-rh.x)<=tol&&_abs(wp.y-rh.y)<=tol)?rh:null;
 }
-// Object-snap for resize: snap the dragged handle's moving edge(s) to nearby shape
+// Object-snap for resize
 // edges/centres. Only the coordinates
 // (reads _sh()/viewport). Mirrors move's objectSnap; active only when grid-snap
-// is off. Rotated shapes are skipped (axis-aligned edge snap would be incoherent).
+// is off. Rotated shapes are skipped
 function resizeSnap(orig,handle,wp){
   if(state.snap||orig.rotate||handle==='p1'||handle==='p2')return{x:wp.x,y:wp.y,guides:[]};
   const tol=SNAP_OBJ/_vp().zoom;
@@ -3741,7 +3746,7 @@ function _mapToBox(sh,orig,ob,vb){
       sh.cbend=orig.cbend*sx*sy*ol/nl}}
   else if(orig.x!=null){const a=M(orig.x,orig.y),b=M(orig.x+orig.w,orig.y+orig.h);sh.x=a.x;sh.y=a.y;sh.w=b.x-a.x;sh.h=b.y-a.y}
 }
-// Apply resize given handle id, original shape, new world point, Shift and Alt state.
+// Apply resize given handle id, orig shape, world pt
 // Shift on a corner = lock the original
 // centre (opposite edge mirrors). Shift+Alt = symmetric AND proportional.
 function applyResize(sh,handle,orig,wp,shift,alt){
@@ -4016,7 +4021,7 @@ function _sqMatches(){
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
 }
-// Step through Ctrl+F search matches. dir=+1 next, -1 prev; wraps; selects + centres.
+// Step through Ctrl+F search matches
 // A new query resets the index so the first Enter always starts from match 0.
 // Announce includes the shape name — "2/7" alone is uninformative.
 function _sqAdvance(dir){
@@ -4495,7 +4500,7 @@ _on(canvas,_PU,e=>{
   state.marquee=null;_csr('default');_ivO();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
-// Fixes: (1) _gd() not cleared → stale snap-guide lines after stylus OOR / Android
+// Fixes: stale snap-guide lines after stylus OOR / Android
 //        gesture takeover; (2) _eraseBatch not restored → data loss mid-erase.
 function _cancelPointerGesture(){
   _clearLongPress();   // ADR-0006
@@ -4652,7 +4657,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
 // ADR-0182: same viewport-signature follow as _teFollow (ADR-0053), for the
 // label input — it used to stay glued to the glass while the board panned.
 let _lblTa=null,_lblVp='';
-// ADR-0560: commit a still-open overlay first — its blur clobbers state.editing mid-open.
+// ADR-0560: commit a still-open overlay first
 const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()};
 function _lblFollow(){
   if(!_lblTa)return;
@@ -4791,7 +4796,7 @@ _on(canvas,'drop',e=>{
 
 // ---- OS clipboard bridge ----
 // ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain); setData
-// is only legal inside the copy/cut event, so keydown marks _cpNow and this handler
+// so keydown marks _cpNow and this handler
 // writes the JSON. _osClip echoes back to take the internal doPaste path.
 let _osClip=null,_cpNow=false;
 function _osCopy(e){
@@ -5005,7 +5010,7 @@ function zoomToSelection(){
 }
 
 // ---- spatial index: uniform 200wu grid, lazy rebuild on _apply; big shapes in
-// a `big` list always returned; query covers the 3×3 cell neighbourhood (tol<200wu).
+// query covers the 3×3 cell neighbourhood
 const _GCELL=200;let _grid=null,_gridVer=0;
 function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: id index shares this choke point
 // ADR-0047: group-halo map keyed on _gridVer — skip the per-frame rebuild.
@@ -5034,7 +5039,7 @@ function _buildGrid(shapes){
   return{cells,big,idx,cs};
 }
 // ADR-0016: rect query — every shape whose cells overlap the view rect …
-// cell of margin for stroke overshoot) is a draw() candidate; inView still decides.
+// is a draw() candidate; inView still decides
 // Returns a z-ORDERED array so draw() iterates candidates directly — the full
 // _sh() scan is skipped entirely.
 function _gridRectCandidates(grid,r){
@@ -5238,7 +5243,7 @@ function withFrameChildren(ids){
   }
   return out;
 }
-// Arrow-key nudge: frame children follow, locked filtered (_ul), one reversible 'move' op.
+// Arrow-key nudge: frame children follow, locked filtered
 function nudgeSelection(dx,dy){
   const ids=[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621 parity
   if(!_ln(ids))return;
@@ -5346,7 +5351,7 @@ function endSelect(wp,shift,alt){
 // ---- pen ----
 // Coerce pen pressure: mouse=const 0.5, stylus=0..1; finite-safe.
 function _penPr(e){const p=e&&e.pressure;return _fin(p)&&p>0?_min(1,p):0.5}
-// IME composition gate. Returns true when an `input`-class event is the final commit
+// IME composition gate
 // (no IME in progress), false during composition. Used for live inputs (docName)
 // to keep mid-composition characters out of state/IDB/sync. Pure → unit-tested.
 // (Qiita: Rapls "isComposing だけでは足りなかった"; Zenn: spacemarket Safari IME 確定)
@@ -5671,7 +5676,7 @@ function resizeAfterTextEdit(s,text,c){
   }
   c.letterSpacing='0px';
 }
-// New text/sticky shapes commit+broadcast empty up front, then fill in the editor —
+// commit+broadcast empty up front, then fill in —
 // peers would otherwise see a blank shape forever (invisible hitbox). Bridge with
 // a broadcast-ONLY op for the finalize delta: LWW-stamped, OUT of local history.
 function _syncTextFinalize(s,before,deleted){
@@ -5852,7 +5857,7 @@ const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
   a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
 // Focus trap for open dialogs (WCAG 2.4.3 / 2.1.2).
 // _focusables lists tabbable controls in a root; _trapStep is the pure wrap step:
-// given those controls, the active element and direction, it returns which element to
+// it returns which element to
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog; else native Tab moves.
 function _focusables(root){
   return [..._qsa(root,'button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
@@ -6177,7 +6182,7 @@ function doDelete(){
 // z-order ops (ADR-0001 Step 2): move only the selected shapes' fractional keys
 // and record a minimal `{op:'zorder',changes:[{id,before,after}]}` — only the
 // shapes that actually moved (vs. the old full-shape snapshot). _sz() at entry
-// guarantees every shape has a key (migrates legacy/raw shapes) and a sorted array.
+// every shape has a key and a sorted array
 function _zCommit(changes){
   changes=changes.filter(c=>c.before!==c.after);   // keep only real key moves
   if(!_ln(changes)){_iv();return}
@@ -6187,7 +6192,7 @@ function _zCommit(changes){
   _ivp();
 }
 // Shared by doBringFront/doSendBack/doBring
-// take part in a z-order op (parity with doDelete/doGroup excluding locked shapes).
+// take part in a z-order op
 function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}   // ADR-0623: dead ids must not leak into op id lists
 function _zSelShapes(){const ids=_usI(),sel=_sT(ids);return[sel,_ln(ids)?_sh().filter(s=>sel.has(s.id)):[]]}
 function doBringFront(){
@@ -7962,7 +7967,7 @@ function _svgBoxLabel(els,s,X,Y,W,H,ox,oy,stroke,a,rT){
   _pu(els,'</text>');
 }
 function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
-// Coerce to finite number; prevents string geometry breaking SVG numeric attributes.
+// Coerce to finite number
 function _num(v){const n=+v;return _fin(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. _nc() is
 // undefined on file:// and plain http:// — the primary "just open it" case —
@@ -7983,7 +7988,7 @@ async function copyText(text){
     return !!ok;
   }catch(_){return false}
 }
-// 禁則処理 (kinsoku shori): JIS X 4051 line-break prohibitions for CJK text. Japanese has
+// kinsoku shori: JIS X 4051 line-break prohibitions. Japanese has
 // no spaces, so wrapText char-breaks
 // closing punctuation/brackets/small-kana/prolonged-mark (行頭禁則) or end one with an
 // opening bracket (行末禁則). Both read as broken typography to a Japanese reader.
@@ -8038,7 +8043,7 @@ function wrapText(text,maxWidth,measure){
 
 // ====================== NET (sync layer) ======================
 // BroadcastChannel (same-browser tabs) + WebRTC DataChannel …
-// signalling, no server). All ops carry a CRDT clock, dedup by peer:seq, idempotent.
+// signalling, no server). All ops carry a CRDT clock
 const Net={
   bc:null,                    // BroadcastChannel
   rtc:null,                   // RTCPeerConnection
@@ -8333,21 +8338,23 @@ const Net={
         // ADR-0617: a snapshot predating our newest swap is stale — merging re-adds it.
         if(msg.rep&&validClock(msg.rep)&&state._lastRep&&clockNewer(state._lastRep,msg.rep))break;
         if(_nS()===0)this._applySnapshot(msg);
-        // Merge path: snapshot ops are 'add' only — any other kind would execute unchecked.
+        // Merge ops are 'add' only
         else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){if(op.clock?.peer===msg.peer)this._mergeSnapshotOp(op)}   // ADR-0474/0932
         // ADR-1055: tomb deltas — newer _del clocks land; locked survives.
         if(_iO(msg.dels)){const de=_oe(msg.dels);let rm=false;
           if(_ln(de)<=SHARE_MAX_SHAPES)for(const[id,c]of de)if(_idOK(id)&&validClock(c)){
             const w=_wc()[id]||(_wc()[id]=_wM());
             if(!w._del||clockNewer(c,w._del))w._del=clone(c);
-            const s=byId(id);if(!s||s.locked||!_tAlive(id))continue;
+            const s=byId(id);
+            if(!s){if(_pgs()&&_pgById(id)&&!_bN(id,c)){_pgs().splice(_pgs().findIndex(p=>p.id===id),1);const re=_ln(_pgs())?_pgs()[0].id:null;_pgDel2({id,clock:c},re);if(!_ln(_pgs())){state.pages=null;state.curPg=null}_pgHealS();_pgBar();rm=true}continue}   // ADR-1093
+            if(s.locked||!_tAlive(id))continue;
             const i=_idIdx(id);if(i>=0)_sh().splice(i,1);_sdl(id);_psc(id);rm=true;
             const fx=Store._remoteDelConnFix({op:'del',shapes:[s]});if(fx)for(const p of fx)_oa(byId(p.id),p.patch);
           }
           if(rm){_iG();_iv()}}
         if(_iA(msg.pages)){   // ADR-0773
-          if(!_pgs())_pgAdopt(msg.pages,state.curPg);   // ADR-0672
-          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:''}if(_ln(np)<64)_pu(np,l||clone(p))}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773
+          if(!_pgs())_pgAdopt(msg.pages,state.curPg,_pgClk(msg));   // ADR-0672/1093
+          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:''}if(l){if(_ln(np)<64)_pu(np,l)}else{const w=_wc()[p.id];if(_ln(np)<64&&(!w||!w._del||_bN(p.id,w._del))){_pu(np,clone(p));_bT(p.id,{ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0})}}}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773/1093
         }
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617
         _ps();   // ADR-0973
@@ -8400,7 +8407,7 @@ const Net={
     const msg={k:'snapshot',shapes:slim,ops,peer:_pi(),name:_dn(),nameTs:_nameTs,namePeer:_namePeer,rep:state._lastRep,pages:_pgs()};   // ADR-0646/0740
     if(req){   // ADR-1055
       const dels={};
-      for(const[id,c]of _oe(req))if(!byId(id)){const w=_wc()[id];if(w&&w._del&&validClock(w._del)&&clockNewer(w._del,c))dels[id]=clone(w._del)}
+      for(const[id,c]of _oe(req))if(!byId(id)&&!_pgById(id)){const w=_wc()[id];if(w&&w._del&&!_bN(id,w._del)&&validClock(w._del)&&clockNewer(w._del,c))dels[id]=clone(w._del)}   // ADR-1093
       if(_ln(_ok(dels)))msg.dels=dels;
     }
     return msg;
@@ -8485,7 +8492,7 @@ const Net={
     _rs(clone(valid));   // ADR-0009
     _scl();_sz();   // ADR-1010
     for(const s of valid)_wAdopt(s.id,wm.get(s.id));   // ADR-0927
-    _pgAdopt(msg.pages,state.curPg);   // ADR-0672
+    _pgAdopt(msg.pages,state.curPg,_pgClk(msg));   // ADR-0672/1093
     if(_iS(msg.name)&&(_iN(msg.nameTs)?_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_idOK(msg.namePeer)?msg.namePeer:''):!0)){if(_tsOK(msg.nameTs)){_nameTs=msg.nameTs;_namePeer=_idOK(msg.namePeer)?msg.namePeer:''}_setDocName(_s80(msg.name));}   // ADR-0618/0699/0780/0791/1092
     _iv();_ru();_ps();
   },
@@ -8622,8 +8629,8 @@ const Net={
   }};
 
 // ====================== SHARE (URL hash) =====
-// Round a number to `dp` decimals, shedding IEEE-754 noise (100.00000000000001) and
-// trailing precision that bloats serialization; validation still rejects them. Pure.
+// Round a number to `dp` decimals, shedding noise and
+// trailing precision; validation still rejects them
 function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
 // Deep copy of shapes with coordinate/dimension fields rounded — SERIALIZATION
 // boundaries only (share URL, .board export), never the in-memory model, so undo
@@ -8902,7 +8909,7 @@ const Persist={
         shapes=shapes.map(s=>Net._attachShape(s));   // ADR-0840
       }
       _rs(shapes.filter(validShape));   // ADR-0009
-      _pgAdopt(d.pages,d.curPg);   // ADR-0646
+      _pgAdopt(d.pages,d.curPg,_pgClk(d));   // ADR-0646/1093
       if(_vpOK(d.viewport)){
         _vp().x=+d.viewport.x; _vp().y=+d.viewport.y;
         _vp().zoom=clampZoom(+d.viewport.zoom);
@@ -9426,7 +9433,7 @@ function _ctxMenuKeyNav(m,e){
 }
 
 // ====================== WIRE-UP ======================
-// PWA install deferred-event reference (v1.6.92). Captured in 'beforeinstallprompt',
+// PWA install deferred-event reference. Captured in 'beforeinstallprompt',
 // cleared after install or dismissal.
 let _installPrompt=null;
 // Install-button click handler — exported so test.mjs can call it directly.
@@ -9696,7 +9703,7 @@ function applyStyleToSelection(patch){
   _iv();
 }
 // Slider undo coalescing: capture shape prop values on pointerdown, flush a single
-// style op on change. Multiple input events during a drag never hit the undo stack.
+// style op on change
 const _sbf={};
 function _sfbCapture(p){for(const id of _sl()){const s=byId(id);if(s&&!_lk(s)&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
 function _sfbBlur(p){const b=[],a=[];for(const k in _sbf)if(_ew(k,p)){const s=byId(k.slice(0,-p.length));if(s&&!_lk(s)&&_sbf[k]!==s[p])_pp(b,a,s.id,p,_sbf[k],s[p]);delete _sbf[k]}if(_ln(b))_styleOp(b,a)}   // ADR-0962

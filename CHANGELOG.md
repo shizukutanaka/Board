@@ -1,3 +1,14 @@
+## [1.8.117] - 2026-10-01
+
+### Fixed
+- **round843 / ADR-1093 — page-id tombstones over the delta channel (Gap B, ADR-1091)**: `pageDel` tombed the deleted page's member shapes but never the page id itself, so a joiner holding a stale copy of the page got it re-added as a zombie by the `msg.pages` union-heal. Page ids now reuse the shape tomb machinery (`_wD`/`_bT`/`_bN`): `_pgDel2` tombs the page id, `replace` forward tombs ids the swap dropped, `sync-req`/`_snapshotMsg` `dels` emit and intake cover page tombs with `_bN` reborn suppression, union-heal skips a just-tombed page and born-stamps adopted ones, and `pageAdd`/`pageDel`-undo born-stamp so resurrected pages outrank their tombs. Zero new wire fields — the existing `dels` channel carries them.
+
+### Docs
+- `docs/ADR-1093-page-id-tombstones.md`.
+
+### Tests
+- test.mjs: 12 ADR-1093 behavioural pins — pageDel page tomb, `dels` emit, joiner splice + member kill, union-heal tomb gate, born-newer suppression both directions, `pageAdd` born-stamp, `pageDel`-undo rebirth, `replace` page-id tomb.
+
 ## [1.8.116] - 2026-10-01
 
 ### Fixed
