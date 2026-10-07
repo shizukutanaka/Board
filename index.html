@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.160';   // ADR-1136
+const V='1.8.161';   // ADR-1137
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1537,7 +1537,7 @@ const Store={
         _oT('peerReplaced');
       }
       const _connFix=this._remoteDelConnFix(op);
-      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775
+      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_stubOk(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775/1137
       this._apply(op,true);
       if(_connFix)for(const f of _connFix){
         const sh=byId(f.id);
@@ -2184,7 +2184,8 @@ const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.
 const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009/1071
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64)&&(p.bts==null||_tsOK(p.bts))&&(p.btp==null||_iS(p.btp)&&_ln(p.btp)<=64))?a:null);   // ADR-0700/0791/1110
-const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){const w=s.pg&&_wc()[s.pg];if(s.pg&&!_pgById(s.pg)&&(!w||!w._del||w._born&&clockNewer(w._born,w._del))&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110: tomb-dead pages get no '?' stub
+const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)};   // ADR-1137: tomb-dead pages get no '?' stub
+const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110
 const _pgClk=m=>validClock(m.rep)?m.rep:{ts:nowTs(),peer:_pi(),seq:0};   // ADR-1093
 function _pgAdopt(pages,cur,clk){const v=_vPages(pages);
 let keep=v;
