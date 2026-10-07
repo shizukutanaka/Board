@@ -1155,6 +1155,7 @@ Board/
 │   └── ADR-1126-structural-drop-emit.md  # 構造 prop 側の同型残穴 — group/ungroup (`groupId`)・zorder (`frac`) の drop を専用 op チャネルで emit (upd 不可)。emit は undo 外 headless commit `_txC` (⌘Z が収束値を stale 値へ戻す実害を解消)
 │   └── ADR-1127-proto-key-keyed-map.md  # proto キー監査 clean 完走 — 全 intake で __proto__/constructor/prototype 拒否 (validPatch・merge ゲート・_wK・_emOK)、全 id キー化 store は Map/null-proto なので JS 予約 id は不活性データ。契約をピン固定
 │   └── ADR-1128-commit-dedup-eviction.md  # commit/_txC の例外境界 — apply/broadcast 失敗で dedup key が滞留し同一 op の再試行を永久棄却 (_txFlush 経由なら排出キューごと消失) → ADR-1026 parity の catch→delete→rethrow で閉塞
+│   └── ADR-1129-recordcommit-eviction-undo-redo-atomicity.md  # _recordCommitted 最後の dedup 無防備サイト (pre-record throw でキー滞留→再配送を永久棄却) を catch→delete→rethrow で閉塞 + undo/redo の histIdx を apply 成功後へ移動 (undo は _pgFollow throw で二重 revert、redo は apply throw で op スキップの非対称を対称化)
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

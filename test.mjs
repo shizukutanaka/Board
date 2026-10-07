@@ -20186,6 +20186,52 @@ pass += 9;
 }
 pass += 7;
 
+// ---- ADR-1129: exception-boundary parity on the remaining dedup site +
+// undo/redo histIdx ordering. _recordCommitted is the third _sO().add(k) site;
+// a pre-record throw stranded the key the same way ADR-1128 closed on commit.
+// undo must consume the op before _pgFollow (a follow throw must not leave the
+// op un-undone yet applied → next undo reverts it twice); redo must apply
+// BEFORE advancing histIdx (a throw must not skip the op).
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock=_wM();
+  // _recordCommitted: pre-record throw evicts the dedup key, retry records once.
+  const op={op:'add',shape:{id:'r1',type:'rect',x:0,y:0,w:1,h:1,z:1}};
+  const _origS=Store._stampWrites;
+  Store._stampWrites=()=>{throw new Error('boom')};
+  let threw=false;try{Store._recordCommitted(op)}catch(e){threw=true}
+  Store._stampWrites=_origS;
+  assert.ok(threw,'ADR-1129: _recordCommitted propagates the stamp failure');
+  Store._recordCommitted(op);
+  assert.strictEqual(state.history.length,1,'ADR-1129: retried record lands once');
+  Store._recordCommitted(op);
+  assert.strictEqual(state.history.length,1,'ADR-1129: committed op stays dedup-guarded');
+  // undo/redo symmetric contract: a throwing _apply leaves the pointer unmoved
+  // (undo decremented after apply already; redo advanced BEFORE apply — fixed).
+  // A _pgFollow-side throw is now post-consume on both paths (source pin below).
+  const op2={op:'add',shape:{id:'r2',type:'rect',x:0,y:0,w:1,h:1,z:1}};
+  Store._recordCommitted(op2);
+  const _origR=Store._apply;
+  Store._apply=()=>{throw new Error('boom')};
+  threw=false;try{Store.undo()}catch(e){threw=true}
+  assert.ok(threw,'ADR-1129: undo propagates the _apply failure');
+  assert.strictEqual(state.histIdx,1,'ADR-1129: failed undo leaves the pointer unmoved');
+  Store._apply=_origR;
+  Store.undo();Store.undo();   // consume both ops → redo has work to do
+  Store._apply=()=>{throw new Error('boom')};
+  threw=false;try{Store.redo()}catch(e){threw=true}
+  assert.ok(threw,'ADR-1129: redo propagates the _apply failure');
+  assert.strictEqual(state.histIdx,-1,'ADR-1129: failed redo leaves the pointer unmoved');
+  Store._apply=_origR;
+  Store.redo();Store.redo();
+  assert.ok(byId('r1')&&byId('r2'),'ADR-1129: retried redos apply after the pointer stayed');
+  const uI=html.indexOf('undo(){'),fI=html.indexOf('_pgFollow(op);',uI);
+  assert.ok(html.lastIndexOf('state.histIdx--',fI)>uI&&html.lastIndexOf('state.histIdx--',fI)<fI,'ADR-1129: undo consumes before _pgFollow in source');
+  assert.ok(html.includes('state.histIdx++;                  // ADR-1129'),'ADR-1129: redo advances after apply in source');
+  state.shapes.length=0;state.history=[];state.histIdx=-1;state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ ADR-1129 recordCommitted eviction + undo/redo ordering (9 asserts)');
+}
+pass += 9;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

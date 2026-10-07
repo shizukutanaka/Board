@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.152';   // ADR-1128
+const V='1.8.153';   // ADR-1129
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1626,8 +1626,10 @@ const Store={
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
+    try{
     if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock);for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:op.clock)}   // ADR-0616/0736/0927/1109/1111
     this._stampWrites(op);                 // change already applied by caller; record clock
+    }catch(e){_sO().delete(k);throw e}     // ADR-1129: pre-record throw must not strand the dedup key
     _hi().length=_hx()+1;
     _hi().push(op);
     if(_hi().length>MAX_HISTORY)_hi().shift();
@@ -1644,8 +1646,8 @@ const Store={
     // ADR-0717
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
+    state.histIdx--;                  // ADR-1129: consume before _pgFollow — a follow throw must not double-revert
     _pgFollow(op);   // ADR-0652
-    state.histIdx--;
     for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615
       this._stampWrites(w);Net.broadcast(w)}
@@ -1658,10 +1660,10 @@ const Store={
     _nugEnd();   // ADR-0957
     if(state.ro){_roNo();return false}   // ADR-1057
     if(_hx()>=_hi().length-1)return false;
-    state.histIdx++;
-    const op=_hi()[_hx()];
+    const op=_hi()[_hx()+1];
     _fck(op);   // ADR-0718
     this._apply(op,true);
+    state.histIdx++;                  // ADR-1129: advance after apply — a throw must not skip the op
     _pgFollow(op);   // ADR-0652
     if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615
     _txFlush();   // ADR-1123

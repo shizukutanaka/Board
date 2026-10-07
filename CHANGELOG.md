@@ -1,3 +1,8 @@
+## [1.8.153] - 2026-10-01
+
+### Fixed
+- **round879 / ADR-1129 — dedup eviction on `_recordCommitted` + undo/redo pointer atomicity**: `_recordCommitted` was the last `_sO().add(k)` site without an exception boundary — a throw inside its `replace` tomb block or `_stampWrites` stranded the dedup key, silently dropping every redelivery of an already-applied op forever. Pre-record throw now `catch→delete→rethrow` (ADR-1128 parity; post-record throws keep the key — the op *was* committed). Undo/redo `histIdx` was also asymmetric under `_apply` failure: `undo()` consumed *after* `_pgFollow` (a follow throw left the op un-undone yet applied → next undo reverted it **twice**), while `redo()` advanced *before* `_apply` (a throw skipped the op permanently). Both now move the pointer only after the apply succeeds — the view-follow is a post-consume effect. 9 behavioural pins; `pages:[null]` discovered as a real `_pgBar` crash injected into `_apply`'s tail.
+
 ## [1.8.152] - 2026-10-01
 
 ### Fixed
