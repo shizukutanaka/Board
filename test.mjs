@@ -5188,9 +5188,14 @@ try {
     assert.strictEqual(ls.x,0,'local-newer prop wins (x untouched)');
     assert.strictEqual(ls.label,'remote','remote-newer prop adopted (label)');
     assert.strictEqual(state.wclock['S'].label.ts,2000,'merged clock recorded for future LWW');
-    // ADR-1124: the local-newer prop (x) diverges → the merge emits a real
-    // convergent 'upd' — exactly one history op, never silent history writes.
-    assert.strictEqual(state.history.length,hlen+1,'merge emits one convergent op for the divergent prop');
+    // ADR-1124/1126: the local-newer prop (x) diverges → the merge emits a real
+    // convergent 'upd' on the wire — but consumes no undo slot (a propagation
+    // artifact, not a user edit; undoing it would un-converge the prop).
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{Net._mergeSnapshotOp({op:'add',shape:{...JSON.parse(JSON.stringify(r)),x:42,y:7},wc:{x:{peer:'A',seq:4,ts:600}}});
+      assert.ok(sent.some(o=>o.op==='upd'&&o.id==='S'&&o.after.x===0),'merge emits one convergent op for the divergent prop');
+      assert.strictEqual(state.history.length,hlen,'convergence emit stays out of the undo log (ADR-1126)');
+    }finally{Net.broadcast=_ob}
     // no wc → old-peer fallback keeps everything
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:snapShape}),'skip','missing wc → keep (legacy)');
     // unknown shape → add path
@@ -5281,7 +5286,7 @@ try {
       assert.strictEqual(emits[0].after.text,'local','emitted local value');
       assert.strictEqual(emits[0].before.text,'remote','emit baseline = remote value');
       assert.strictEqual(emits[0].clock.peer,'B','emit stamped with the local peer clock');
-      assert.strictEqual(state.history.length,hlen+1,'emit is a real op, not silent');
+      assert.strictEqual(state.history.length,hlen,'emit is a real wire op but takes no undo slot (ADR-1126)');
     }finally{Net.broadcast=_ob}
     console.log('  ✓ ADR-1125: full-drop emits local winner via _txFlush (6 asserts)');
   }
@@ -5351,6 +5356,82 @@ try {
       assert.strictEqual(sent.filter(o=>o.op==='upd'&&o.id==='S').length,0,'ro-dropped emit queue was drained, not deferred');
     }finally{Net.broadcast=_ob;state.ro=false}
     console.log('  ✓ ADR-1125: ro swallows convergence emit (3 asserts)');
+  }
+
+  // ADR-1126: structural-prop drops — the group/ungroup/zorder filt branches stamp
+  // dedicated clocks but dropped silently, leaving the sender's value forever
+  // stale. A dropped divergent member now queues a convergence emit on its own
+  // channel: 'group' when the local winner carries a gid, 'ungroup' when it is
+  // ungrouped, 'zorder' for frac. Emits ride _txC (dedup+stamp+broadcast).
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,groupId:'gL',frac:'f2'};
+    Store.commit({op:'add',shape:r});
+    const hlen=state.history.length;
+    state.wclock['S']={groupId:{peer:'B',seq:5,ts:5000},frac:{peer:'B',seq:6,ts:5000}};
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      Store.applyRemote({op:'group',ids:['S'],gid:'gR',before:[{id:'S'}],clock:{peer:'A',seq:1,ts:50}});
+      assert.strictEqual(byId('S').groupId,'gL','local groupId kept');
+      const g=sent.filter(o=>o.op==='group');
+      assert.strictEqual(g.length,1,'one group emit');
+      assert.strictEqual(g[0].gid,'gL','emitted local gid');
+      assert.deepStrictEqual(g[0].before,[{id:'S',groupId:'gR'}],'emit baseline = remote member state');
+      Store.applyRemote({op:'zorder',changes:[{id:'S',before:'f1',after:'f3'}],clock:{peer:'A',seq:2,ts:60}});
+      assert.strictEqual(byId('S').frac,'f2','local frac kept');
+      const z=sent.filter(o=>o.op==='zorder');
+      assert.strictEqual(z.length,1,'one zorder emit');
+      assert.deepStrictEqual(z[0].changes,[{id:'S',before:'f3',after:'f2'}],'zorder emit = remote baseline → local winner');
+      assert.strictEqual(state.history.length,hlen,'emits take no undo slot');
+      assert.strictEqual(state.wclock['S'].frac.peer,'B','emit restamps the structural clock locally');
+      // ungroup emit — a locally-ungrouped winner propagates via 'ungroup'
+      const r2={id:'T',type:'rect',z:1,x:0,y:0,w:10,h:10};
+      Store.commit({op:'add',shape:r2});
+      state.wclock['T']={groupId:{peer:'B',seq:7,ts:5000}};   // local ungroup stamp
+      sent.length=0;
+      Store.applyRemote({op:'group',ids:['T'],gid:'gR',before:[{id:'T'}],clock:{peer:'A',seq:3,ts:70}});
+      assert.strictEqual(byId('T').groupId,undefined,'local ungrouped kept');
+      const u=sent.filter(o=>o.op==='ungroup');
+      assert.strictEqual(u.length,1,'ungroup emit for locally-ungrouped winner');
+      assert.deepStrictEqual(u[0].gids,['gR'],'ungroup emit carries the remote gid');
+      assert.deepStrictEqual(u[0].before,[{id:'T',groupId:'gR'}],'ungroup emit baseline = remote gid');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1126: group/ungroup/zorder drops emit convergence ops (15 asserts)');
+  }
+
+  // ADR-1126: an emitted convergence op must never consume an undo step — undoing
+  // it would revert to the remote's stale value and un-converge the prop.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,frac:'f1'};
+    Store.commit({op:'add',shape:r});
+    Store.commit({op:'zorder',changes:[{id:'S',before:'f1',after:'f2'}]});
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      Store.applyRemote({op:'zorder',changes:[{id:'S',before:'f1',after:'f9'}],clock:{peer:'A',seq:1,ts:1}});   // stale — drops, emits
+      assert.strictEqual(byId('S').frac,'f2','local frac winner kept');
+      Store.undo();
+      assert.strictEqual(byId('S').frac,'f1','undo restores the user zorder, not the emit');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1126: convergence emit consumes no undo step (2 asserts)');
+  }
+
+  // ADR-1126: exclusions — an unclocked structural prop applies remote-wins;
+  // an equal-value drop emits nothing.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,groupId:'gL'};
+    Store.commit({op:'add',shape:r});
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      Store.applyRemote({op:'group',ids:['S'],gid:'gL',before:[{id:'S'}],clock:{peer:'A',seq:1,ts:50}});   // same gid, unclocked → applies
+      assert.strictEqual(byId('S').groupId,'gL','equal groupId applies harmlessly');
+      assert.strictEqual(sent.filter(o=>o.op==='group').length,0,'no emit for equal/unclocked structural props');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1126: structural emit exclusions (2 asserts)');
   }
 
   // ADR-0372: snapshot merge gates values — NaN coords, non-array pts, structural

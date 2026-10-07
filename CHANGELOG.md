@@ -1,3 +1,8 @@
+## [1.8.150] - 2026-10-01
+
+### Fixed
+- **round876 / ADR-1126 — structural-prop drop emits via dedicated op channels**: ADR-1125 closed `_lwwDrop`'s silent-drop divergence for generic props, but its two *structural* branches still filtered divergent writes with no emit — `group`/`ungroup` (`groupId` clock) and `zorder` (`frac` clock) left the sender and every other peer stale forever. `groupId`/`frac` can't ride `upd` emits (`_emOK`/`_stripStruct` exclude structural keys), so drops now queue entries flushed through their own op channels: a minimal single-member `group`/`ungroup` op, or a coalesced `zorder{changes:[{id,before,after}]}` — both carrying the dropped remote intent as `before` so receiver-side coverage holds. Emits commit through new headless `_txC` (fresh `_fck` clock → dedup → `_stampWrites` → persist → broadcast; **no** `_apply`, history slot, or repaint) — committing via `Store.commit` would let ⌘Z un-converge the board (caught by the ADR-0926 pin). Equal values emit nothing; `state.ro` still swallows the drain. 19 behavioural pins; two pre-1126 emit pins re-calibrated to the headless-commit contract; comment-tail reclaim keeps raw under the ceiling.
+
 ## [1.8.149] - 2026-10-01
 
 ### Fixed

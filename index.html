@@ -813,11 +813,11 @@ const _sb=()=>_selIds().map(byId).filter(Boolean);   // ADR-0418/0623
 const _hasS=id=>_sl().has(id);   // ADR-0418: selection-membership predicate
 const _sel0=()=>byId(_selIds()[0]);   // ADR-0421: single-selected shape (12 sites)
 const _grpOf=gid=>_sh().filter(s=>s.groupId===gid).map(s=>s.id);   // ADR-0423: members of a group (id list)
-// ADR-0423: expand a working selection by its frameOf map — add each
+// ADR-0423
 // child's id as a shape (unlocked only), idempotent across callers.
 const _xFS=(sel,frameOf)=>{for(const [cid] of frameOf){if(!sel.find(s=>s.id===cid)){const ch=byId(cid);if(ch&&!ch.locked)_pu(sel,ch);}}}
 const _inR=(b,f)=>b.x>=f.x&&b.y>=f.y&&b.x+b.w<=f.x+f.w&&b.y+b.h<=f.y+f.h;   // ADR-0767: rect containment (frame membership)
-// ADR-0423: childId→frameId map for frame-containment expansion.
+// ADR-0423
 // ADR-0767
 const _frameOf=(sel,ok)=>{const m=_mP();
   const fs=sel.filter(f=>f.type==='frame');
@@ -865,7 +865,7 @@ const _wAdopt=(id,rw)=>{   // ADR-0927
 };
 const _tAlive=(id,rw)=>{const w=_wc()[id];return!!(w&&w._del&&!(w._born&&clockNewer(w._born,w._del))&&!(rw&&rw._born&&validClock(rw._born)&&clockNewer(rw._born,w._del)))};   // ADR-0927
 const MAX_TS_SKEW=3e5,_tsOK=t=>_iN(t)&&_fin(t)&&t<=_now()+MAX_TS_SKEW,_pgs=()=>state.pages,_xyOK=v=>_fin(v)&&_abs(v)<=1e7,_xC=v=>_max(-1e7,_min(1e7,v)),_vpOK=v=>v&&_xyOK(+v.x)&&_xyOK(+v.y)&&_fin(+v.zoom)&&+v.zoom>0;   // ADR-0791/0792/0793/0795/0798
-// ADR-1056: wire auth — HMAC-SHA256 tag per message (mac: room secret/BC,
+// ADR-1056
 // dmac: link key/DC); bulk `data` excluded — inner tag/content hash covers it.
 const _shaB=b=>{
   const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
@@ -910,7 +910,7 @@ const _dn=()=>state.docName;
 let _nameTs=0,_namePeer='';
 const _bName=()=>{const ts=nowTs();_nameTs=ts;_namePeer=_pi();Net._bcast(_mk('name',{name:state.docName,ts}))};   // ADR-0696/0938
 const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer});   // ADR-0699
-// ADR-1053: peer display names ride presence ('ping'/'cursor'/'selection');
+// ADR-1053
 // ephemeral like the carrier — latest wins, no LWW.
 const _pnm=()=>{try{return _s0(_trm(_lg('board.name')||''),24)}catch(_){return ''}};
 const _nm=()=>{const n=_pnm();return n?{n}:null};
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.149';   // ADR-1125
+const V='1.8.150';   // ADR-1126
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1160,7 +1160,7 @@ const I18N={
       cycle:'Cycle shapes',create:'Create at centre',
       present:'Present',nudge:'Move (⇧: 10px)',zorder:'Front / back',zorderEnds:'To front / to back',
       rotate:'Rotate (15° / knob drag)',selAllMatches:'matches selected',search:'Search',searchNav:'Next / prev match',moveAxis:'Constrain move axis',resizeRatio:'Keep ratio (resize)',resizeCenter:'Resize from centre',kbdResize:'Resize (⇧:×10)',lasso:'Lasso select',swapFill:'Swap fill↔stroke',digitOpacity:'Opacity 0-9',eyedropDone:'Style picked',swapDone:'Fill↔stroke swapped',fixAnchor:'Bind end at a fixed anchor'}}};
-// ADR-0014: LANG/T are `let`, not `const` — module code
+// ADR-0014
 // closes over T by reference, so every t()/T.* lookup sees
 // the new language automatically. Only elements bound at
 // creation time need explicit resync (done in toggleLang(), not here).
@@ -1215,7 +1215,7 @@ const state={
 
 const canvas=_g('c');
 let ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
-// ADR-0024: second stacked canvas for ephemeral chrome …
+// ADR-0024
 // marquee, snap guides, peer cursors/selections, laser, search highlights).
 // Overlay-only changes repaint this layer alone.
 const ocanvas=_g('ov');
@@ -1527,7 +1527,7 @@ const Store={
     // Per-property LWW (ADR-0002): drop writes losing to the shape's clock.
     // Bail when the op empties
     // of changed keys. move/zorder are covered the same way.
-    // ADR-1026: the dedup stamp precedes the apply — a throw below would wedge
+    // ADR-1026
     // the op forever; evict the key so the next snapshot heal can retry it.
     try{
       if(!this._lwwDrop(op)){_txFlush();return}   // ADR-1125
@@ -1541,7 +1541,7 @@ const Store={
       this._apply(op,true);
       if(_connFix)for(const f of _connFix){
         const sh=byId(f.id);
-        // ADR-0027: endpoint re-dock mutates a connector — harvest
+        // ADR-0027
         // its own damage (the old endpoint sat inside the damaged rect)
         if(sh){const _cb=_bb(sh);_oa(sh,f.patch);_iD(_dmgPair(_cb,_bb(sh),(sh.size||2)+16));}
       }
@@ -1569,18 +1569,22 @@ const Store={
       const gval=op.op==='group'?op.gid:undefined;
       op.ids=op.ids.filter(id=>{
         const w=_wc()[id];
-        return byId(id)
+        const keep=byId(id)
           &&this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')
           &&clockNewer(C,w&&w['groupId']);
-      });
+        if(!keep&&w&&w['groupId']&&!clockNewer(C,w['groupId'])){const s=byId(id);if(s&&(s.groupId??null)!==(gval??null))_pu(_txE||(_txE=[]),{op:s.groupId==null?'ungroup':'group',id,b:gval,a:s.groupId})}
+        return keep});
       if(op.before)op.before=op.before.filter(b=>op.ids.includes(b.id));
       return _ln(op.ids)>0;
     }
     if(op.op==='zorder'){   // ADR-0653
       if(!_iA(op.changes))return true;   // non-changes forms can't arrive (ADR-0742) — defensive
-      op.changes=op.changes.filter(c=>byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')&&clockNewer(C,_wc()[c.id]&&_wc()[c.id].frac));
+      op.changes=op.changes.filter(c=>{
+        const w=_wc()[c.id],keep=byId(c.id)&&this._chg({frac:c.before},{frac:c.after},'frac')&&clockNewer(C,w&&w.frac);
+        if(!keep&&w&&w.frac&&!clockNewer(C,w.frac)){const s=byId(c.id);if(s&&_iS(s.frac)&&s.frac!==c.after)_pu(_txE||(_txE=[]),{op:'zorder',id:c.id,b:c.after,a:s.frac})}
+        return keep});
       return _ln(op.changes)>0;
-    }
+    }   // ADR-1126
     if(!_iA(op.after))return true;
     const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
     op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p,bb[p.id])>0:false);
@@ -1622,7 +1626,7 @@ const Store={
     if(_sO().has(k))return;
     _sO().add(k);
     _trimSeen();                           // ADR-0428: same helper as commit/applyRemote
-    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock);for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:op.clock)}   // ADR-0616/0736/0927/1109/1111: sender stamps adopted pages' _born like receivers' _pgAdopt
+    if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock);for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:op.clock)}   // ADR-0616/0736/0927/1109/1111
     this._stampWrites(op);                 // change already applied by caller; record clock
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1666,7 +1670,7 @@ const Store={
   },
   _apply(op,forward){
     _iG();
-    // ADR-0027: harvest ids + pre-mutation clips to their union; over-cover is
+    // ADR-0027
     // safe, missing is not.
     const _ids=_opIds(op);
     let _dmg=null;
@@ -1772,8 +1776,8 @@ const Store={
         if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);
         if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
         if(forward)for(const s of keep)_wR(s.id,wc0[s.id]);
-        for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);   // ADR-0736/0926/1112: undo tombs the swapped-out set like the peers' forward does
-        _wTb(wc0,op.clock,inN);   // ADR-0736/1096/1112: interim existence clocks survive the undo too (peer parity)
+        for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);   // ADR-0736/0926/1112
+        _wTb(wc0,op.clock,inN);   // ADR-0736/1096/1112
         {const inP=_sT(((forward?op.pages:op.beforePages)||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id)&&!(wc0[p.id]&&wc0[p.id]._born&&clockNewer(wc0[p.id]._born,op.clock)))_wD(p.id,op.clock)}
         for(const s of _sh())_bT(s.id,op.clock);
         if(forward)_pgAdopt(op.pages,op.curPg,op.clock);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock);   // ADR-0646/1093: the swap carries the page set
@@ -1806,7 +1810,7 @@ const Store={
           const i=_pgs().findIndex(p=>p.id===op.id);if(i<0)break;
           if(_bN(op.id,op.clock))break;
           const first=_pgs().find(q=>q.id!==op.id),firstId=first?first.id:null;
-          // ADR-0725: rehome target is the SENDER's first surviving page — peers'
+          // ADR-0725
           // page order can diverge, so each peer's own order would split member
           // attribution permanently. `unpage` forces null: the undoer holds no
           // other page; receivers with extra pages must converge on null.
@@ -1834,10 +1838,10 @@ const Store={
       case 'pageName':{
         const p=_pgById(op.id);if(!p)break;
         const ts=forward?(op.clock&&_iN(op.clock.ts)?op.clock.ts:_now()):(op.bts!=null?op.bts:0);
-        // ADR-0702: gate on CURRENT name's write — newer-vs-snapshot loses a field.
+        // ADR-0702
         const win=p.nts==null||(forward?clockNewer({ts,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0},{ts:p.nts,peer:_iS(p.ntp)?p.ntp:'',seq:0})
           :!clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:_iN(op.clock&&op.clock.ts)?op.clock.ts:0,peer:_iS(op.clock&&op.clock.peer)?op.clock.peer:'',seq:0}));
-        // ADR-0727: undo-wire renames carry nts/ntp — the RESTORED clock, not the undo
+        // ADR-0727
         // clock. Without it the undoer wrote bts while peers wrote the fresh undo clock
         // into nts, and a rename landing between the two won on one side only.
         if(win){if(forward){op.bts=p.nts;op.btp=p.ntp}p.name=forward?op.after:(op.before||p.name);p.nts=ts;if(forward)p.ntp=op.clock?op.clock.peer:'';else p.ntp=op.btp!=null?op.btp:'';
@@ -1894,20 +1898,20 @@ const Store={
         if(!forward)_selR(op);
         break;}
     }
-    // ADR-0546: prop-patching ops touching a selected shape re-sync the style
+    // ADR-0546
     // panel — its signature only covers membership
-    // ADR-0568: a remote hide (or redo of one) loses the mirror row;
+    // ADR-0568
     // shapes must not stay in selection (0566 invariant)
     if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;const _s=byId(id);if(_s&&_hd(_s))_sdl(id)}
     if(_pgOn()){_pgHealS();_pgBar()}
-    // ADR-0027: post-mutation bboxes of the same ids join the damage union —
+    // ADR-0027
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
     for(const c of _bc)_u(byId(c.id));   // ADR-0598: post-mutation conn sweep
     if(!_dmg){_iv();}
     else{const _v=visibleWorldRect();if(_dmg.w*_dmg.h>_v.w*_v.h*0.6)_iv();else _iD(_dmg);}
   }};
-// ADR-0009: lazy-rebuilt id→shape index. Invalidated by _iG() (the same choke
+// ADR-0009
 // point the spatial hit-test grid uses) whenever shapes change — property
 // mutations don't touch membership, so they never invalidate it. The size
 // compare catches a mid-op push()/splice() that would leave it one change stale.
@@ -1941,7 +1945,7 @@ function _lwwSkip(id,key,op){
 function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
 const _tmE=(w,op)=>!!(w&&w._del&&clockNewer(w._del,op.clock||{})&&!(w._born&&clockNewer(w._born,w._del)));   // ADR-1096
 function _tmb(id,op){return _tmE(_wc()[id],op)}   // ADR-0922/0927: newer tomb outranks restore
-// ADR-1123: text props merge 3-way on remote-wins — disjoint hunks union, overlapping
+// ADR-1123
 // lose wholesale (LWW parity). A kept-local merge emits an 'upd' carrying the union with
 // `before` = the remote's text, so every peer's disjoint diff lands cleanly; last emit wins.
 const _cpl=(a,b)=>{const n=_min(_ln(a),_ln(b));let i=0;while(i<n&&a[i]===b[i])i++;return i},
@@ -1955,7 +1959,16 @@ _mT3=(l,b,r)=>{
   return r;
 };
 let _txE=null;
-function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;const g=_mP();for(const e of q){let p=g.get(e.id);if(!p)g.set(e.id,p={b:{},a:{}});if(e.b!==_ud)p.b[e.k]=e.b;p.a[e.k]=e.a}for(const[id,p]of g)Store.commit({op:'upd',id,before:p.b,after:p.a})}}
+function _txC(op){if(!op.clock)_fck(op);const k=_ck(op);if(_sO().has(k))return;_sO().add(k);_trimSeen();Store._stampWrites(op);_ps();Net.broadcast(op)}
+function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;const g=_mP(),gg=[];let z=null;
+  for(const e of q){
+    if(e.op==='zorder'){_pu(z||(z=[]),{id:e.id,before:e.b,after:e.a})}
+    else if(e.op==='group'){_pu(gg,{op:'group',ids:[e.id],gid:e.a,before:[{id:e.id,groupId:e.b}]})}
+    else if(e.op){_pu(gg,{op:'ungroup',ids:[e.id],gids:[e.b],before:[{id:e.id,groupId:e.b}]})}
+    else{let p=g.get(e.id);if(!p)g.set(e.id,p={b:{},a:{}});if(e.b!==_ud)p.b[e.k]=e.b;p.a[e.k]=e.a}}
+  for(const[id,p]of g)_txC({op:'upd',id,before:p.b,after:p.a});
+  if(z)_txC({op:'zorder',changes:z});
+  for(const o of gg)_txC(o)}}   // ADR-1126
 const _emOK=(k,v)=>k!=='img'&&k!=='dataUrl'&&k!=='type'&&k!=='locked'&&k!=='id'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k[0]!=='_'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&validPatch({[k]:v});   // ADR-1124
 // Bound connectors: s.a/s.b (shape id) derive from the bound shape's edge
 // at render/hit/export so the connector follows. Stored = fallback.
@@ -2158,7 +2171,7 @@ const STICKY_COLORS=[_YW,'#FBCFE8','#BBF7D0','#BFDBFE','#DDD6FE','#FED7AA'];
 // Validity: O(1) signature of ref+len+first/mid/last pts+stroke+size.
 const _penCache=_mP(),PEN_CACHE_MAX_PX=12e6,PEN_CACHE_MAX_DIM=4096;
 let _penCachePx=0;
-// ADR-0424: per-shape caches keyed by shape id die with the shape — purge on
+// ADR-0424
 // wholesale `state.shapes=` replacement — dead entries would otherwise sit
 // until the global caps evict them.
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985
@@ -2170,7 +2183,7 @@ const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){const w=s.pg&&_wc()[s.pg];i
 const _pgClk=m=>validClock(m.rep)?m.rep:{ts:nowTs(),peer:_pi(),seq:0};   // ADR-1093
 function _pgAdopt(pages,cur,clk){const v=_vPages(pages);
 let keep=v;
-if(clk&&v){keep=[];for(const p of v){const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(!w||!w._del||b&&clockNewer(b,w._del))_pu(keep,p)}}   // ADR-1110: carried birth vs local tomb — no birth → tomb wins
+if(clk&&v){keep=[];for(const p of v){const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(!w||!w._del||b&&clockNewer(b,w._del))_pu(keep,p)}}   // ADR-1110
 state.pages=keep&&_ln(keep)?clone(keep):null;
 if(clk)for(const p of state.pages||[]){const b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:clk;_bT(p.id,b);_fTs(p.nts);if(p.bts==null){p.bts=b.ts;p.btp=b.peer||''}}   // ADR-1093/1110/1114
 _pgHealS();
@@ -2220,7 +2233,7 @@ function _pgDel(){if(state.ro){_roNo();return}if(!_pgOn()||_ln(_pgs())<2)return;
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
 function _pgDel2(op,firstId,only,viewId,pg0){   // ADR-0646
   _unB();   // ADR-0953
-  // ADR-0707/0724/0725/1109: del parity — locked survive; `only` caps kill;
+  // ADR-0707/0724/0725/1109
   // implicit members resolve on the PRE-delete first page (op.id if it was first)
   const _mp=s=>(s.pg||pg0||firstId)===op.id;
   const dead=new Set();for(const s of _sh())if(_mp(s)&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
@@ -2282,7 +2295,7 @@ function _penRes(){return _min(2,_max(0.25,_vp().zoom*DPR))}
 function _penRender(s,e,R){
   const w=_max(2,_ceil(e.bw*R)),h=_max(2,_ceil(e.bh*R));
   if(w>PEN_CACHE_MAX_DIM||h>PEN_CACHE_MAX_DIM||w*h>PEN_CACHE_MAX_PX){
-    // ADR-0426: record the failed resolution and stop re-charging it;
+    // ADR-0426
     // otherwise the entry retries every frame and its
     // px keeps inflating _penCachePx, starving live entries.
     _penCachePx-=e.px||0;e.px=0;e.R=R;
@@ -2350,7 +2363,7 @@ function _penQuad(c,p,ra,rb,i){
   _lT(c,p[i-1][0]-nx*ra,p[i-1][1]-ny*ra);
 }
 function _penDisc(c,x,y,r){_mT(c,x+r,y);c.arc(x,y,r,0,PI2,true)}
-// ADR-1058: light skeleton fairing — endpoints anchored, interior points take
+// ADR-1058
 // a (prev+2·cur+next)/4 blend so single-sample pointer jitter melts out.
 // Pressure passes through by index so widths/taper stay aligned.
 function _penSm(p){
@@ -2498,7 +2511,7 @@ let _damage=null;   // ADR-0026: accumulated world-space dirty rect
 let _pinchSnap=null,_pinchVp=null;   // ADR-0030
 let _rszT=0;   // ADR-0631: pending debounced window resize
 function invalidate(){_damage=null;needsRender=true;needOverlay=true;if(!_rafId)_rafId=_rAF(frame);_ms()}
-// ADR-0026: gesture-local repaint — producers report the world-space rect they
+// ADR-0026
 // dirtied and frame() clips the scene pass to its accumulated union …
 // shrinks mid-gesture, so a fast teleport still covers the old position).
 // Everything else must keep calling _iv(), which resets _damage to full.
@@ -2515,7 +2528,7 @@ function frame(){
     // ADR-0565
     try{if(needsRender)draw();if(needOverlay)drawOverlay()}catch(_){}
     needsRender=false;needOverlay=false;
-    // ADR-0011: selection presence rides the frame edge — senders run
+    // ADR-0011
     // in 40+ places, but every change invalidates a frame, so this hook
     // catches them all. Change-detection inside sendSelectionIfChanged.
     // ADR-0565
@@ -2530,7 +2543,7 @@ function frame(){
   }
   if(needsRender||needOverlay)_rafId=_rAF(frame);  // draw() called _iv() (rare re-entry)
 }
-// ADR-0164: live W×H readout of the selection bbox in the statusbar …
+// ADR-0164
 // dimensions field). Signature-gated: the DOM write happens only when the
 // rendered text actually changes, so gesture frames cost one bboxAll + a
 // string compare. Hidden entirely when nothing is selected.
@@ -2600,7 +2613,7 @@ function centerOn(sh){
 }
 function describeShape(s){
   const b=_bb(s);
-  const nm=s.hl&&_pn(s)?(T.k?.marker??'marker'):T.k?.[s.type]??s.type;   // ADR-0429: highlighter strokes are markers, not pens
+  const nm=s.hl&&_pn(s)?(T.k?.marker??'marker'):T.k?.[s.type]??s.type;   // ADR-0429
   // Announce the shape's content (text or labe
   // cycling shapes, "Arrow yes" / "Sticky buy
   // coordinates. Truncated so a long note doesn't flood the SR item.
@@ -2628,14 +2641,14 @@ function describeShape(s){
   if(s.link)d+=' 🔗';   // ADR-0315: mirror the visual badge for SR users
   return d;
 }
-// ADR-0037: announce pointer-path selection changes — marquee, click/group select,
+// ADR-0037
 // Announcement rides UI.toast (aria-live) like other status messages.
 function _announceSel(){
   const n=_selN();
   _tst(n===0?t('selNone'):n===1?describeShape(_sel0()):n+t('selCount'));
 }
 
-// ADR-0041: DOM mirror — a visually-hidden <ul> of every shape so screen
+// ADR-0041
 // readers can enumerate board content and jump to a shape. Rebuilt only when
 // _gridVer changes (never per-frame), capped at MIRROR_MAX — past the cap a
 // trailing 'N more not listed' item keeps the truncation explicit.
@@ -2732,7 +2745,7 @@ function draw(){
   }
 
   const _view=panned?{x:ev.x,y:ev.y,w:W/z,h:H/z}:(dmg?{x:dmg.x-16,y:dmg.y-16,w:dmg.w+32,h:dmg.h+32}:visibleWorldRect());
-  // ADR-0016: prefilter by grid rect query on the damaged region
+  // ADR-0016
   // instead of O(n) per frame. inView() still
   // so the rendered result is identical.
   let _vis=null;
@@ -2741,7 +2754,7 @@ function draw(){
     _vis=_gridRectCandidates(_grid,_view);
   }
   let _drawIter=_vis||_sh();
-  // ADR-0026: gesture handlers mutate shapes in place WITHOUT _iG(),
+  // ADR-0026
   // so a stale grid can drop a dragged shape this frame —
   // re-check gesture targets while preserving z-order visibility
   if(dmg&&_vis){
@@ -2879,7 +2892,7 @@ function drawPeerSelections(c){
     _sD(c,[]);
   }
 }
-// ADR-0010: ephemeral, never persisted — cleared on peer reap/disconnect.
+// ADR-0010
 function drawPeerCursors(c){
   if(_pA())return;   // presence is for co-editing, not solo frame review
   for(const p of _pr().values()){
@@ -2901,7 +2914,7 @@ function drawGuides(c){
   }
   _sD(c,[]);
 }
-// ADR-0151: gap measurement guides (Figma measure mode). For each axis where
+// ADR-0151
 // the two envelopes separate, draw a solid guide across the gap midpoint
 // of the overlap/projection band plus end ticks and a px pill.
 function _drawMeasure(c){
@@ -2981,7 +2994,7 @@ function _drawBoxLabel(s,c){
       if(s.strike){const uy=top0+lh/2+i*lh;_bp(c);_mT(c,ux,uy);_lT(c,ux+lw,uy);_st2(c)}}}
   _rs2(c);
 }
-// ADR-0083: image caption — paper-backed strip along the inside bottom edge,
+// ADR-0083
 // clipped to the image height so the band never overflows the bitmap.
 function _drawImgLabel(s,c){
   if(!_lb(s))return;
@@ -3042,7 +3055,7 @@ function _pathNearestT(pts,p){
   }
   return bt;
 }
-// ADR-0252: connector label widths are pure functions of (label,font,flags) —
+// ADR-0252
 // memoize per shape so every frame doesn't pay _ln(lns) measureText calls.
 const _clCache=new WeakMap();
 function _connLabelMeasure(s,c,lns,fs){
@@ -3163,7 +3176,7 @@ function drawShape(s,c){
       const r=4;
       _sv2(c);
       c.globalAlpha=(_oP(s)??1)*0.9;
-      // ADR-0175: _fi(s) tints the frame (was hard-coded translucent);
+      // ADR-0175
       // frames draw in the first pass so contents still render on top.
       c.fillStyle=_fi(s)&&_fi(s)!=='none'?_fi(s):'rgba(248,250,252,0.6)';   // ADR-0288
       _bp(c);roundRect(c,s.x,s.y,s.w,s.h,r);_fil(c);
@@ -3268,7 +3281,7 @@ function drawArrow(s,c){
   _arrowHeadShape(c,L.x,L.y,ang,ah,_sk(s),s.head);
   if(s.start)_arrowHeadShape(c,pts[0].x,pts[0].y,_at2(pts[0].y-F.y,pts[0].x-F.x),ah,_sk(s),s.startHead||s.head);
 }
-// ADR-0062: orthogonal (Manhattan) route for elbow connectors.
+// ADR-0062
 // Bound ends exit along the edge's outward normal (stub); free ends take the
 // dominant axis toward the other end. Stub tips are joined by one bend —
 // degenerate cases collapse to an L or a straight line.
@@ -3314,7 +3327,7 @@ function _elbowTrunk(s){
   }
   return null;
 }
-// ADR-0156: rounded diamond contour — trims each vertex by r along its two
+// ADR-0156
 // edges and bridges the gap with a quadratic curve (vertex as control point).
 // s.r==null → sharp polygon (pre-ADR-0156 diamonds unchanged).
 function _diamondPath(c,s){
@@ -3341,7 +3354,7 @@ function _polyline(c,pts){
   _bp(c);_mT(c,pts[0].x,pts[0].y);
   for(let i=1;i<_ln(pts);i++)_lT(c,pts[i].x,pts[i].y);
 }
-// ADR-0207: polyline with rounded interior joints (draw.io "rounded" edgeStyle).
+// ADR-0207
 // Each interior vertex is trimmed by r along both segments and bridged with a
 // quadratic curve (vertex as control point) — same math as _diamondPath.
 function _polylineR(c,pts,r){
@@ -3356,7 +3369,7 @@ function _polylineR(c,pts,r){
   }
   _lT(c,_pL(pts).x,_pL(pts).y);
 }
-// ADR-0218: connector "jump" arcs — where this conn's polyline crosses another
+// ADR-0218
 // conn, the segment bulges over it in a semicircle …
 // "jump" style). Render-only: endpoints within 3% count as bindings, not
 // crossings, so bound ends never hop their own shape's edges.
@@ -3447,7 +3460,7 @@ function _polylineRd(pts,ox,oy,r){
   d+=` L ${n2(_pL(pts).x+ox)} ${n2(_pL(pts).y+oy)}`;
   return d;
 }
-// ADR-0119: head style variants — 'arrow' (filled triangle, default),
+// ADR-0119
 // 'dot' (filled circle), 'open' (stroked chevron). Applies to both ends.
 function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   if(style==='none')return;                                  // ADR-0230
@@ -3469,7 +3482,7 @@ function _arrowHeadShape(c,x,y,ang,ah,stroke,style){
   _lT(c,x+_cos(a2)*ah,y+_sin(a2)*ah);
   _cP(c);_fsS(c,col);_fil(c);
 }
-// ADR-0068: quadratic-bezier route for curved connectors. Control point is the
+// ADR-0068
 // midpoint pushed along the left normal by bend=min(0.25*len,80).
 function _curveCtrl(e,bend){
   const mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
@@ -3491,7 +3504,7 @@ function _curveLabelXY(s){
 }
 // ADR-0070
 function _qconnShape(g){
-  // ADR-0643: g=1 skips the ptr.down gate — PD-time _qdotAt runs after ptr.down
+  // ADR-0643
   // is armed; an unconditional check made quick-connect unreachable.
   if(_tl()!=='select'||(!g&&ptr.down)||!state.hover)return null;
   const s=byId(state.hover);
@@ -3542,7 +3555,7 @@ function drawPen(s,c){
     _bp(c);c.arc(p[0][0],p[0][1],(_szz(s)||2)/2,0,PI2);_fil(c);
     return;
   }
-  // ADR-0046: union fill of trapezoid+disc primitives gives
+  // ADR-0046
   // naturally tapered ends; identical primitives to the live tail
   const w=penWidths(p,_szz(s)),oldFill=c.fillStyle;
   c.fillStyle=_sk(s)||_gC('--brand');     // ADR-0857
@@ -3550,7 +3563,7 @@ function drawPen(s,c){
   _fsS(c,oldFill);
 }
 // ADR-0078: shared font declaration.
-// ADR-0173: _ftt(s) selects the family stack — 'mono'|'serif'|absent(system).
+// ADR-0173
 // Offline-safe stacks only (no web fonts; Board must never fetch a font).
 function _fontFam(s){
   return _ftt(s)==='mono'?'ui-monospace,SFMono-Regular,Menlo,monospace':
@@ -3610,7 +3623,7 @@ function getHandles(s){
     _pu(h,{id:'p2',x:e.x2,y:e.y2});
     return h;
   }
-  // ADR-0051: pens resize for real — emit the affine-mapped pts
+  // ADR-0051
   // (writing x/y/w/h on a pen would NaN it; map pts via the box).
   if(_pn(s)){
     if(_ln(s.pts)<2)return [];                 // a dot can't scale (ADR-0051)
@@ -3658,7 +3671,7 @@ function getRotHandle(s){
   const k=R(cx,ty-d),an=R(cx,ty);
   return{x:k.x,y:k.y,ax:an.x,ay:an.y,cx,cy};
 }
-// ADR-0057: same knob geometry on a multi-selection's group bbox. Rotation
+// ADR-0057
 // composes (no skew), so unlike gresize there's no rotated-member exclusion.
 function _grpRotHandle(b){
   const cx=b.x+b.w/2,cy=b.y+b.h/2,d=ROT_OFFSET/_vp().zoom;
@@ -3750,7 +3763,7 @@ function resizeSnap(orig,handle,wp){
        _pu(guides,{x1:bd.b.x,y1:bd.b.y,x2:bd.b.x,y2:bd.b.y+bd.b.h});}}}
   return{x,y,guides};
 }
-// ADR-0056: affine-map one group's member geometry from the start-of-drag group
+// ADR-0056
 // box `ob` into the resized virtual box `vb`. Covers box (x/y/w/h), pen …
 // pressure kept) and line/arrow (x1..y2). Orig-clone → live writes every frame,
 // so no float error accumulates across the drag.
@@ -3776,7 +3789,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   const ox=orig.x,oy=orig.y,ow=orig.w,oh=orig.h;
   const cx0=ox+ow/2,cy0=oy+oh/2;                  // original centre (Alt pivot)
   const clamp=4; // min size
-  // ADR-0051: pen — run the identical handle math on the
+  // ADR-0051
   // pts bbox, then map orig.pts into the resulting box
   // live pts) keeps the drag from accumulating drift
   if(_pn(orig)){
@@ -3857,7 +3870,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   const _rb=_bb(sh);
   state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${_rnd(_abs(_rb.w))} × ${_rnd(_abs(_rb.h))}`};
 }
-// ADR-0056: named drag-step/commit functions keep the gesture testable headless.
+// ADR-0056
 // Drag: the shared handle math runs on a virtual box (snap/Shift/Alt all reuse),
 // then _mapToBox affine-maps every member's geometry orig→result each frame.
 function _gresizeDrag(wp,shift,alt){
@@ -4029,13 +4042,13 @@ const _sqNav={idx:-1,lastQ:''};  // step-through navigation state (exported for 
 // instead of assigning _sq directly). Also resets navigation state, mirroring the
 // search input's `input` event handler.
 function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
-// ADR-0048: ordered match list keyed on {_gridVer,_sq} — _sqNav.idx stays out.
+// ADR-0048
 let _sqVer=-1,_sqQ='',_sqList=null;
 function _sqMatches(){
   const q=_lc(_sq);
   if(_sqVer===_gridVer&&_sqQ===q)return _sqList;
   _sqList=[];
-  // ADR-0381: a connector is also found by its bound endpoints' labels —
+  // ADR-0381
   // "arrow into the Login button" should match
   const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
   for(const s of _sh()){if(_sv(s)&&_pgOk(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
@@ -4077,7 +4090,7 @@ const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970
 const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&!_rb(id))_geoR(s,o)}};
 const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s&&!_rb(o.id)){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
 const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};
-// ADR-0969: writes landing mid-gesture merge into the live gesture origs so _gRst
+// ADR-0969
 // keeps remote values; a shape (re)born past the arm clock isn't restored at all.
 const _gTouch=(id,ks)=>{const s=byId(id);if(!s)return;const cp=o=>{for(const k of ks)o[k]=clone(s[k])};const n=_nug;if(n){const o=n.op.orig&&n.op.orig[id];if(o)cp(o);const B=n.op.before,b=B&&B.find(b=>b.id===id);if(b)cp(b);const C=n.op.changes,c=C&&C.find(c=>c.id===id);if(c)for(const k of ks)if(k==='frac')c.before=s.frac}if(!ptr.down)return;for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc]){const o=m&&m.get(id);if(o)cp(o)}for(const o of[ptr.resizeOrig,ptr.rotOrig,ptr.ebendOrig,ptr.cbendOrig,ptr.wayOrig,ptr.lblOrig])if(o&&o.id===id)cp(o)};   // ADR-0971
 const _gRst=()=>{
@@ -4108,7 +4121,7 @@ _on(canvas,_PD,e=>{
   const sp=_osp(e);
   const wp=_s2(sp);
   state.measure=null;
-  // ADR-0532/0896: non-primary buttons must not arm ptr.down — right (2) plus
+  // ADR-0532/0896
   // mouse X1/X2 side buttons and stylus barrels (3/4/5) reach here too.
   if(e.button>1)return;
   ptr.down=true;ptr.x=ptr.x0=sp.x;ptr.y=ptr.y0=sp.y;   // ADR-0969
@@ -4118,14 +4131,14 @@ _on(canvas,_PD,e=>{
   if(isPan||(_tl()==='hand')){
     ptr.panning=true;canvas.dataset.panning='true';return;
   }
-  if(state.ro&&_tl()!=='select'){_roNo();return}   // ADR-1057: pan/select survive, draw tools don't arm
+  if(state.ro&&_tl()!=='select'){_roNo();return}   // ADR-1057
   UI.closeCtxMenu();
-  // ADR-0006: select tool only — that's where the ctx menu's
+  // ADR-0006
   // item target (a shape, or the board for clear-all) is meaningful and stable
   if(e.pointerType==='touch'&&_tl()==='select')_armLongPress(e.clientX,e.clientY);
   switch(_tl()){
     case 'select':
-      // ADR-1057: selection survives read-only — transform drags don't arm
+      // ADR-1057
       if(!state.ro){
       // Resize handles take priority over pick
       if(_selN()===1){
@@ -4248,7 +4261,7 @@ _on(canvas,_PD,e=>{
         break;
       }
       }
-      // ADR-0314: ⌘ on macOS / Ctrl elsewhere (Figma parity);
+      // ADR-0314
       // macOS is the context-menu chord, so the modifier is platform-split
       if((/Mac|iPhone|iPad/.test(navigator.platform)?e.metaKey:e.ctrlKey)){const _h0=pickTop(wp);if(_h0&&_h0.link){if(!_wO(_h0.link,'_blank','noopener'))_wT('popupBlocked');break}}
       pickOrMarquee(wp,e);break;
@@ -4264,7 +4277,7 @@ _on(canvas,_PD,e=>{
       const hit=pickTop(wp);                        // locked shapes are valid style sources
       if(hit){
         const ext=_styleOf(hit);
-        // ADR-0185: eyedropper also absorbs every persisted look-prop so the
+        // ADR-0185
         // next shape carries the picked style (Figma eyedropper parity)
         for(const k of['stroke','fill','size','opacity','dash','font','head','start','startHead','elbow','curve','hop','r','fstyle','align','valign','fontSize','lineH','cbend','spacing','shadow'])_st()[k]=ext[k];
         state.styleClipboard=ext;                   // ⌥V applies it to the selection too
@@ -4283,7 +4296,7 @@ _on(canvas,_PM,e=>{
   Net.sendCursor(wp);   // ADR-0010
   UI.setStatusXY(_rnd(wp.x),_rnd(wp.y));
   if(!ptr.down){
-    // ADR-0126: click-click line mode — after a first click the tail follows
+    // ADR-0126
     // to the cursor until the second click commits
     if(ptr.lineClick&&(_tl()==='line'||_tl()==='arrow')){contLineLike(wp,_sK(e));return}
     // hover feedback
@@ -4315,7 +4328,7 @@ _on(canvas,_PM,e=>{
       // state.hover feeds nothing visual (cursor is set by pickTop);
       // on a heavy board this repainted the whole scene per move
       if(top?.id!==state.hover){state.hover=top?.id||null;_ivO()}   // ADR-0070: qconn dots track hover
-      // ADR-0151: Alt+hover (Figma measure mode) — gap guides between the
+      // ADR-0151
       // selection envelope and the hovered shape. Signature-compare so a
       // steady cursor repaints nothing.
       const _m=(_aK(e)&&_selN()&&top&&!top.locked&&top.visible!==0&&!_hasS(top.id))
@@ -4551,7 +4564,7 @@ function _clearLongPress(){
   if(_longPressTimer){_cT(_longPressTimer);_longPressTimer=null}
 }
 _on(canvas,_PC,_cancelPointerGesture);
-// ADR-0521: capture revocation without pointercancel would leave ptr.down
+// ADR-0521
 // stuck — cancel the gesture (no-op after a normal pointerup).
 _on(canvas,'lostpointercapture',()=>{if(ptr.down)_cancelPointerGesture()});
 _on(canvas,'contextmenu',e=>{_pd(e);
@@ -4559,7 +4572,7 @@ _on(canvas,'contextmenu',e=>{_pd(e);
   // ADR-0524
   if(ptr.down)_cancelPointerGesture();else UI.openCtxMenu(e.clientX,e.clientY)});
 _on(canvas,'pointerleave',()=>{if(_laser){_laser=null;_ivO()}
-  // ADR-0526: state.hover keeps feeding the quick-conn dots; on
+  // ADR-0526
   // pointer exits — clear it so stale dots don't linger
   if(state.hover){state.hover=null;_ivO()}
   Net.sendCursorHide()});   // ADR-0611
@@ -4573,7 +4586,7 @@ _on(canvas,'dblclick',e=>{
   // (Excalidraw parity). beginText commits the
   // text is dismissed on blur by the existing finalize path.
   if(!hit){beginText(wp);return}
-  // ADR-0162: dblclick on a grouped member while its group is selected
+  // ADR-0162
   // descends — narrows the selection to that member; a second
   // dblclick on the solo-selected member reaches deeper
   if(hit.groupId){
@@ -4589,7 +4602,7 @@ _on(canvas,'dblclick',e=>{
 // Positions and opens the shared label editor for box labels …
 // their centre/corner) and connector labels (line/arrow, at the segment midpoint).
 // Shared by dblclick and ADR-0013's keyboard path so both stay in sync.
-// ADR-0182: anchor geometry shared by openLabelEditor and the follow pass —
+// ADR-0182
 // recomputable on every viewport change so the input rides the shape.
 function _lblAnchor(hit){
   const r=_cbr();
@@ -4675,7 +4688,7 @@ function openLabelEditor(hit,leftPx,topPx,bold){
     if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;_rm(inp)}
   });
 }
-// ADR-0182: same viewport-signature follow as _teFollow (ADR-0053), for the
+// ADR-0182
 // label input — it used to stay glued to the glass while the board panned.
 let _lblTa=null,_lblVp='';
 // ADR-0560: commit a still-open overlay first
@@ -4705,7 +4718,7 @@ function _imgImportFile(f,cb){
   if(_bigFile(f)){_wT(_IB);return}   // ADR-0877
   const reader=new FileReader();
   reader.onload=()=>{
-    // ADR-0527/0867: reject at the wire dataUrl bound exactly — larger lands
+    // ADR-0527/0867
     // locally yet is rejected by every peer.
     if(_ln(reader.result) > 16_000_000){
       _w(t('imgBig')+' ('+_rnd(_ln(reader.result)/1024)+'KB)');return;
@@ -4731,27 +4744,27 @@ function _imgImportFile(f,cb){
   reader.onerror=()=>_wT('imgErr');
   reader.readAsDataURL(f);
 }
-// ADR-0518: shared text-intake cascade — SVG markup → .board JSON →
+// ADR-0518
 // .excalidraw → mxfile → TSV grid → plain-text shape. `wp` is the landing
 // point in world coords. Returns true when consumed; false → internal paste.
 function _textCascade(s,wp){
   if(state.ro){_roNo();return true}   // ADR-1102
   if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){importSvgText(s,wp);return true}
   if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(_s0(s,8192))&&/"shapes"\s*:\s*\[/.test(s)){
-    // ADR-0516: our own OS-clipboard echo → internal doPaste, not a re-import.
+    // ADR-0516
     if(s===_osClip){doPaste();return true}
     if(importBoardText(s,wp)!==false)return true;
   }
   if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(_s0(s,4096))){
     if(importExcText(s,wp)!==false)return true;
   }
-  // ADR-0232: drawio's copy is uncompressed mxfile XML → the drawio importer.
+  // ADR-0232
   if(/<mxfile[\s>]/.test(_s0(s,4096))){
     if(importDrawioText(s,wp)!==false)return true;
   }
   const txt=_trm(s);
   if(!txt)return false;
-  // ADR-0273: tab-separated intake → sticky grid (columns × rows).
+  // ADR-0273
   if(/\t/.test(txt)&&txt.includes('\n')){
     const rows=_spL(_s0(txt,PASTE_MAX_CHARS)).map(r=>r.split('\t'));
     const C=_max(...rows.map(_ln)),R=_ln(rows);
@@ -4783,7 +4796,7 @@ _on(canvas,'drop',e=>{
   if(xf){importExcFile(xf,_o2w(e));return}
   const df=[...e.dataTransfer.files].find(f=>/\.(drawio|dio)$/i.test(f.name));   // ADR-0203
   if(df){importDrawioFile(df,_o2w(e));return}
-  // ADR-0042: .svg must be claimed BEFORE the generic image/* branch —
+  // ADR-0042
   // image/svg+xml also matches startsWith('image/') but <img> can't raster it.
   const sf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.svg')||f.type==='image/svg+xml');
   if(sf){importSvgFile(sf,_o2w(e));return}
@@ -4812,7 +4825,7 @@ _on(canvas,'drop',e=>{
 });
 
 // ---- OS clipboard bridge ----
-// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain);
+// ADR-0516
 // _osClip echoes it back to the internal doPaste path.
 let _osClip=null,_cpNow=false;
 function _osCopy(e){
@@ -4832,7 +4845,7 @@ _on(window,'cut',_osCopy);
 // ---- Image import: clipboard paste ----
 _on(window,'paste',e=>{
   if(e.target.matches?.('input,textarea'))return;
-  // ADR-0272: an image/svg+xml clipboard item imports as vector shapes —
+  // ADR-0272
   // without this it rasterised through the image path (bitmap, not shapes)
   {const _svi=[...e.clipboardData.items].find(i=>i.type==='image/svg+xml');
    if(_svi){const f=_svi.getAsFile();if(f){_pd(e);f.text().then(s=>importSvgText(s));return}}}
@@ -4842,7 +4855,7 @@ _on(window,'paste',e=>{
     const ti=[...e.clipboardData.items].find(i=>i.type==='text/plain');
     if(!ti){doPaste();return}   // ADR-0516
     ti.getAsString(tx=>{
-      // ADR-0518: the shared cascade runs at the viewport center
+      // ADR-0518
       // text needs _pd so the browser doesn't also insert it anywhere
       if(_textCascade(_St(tx||''),_midV()))_pd(e);
       else doPaste();   // ADR-0516
@@ -4881,14 +4894,14 @@ _on(canvas,'wheel',e=>{
   if(_pA())return;   // ADR-0640: pan/zoom behind overlay unfocuses the fitted frame
   const d=wheelPx(e);
   if(_mod(e)){
-    // ADR-0033: ctrl+wheel (trackpad pinch) gets the pinch
+    // ADR-0033
     // snapshot preview — crisp repaint ~180ms after the last.
     _pinchSnapNow();
     _cT(_wheelZoomEnd);
     _wheelZoomEnd=_stO(()=>{_pinchSnap=null;_pinchVp=null;_iv()},180);
     zoomAt({x:e.offsetX,y:e.offsetY},-d.y*0.005);
   }else{
-    // ADR-0093: ⇧+wheel pans horizontally (mouse deltaY→X); real deltaX
+    // ADR-0093
     // passes through so trackpads keep horizontal pan
     const dx=_sK(e)&&!d.x?d.y:d.x,dy=_sK(e)&&!d.x?0:d.y;
     _vp().x=_xC(_vp().x+dx/_vp().zoom);
@@ -4961,12 +4974,12 @@ function _pinchSnapNow(){
 }
 function zoomAt(sp,delta){
   const v=_vp();
-  // ADR-0030: the first zoom of a multi-touch pinch snapshots the scene;
+  // ADR-0030
   // every pinch frame then blits this pristine bitmap under the
   // accumulated transform instead of rescanning — camera
   // moves are a blurry-but-instant preview; the detail repaint lands on settle.
   const nz=clampZoom(v.zoom*Math.exp(delta));
-  // ADR-0054: at the zoom bound a wheel tick used to still slide the
+  // ADR-0054
   // anchor, drifting the viewport by the distance of unused zoom
   // ticks (the "micro-pan" audit remainder). A pure no-op instead:
   // return before the pinch snapshot, nothing will move.
@@ -4989,7 +5002,7 @@ function zoomReset(){
   _rZ();_iv();_ps();
   _ann('100%');
 }
-// ADR-0049: shared viewport-fit math; callers announce their own message.
+// ADR-0049
 function _fitViewport(b,pad,cap){
   const r=_cbr();
   const z=clampZoom(_min((r.width-pad*2)/b.w,(r.height-pad*2)/b.h,cap));
@@ -5007,7 +5020,7 @@ function fitToContent(){
   const z=_fitViewport(b,40,2);
   _ann(_rnd(z*100)+'%');
 }
-// ADR-0106: boot guard against "lost content" — a persisted/imported viewport
+// ADR-0106
 // that contains zero shapes looks like an empty board and reads as data loss.
 // Only fires when shapes exist AND none are visible; an intentionally panned
 // empty view is left alone.
@@ -5032,7 +5045,7 @@ function zoomToSelection(){
 // query covers the 3×3 cell neighbourhood
 const _GCELL=200;let _grid=null,_gridVer=0;
 function _invalidateGrid(){_grid=null;_idIndex=null;_gridVer++;}   // ADR-0009: id index shares this choke point
-// ADR-0047: group-halo map keyed on _gridVer — skip the per-frame rebuild.
+// ADR-0047
 let _grpMapVer=-1,_grpMap=null;
 function _grpMapGet(){
   if(_grpMapVer===_gridVer)return _grpMap;
@@ -5057,7 +5070,7 @@ function _buildGrid(shapes){
   }
   return{cells,big,idx,cs};
 }
-// ADR-0016: rect query — every shape whose cells overlap the view rect …
+// ADR-0016
 // is a draw() candidate; inView still decides
 // Returns a z-ORDERED array so draw() iterates candidates directly — the full
 // _sh() scan is skipped entirely.
@@ -5124,7 +5137,7 @@ function pickOrMarquee(wp,e){
         return;
       }
     }
-    // ADR-0129: ⇧click on a fully-selected target removes it from
+    // ADR-0129
     // selection (Figma parity) — plain click starts a marquee
     if(alreadySel&&_sK(e)){
       for(const id of toSelect)_sdl(id);
@@ -5197,7 +5210,7 @@ function _snapBoxIdx(mov,idx,tol){
   if(by){dy=by.d;_pu(guides,_gH(by.at,mov,by.b));}
   return{dx,dy,guides};
 }
-// ADR-0071: equal-gap snap. On an axis where edge snapping found nothing,
+// ADR-0071
 // look at same-row (y-band-overlapping for X, x-band for Y) shapes sorted along
 // the axis: consecutive pairs (a,b) form gap g=b.l−a.r; candidate positions put
 // mov at the same g from a or b — the classic "evenly spaced row" drop slot.
@@ -5275,7 +5288,7 @@ function nudgeSelection(dx,dy){
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
 // Grid snap (⇧G) takes precedence; otherwise snap to nearby objects.
 function moveDelta(wp,shift,alt){
-  // ADR-0128: held Alt suppresses every snap source (snapPt/snapV) and object
+  // ADR-0128
   // snap alike — "hold Alt while dragging to disable all snap functions".
   const sp=alt?wp:snapPt(wp),sx0=alt?ptr.wx0:snapV(ptr.wx0),sy0=alt?ptr.wy0:snapV(ptr.wy0);
   let dx=sp.x-sx0,dy=sp.y-sy0;
@@ -5299,7 +5312,7 @@ function doMove(wp,shift,alt){
     const x0=_min(b0.x,b0.x+dx)-m,y0=_min(b0.y,b0.y+dy)-m;
     dmg=_dmgU(dmg,{x:x0,y:y0,w:_max(b0.x+b0.w,b0.x+b0.w+dx)-x0+m,h:_max(b0.y+b0.h,b0.y+b0.h+dy)-y0+m});
   }
-  // ADR-0201: live X,Y readout at the selection's leading edge —
+  // ADR-0201
   // Figma shows the panel position during drags too
   {
     let bx=null,by=null,bb=null;
@@ -5325,7 +5338,7 @@ function endSelect(wp,shift,alt){
     const r={x:_min(m.x1,m.x2),y:_min(m.y1,m.y2),
       w:_abs(m.x2-m.x1),h:_abs(m.y2-m.y1)};
     if(r.w>2||r.h>2){
-      // ADR-0130: ⇧marquee adds to the current selection (Figma parity);
+      // ADR-0130
       // plain marquee replaces it as before.
       if(!shift)_scl();
       // ADR-0032: a fully-contained shape's cells
@@ -5383,7 +5396,7 @@ function coalescedSamples(e){
   const cs=e&&e.getCoalescedEvents&&e.getCoalescedEvents();
   return cs&&_ln(cs)?cs:[e];
 }
-// ADR-0023: read the last predicted pointer position for the render-only ink
+// ADR-0023
 // tail. Predicted events exist on the pointermove event itself …
 // coalesced children), so callers must pass the original `e`. Returns a screen
 // pt or null; unsupported/empty → null (pure feature-detect, unit-testable).
@@ -5396,7 +5409,7 @@ let _penPred=null;   // world pt of the last predicted sample — render-only
 function beginPen(wp,e){
   _penPred=null;
   state.draft=_smk('pen',{pts:[[wp.x,wp.y,_penPr(e)]]});
-  // ADR-0125: marker is the pen gesture with high width + low alpha —
+  // ADR-0125
   // (pressure-free) wide translucent stroke; same 'pen' type, so every
   // renderer/exporter/sync path is unchanged.
   if(_tl()==='marker'){const d=_df();d.hl=1;d.size=8;d.opacity=0.4}
@@ -5404,7 +5417,7 @@ function beginPen(wp,e){
 function contPen(wp,e){
   if(!_df())return;
   const pts=_df().pts;
-  // ADR-0200: Shift held = straight-line mode — stroke collapses to [start,
+  // ADR-0200
   // current]. Full invalidate — the shrink path can't reuse the index
   if(_sK(e)&&_ln(pts)){pts.length=1;_pu(pts,[wp.x,wp.y,_df().hl?0.5:_penPr(e)]);_iv();return}
   const last=_pL(pts);
@@ -5436,7 +5449,7 @@ function _rdp(pts,eps){
   const out=[];for(let i=0;i<_ln(pts);i++)if(keep[i])_pu(out,pts[i]);
   return out;
 }
-// ADR-0005: geometric-heuristic shape recognition. Pure, deterministic —
+// ADR-0005
 // classifies a rough stroke as line/rect/ellipse when it matches that shape's
 // geometry (thresholds proportional, so tiny and huge sketches score alike);
 // triangle/others unsupported: Board has no drawing tool to convert them into.
@@ -5497,7 +5510,7 @@ function endPen(){
   if(!_df())return;
   const d=_df();state.draft=null;
   if(_ln(d.pts)>=1){
-    // ADR-0034: eps scales with the capture resolution (pixel
+    // ADR-0034
     // spacing), so zoomed-in strokes keep the detail; about
     // 0.5 world units at zoom 1, finer when zoomed in.
     if(_ln(d.pts)>3)d.pts=_rdp(d.pts,0.5/_vp().zoom);
@@ -5585,7 +5598,7 @@ function endLineLike(){
   _cOp({op:'add',shape:d});
   pickTool('select');_ss([d.id]);
 }
-// ADR-0065: settle an endpoint drag — bind if dropped on a shape …
+// ADR-0065
 // not the other end's shape), else unbind. Called before the commit snapshot so
 // a/b lands inside the same `upd` op.
 function _endPointBind(sh,handle,alt){
@@ -5601,7 +5614,7 @@ function _endPointBind(sh,handle,alt){
   }else sh[fk]=null;
 }
 // Topmost non-connector shape whose bbox contains (x,y), for connector binding.
-// ADR-0214: _queryGrid like pickTop — endpoint drags call this per pointermove.
+// ADR-0214
 function _bindAt(x,y){
   const ok=s=>{const t=s.type;return t!=='line'&&t!=='arrow'&&t!=='pen'&&_sv(s)&&_pgOk(s)};
   const has=s=>{const b=_bb(s);return b&&x>=b.x&&y>=b.y&&x<=b.x+b.w&&y<=b.y+b.h};
@@ -5629,7 +5642,7 @@ function beginText(wp){
   openTextEditor(s,true);
   pickTool('select');
 }
-// ADR-0105: ⌘Enter inside a sticky's editor chains the next note — commit
+// ADR-0105
 // happens on blur, then a same-styled sticky spawns to the right and its
 // editor opens (rapid note-taking like Post-it®/FigJam).
 function _stickyChain(s){
@@ -5785,11 +5798,11 @@ function openTextEditor(s,isNew){
     if(ev.isComposing)return;
     if(ev.key==='Escape'){_pd(ev);ta.blur()}
     if(ev.key==='Enter'&&(_mod(ev))){_pd(ev);ta.blur();_stickyChain(s)}
-    // ADR-0236: ⌘B/I/U/⇧X inside the editor toggles the flag;
+    // ADR-0236
     // the global keydown skips input/textarea targets
     const mk=_lc(ev.key),fl={b:'bold',i:'italic',u:'under'}[mk]||(mk==='x'&&_sK(ev)?'strike':null);
     if((_mod(ev))&&fl){_pd(ev);toggleTextFlag(fl)}
-    // ADR-0375: Tab/⇧Tab commits and jumps to the next shape —
+    // ADR-0375
     // the label editor's chain (ADR-0196) and Figma parity
     if(ev.key==='Tab'){_pd(ev);
       const cur=_ix(_sh(),s),dir=_sK(ev)?-1:1;
@@ -5805,7 +5818,7 @@ function openTextEditor(s,isNew){
   auto();
   _teTa=ta;_teVp='';
 }
-// ADR-0053: while the inline editor is open, pan/zoom moves the scene but the
+// ADR-0053
 // textarea is DOM-anchored — re-position it whenever the viewport signature
 // changes (cheap no-op otherwise; runs once per frame). The textarea commits
 // only on blur, so a mid-pan edit still lands on the right shape.
@@ -5854,7 +5867,7 @@ function eraseAt(wp){
 }
 function flushErase(){
   if(!_ln(_eraseBatch))return;
-  // ADR-0964: a mid-stroke remote lock lands on the batch clone — peers drop a
+  // ADR-0964
   // del for locked shapes, so excluded members stay kept like peers see them.
   const live=_eraseBatch.filter(s=>!s.locked);
     for(const s of _eraseBatch)_sh().push(s);   // restore so commit's _apply finds them
@@ -5966,7 +5979,7 @@ _on(window,_KD,e=>{
     _iv();
   }
   else if(k===_EN&&!meta&&!_sK(e)){
-    // ADR-0013: with select tool active, Enter reopens the
+    // ADR-0013
     // label/text instead (createShapeKbd no-ops for select).
     // Other tools keep original behaviour: stamp a shape
     if(_tl()==='select'&&editSelectedShapeKbd()){_pd(e);}
@@ -6053,11 +6066,11 @@ _on(window,'keyup',e=>{
   }
   if(e.key==='Alt'&&state.measure){state.measure=null;_ivO()}
 });
-// ADR-0135: view toggles were keyboard-only (G/⇧G) — extracted so the
+// ADR-0135
 // ctx menu's touch path can reach them too.
 function toggleGridView(){state.showGrid=!state.showGrid;_iv();_tst(`${t('grid')} ${state.showGrid?t('on'):t('off')}`)}
 function toggleSnapMode(){state.snap=!state.snap;_tst(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
-// ADR-0134: the shape search box was ⌘F-only — invisible to touch users
+// ADR-0134
 // (the exact keyboard-only trap FT-06 warned about). Shared by ⌘F and ctx.
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
@@ -6109,7 +6122,7 @@ function doPaste(){
   _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
-// ADR-0115: paste in place — ⌘⇧V restores shapes at their original coordinates
+// ADR-0115
 // (Figma's Paste-in-place). No offset at all: dx=dy=0 keeps source coords.
 // Used to paste across boards/views or to drop a copy exactly atop the source.
 function doPasteInPlace(){
@@ -6119,7 +6132,7 @@ function doPasteInPlace(){
   _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
-// ADR-0103: paste centred at the ctx point — no cascade (_pasteCount untouched).
+// ADR-0103
 function doPasteAt(wx,wy){
   if(!_cl())return;
   const bb=_bA(_cl().shapes);
@@ -6163,7 +6176,7 @@ function _placeCopies(srcShapes,dx,dy){
   _iv();
   return added;
 }
-// ADR-1054: merge-mode import — add onto the board via the paste machinery
+// ADR-1054
 // (fresh ids + a/b/groupId remaps + one undoable addMany), not the swap.
 function _mergeImport(shapes){
   const added=_placeCopies(shapes,0,0);
@@ -6174,7 +6187,7 @@ function doDuplicate(){
   const origSel=_selIds();
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
   if(!_ln(sel))return;
-  // ADR-0080/1074: a {0,0} seeded delta (paste-in-place, merge import) is no
+  // ADR-0080/1074
   // chain at all — repeat at the default offset instead of invisible stacking.
   const smart=state.dupIds.size&&_dd()&&(_dd().x||_dd().y)&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()
@@ -6258,7 +6271,7 @@ function _zStep(dir){   // dir=+1 toward front, -1 toward back
 }
 function doBringForward(){_zStep(1)}
 function doSendBackward(){_zStep(-1)}
-// ADR-0104: select every shape sharing the picked shape's paint …
+// ADR-0104
 // "Select Same → Fill"). Sticky's paint lives in `color`; everything else in
 // `fill`. Locked shapes are included — ops already skip them.
 function selectSamePaint(){
@@ -6271,7 +6284,7 @@ function selectSamePaint(){
   _aS();_o(_ln(same)+' '+t(_SM));
   _iv();
 }
-// ADR-0137: hide/show shapes (Figma ⌘⇧H / eye). `_hd(s)` removes the
+// ADR-0137
 // shape from drawShape …
 // cache path) and from every pointer path (pickTop/eraser/marquee), so a
 // hidden shape is completely non-interactive. Restore via "show all" since
@@ -6303,7 +6316,7 @@ function connectSelection(){
   _ss([s.id]);
   _iv();
 }
-// ADR-0139: invert selection (draw.io ⌘⇧I / Photoshop parity) — the
+// ADR-0139
 // complement over unlocked, visible shapes (marquee/select-all rules).
 function selectInverse(){
   const inv=_sT();
@@ -6321,7 +6334,7 @@ function showAllShapes(){
   }
   if(_ln(before)){_styleOp(before,after);_iv();_oT('shownAll')}
 }
-// ADR-0120: select every shape of the same type as the single selection —
+// ADR-0120
 // sibling of selectSamePaint (e.g. all connectors, all stickies).
 function selectSameType(){
   const sel=_selL(Boolean);
@@ -6332,7 +6345,7 @@ function selectSameType(){
   _aS();_o(_ln(same)+' '+t(_SM));
   _iv();
 }
-// ADR-0102: wrap the selection in a frame (Figma ⌘⌥G). Spatial membership is
+// ADR-0102
 // automatic — the frame simply covers the union bbox + padding; z is tucked
 // just below the lowest member so contents stay on top.
 function wrapInFrame(){
@@ -6428,7 +6441,7 @@ function doAlign(dir){
       const totalH=units.reduce((s,{b})=>s+b.h,0);
       const gap2=(_max(...units.map(({b})=>b.y+b.h))-_min(...units.map(({b})=>b.y))-totalH)/(_ln(units)-1);
       let y0=units[0].b.y;for(const u of units){mv(u,0,y0-u.b.y);y0+=u.b.h+gap2}break}
-    // ADR-0107: reflow units into a compact grid (Figma «Tidy up»).
+    // ADR-0107
     // Reading order (y then x), cols=ceil(sqrt(n)); row pitch = max height +32,
     // column pitch = max width +32.
     case 'tidy':{
@@ -6458,7 +6471,7 @@ function doAlign(dir){
   _rcOp({op:'align',dir,before:beforeSnap,after:afterSnap});
   _ivp();
 }
-// ADR-0116: snap each selected shape's POSITION to the grid — translate so the
+// ADR-0116
 // bbox top-left lands on the nearest GRID_SIZE multiple. Geometry is never
 // resized/distorted; connectors/pen/way-points move via Shape.translate.
 // Recorded as one 'align' op (before/after full clones) for single undo.
@@ -6477,7 +6490,7 @@ function snapSelToGrid(){
   _rcOp({op:'align',dir:'gsnap',before:beforeSnap,after:afterSnap});
   _ivp();
 }
-// ADR-0079: match width/height of selected box shapes to the first-selected
+// ADR-0079
 // (draw.io Arrange → Match Size). Position untouched; align op for undo parity.
 const _MSZ=_sT(['rect','ellipse','diamond','sticky','image','frame']);
 function doMatchSize(dim){
@@ -6495,7 +6508,7 @@ function doMatchSize(dim){
 // Flip: mirror across selection-bbox centre, recorded as an `align` op. See docs.
 function flipShape(s,axis,c){
   const m=v=>2*c-v;
-  // ADR-0133: s.bend is a world coord of the elbow trunk on
+  // ADR-0133
   // the matching axis (vertical trunk stores x, horizontal y) —
   // flipped elbow's trunk jumps to the other side of the board.
   const tr=s.bend!=null?_elbowTrunk(s):null;
@@ -6517,7 +6530,7 @@ function flipShape(s,axis,c){
   if(tr&&(axis==='h')===!!trVert)s.bend=m(s.bend);
   if(s.cbend!=null)s.cbend=-s.cbend;   // ADR-0132: any mirror flips the curve's chirality
   if(s.labelPos!=null)s.labelPos=1-s.labelPos;
-  // ADR-0142: mirror maps angle θ → 180−θ across the vertical axis
+  // ADR-0142
   // ('h' flips x) and θ → 360−θ across the horizontal axis …
   // y). Previously both axes took 360−θ, so an 'h' flip left a rotated
   // shape tilted the wrong way (30°→330° instead of 150°).
@@ -6535,7 +6548,7 @@ function doFlip(axis){
   const before=sel.map(clone);
   const flipIds=_sT(sel.map(s=>s.id));
   for(const s of sel)flipShape(s,axis,c);
-  // ADR-0584: aF/bF live in the bound shape's fraction frame — mirror the
+  // ADR-0584
   // fraction only when that bound shape was actually flipped (in sel).
   for(const s of sel){
     if(s.aF&&flipIds.has(s.a)){if(axis==='h')s.aF.fx=1-s.aF.fx;else s.aF.fy=1-s.aF.fy}
@@ -6566,7 +6579,7 @@ function doLock(){
   _ivp();
   _ann(t(lk?'ctxLock':'ctxUnlock'));
 }
-// ADR-0123: unlock every locked shape on the board in one op — boards can
+// ADR-0123
 // accumulate locked shapes across sessions/imports with no bulk way back.
 // Same 'align' lock-dir before/after contract as doLock (single undo + sync).
 function unlockAll(){
@@ -6601,10 +6614,10 @@ function doBeautify(){
   _ivp();
   _o(`${t('beautified')} (${_ln(after)})`);
 }
-// ADR-0055: rotate applies to box shapes (orbit + _rt(s) spin) AND point
+// ADR-0055
 // geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
 const _rotatable=s=>_hb(s)||s.pts||s.x1!=null;
-// ADR-0146: rotate the s.bend trunk rigidly with the connector; axis-aligned
+// ADR-0146
 // re-derives the scalar, otherwise unrepresentable → null.
 function _rotBend(s,tr,rot){
   const a=rot(tr[0].x,tr[0].y),b=rot(tr[1].x,tr[1].y);
@@ -6627,7 +6640,7 @@ function doRotate(d){
   _xFS(sel,frameOf)
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone(_hb(s)?{...s,rotate:_rt(s)||0}:s));
-  // ADR-0586: re-derive aF/bF for bound conns — orbit+spin the anchor, re-normalize.
+  // ADR-0586
   const selIds=_sT(sel.map(s=>s.id)),extB=_mP();for(const s of sel)extB.set(s.id,_bb(s));
   const _bC=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&selIds.has(s.a))||(s.bF&&selIds.has(s.b))))_bC.push(s);
   for(const c of _bC)if(!selIds.has(c.id))before.push(clone(c));
@@ -6663,7 +6676,7 @@ function exportScale(w,h,desired){
   if(!(w>0&&h>0))return desired;
   return _min(desired, EXPORT_MAX_DIM/w, EXPORT_MAX_DIM/h, _sqr(EXPORT_MAX_AREA/(w*h)));
 }
-// ADR-0050: shared render-to-blob for export/copy; cb gets the PNG blob or null.
+// ADR-0050
 function _renderPngBlob(shapes,cb,desired){
   const b=_bA(shapes.filter(_sv));   // ADR-0593
   if(!b){_wT(_EM);return}
@@ -6679,7 +6692,7 @@ function _renderPngBlob(shapes,cb,desired){
   for(const s of shapes)_dS(s,oc);
   off.toBlob(cb,'image/png');
 }
-// ADR-0052: selection-scoped exports share the whole-board renderers — the
+// ADR-0052
 // exported region is exactly the selection's bbox (same pad/scale semantics).
 function _selShapes(){return _sh().filter(s=>_hasS(s.id))}
 function exportSelection(fmt){
@@ -6692,7 +6705,7 @@ function exportSelection(fmt){
   else if(fmt==='svgcopy')copySVG(sel);   // ADR-0087
   else exportPNG(sel);
 }
-// ADR-0121: export the viewport crop — what you see, not the bbox fit.
+// ADR-0121
 // World-space view rect = canvas CSS size / zoom at the current pan; the
 // offscreen transform mirrors _renderPngBlob with b=view and no pad.
 function exportViewportPNG(scale){
@@ -6739,14 +6752,14 @@ function copyPNG(shapes=_shV()){   // ADR-0658
   });
 }
 
-// ADR-0087: selection/board SVG as clipboard text — the ClipboardItem SVG
+// ADR-0087
 // MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
 function copySVG(shapes=_shV()){   // ADR-0658
   const svg=buildSVG(shapes,_p());
   if(svg===null){_wT(_EM);return}
   _cpT(copyText(svg));
 }
-// ADR-0089: replace image bytes in place — same frame position/width, height
+// ADR-0089
 // follows the new aspect. One style op so undo restores bytes AND geometry.
 function replaceImage(){
   const s=_sb().find(x=>x&&_im(x)&&!x.locked);
@@ -6973,7 +6986,7 @@ function drawioToShapes(txt){
   const cells=[..._qsa(doc,'mxCell')];
   if(_ln(cells)>DIO_MAX)return null;
   const idOf=_mP(),shapes=[];
-  // ADR-0240: children of a group/container store relative geometry;
+  // ADR-0240
   // resolve each vertex's world offset via its parent chain.
   const _geo=_mP(),_par=_mP();
   const _grpIds=_sT();                                                     // ADR-0336
@@ -7019,7 +7032,7 @@ function drawioToShapes(txt){
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
     else if(('text' in sty||sty.text===1)&&!w&&!ht)s=_smk('text',{x,y,w:120,h:24,text:_s0(lbl,2000)});
     else if(sty.shape==='image'){const _im=(_ga(c,'style')||'').match(/image=(data:image\/[^;]*;base64,[^;]*)/);   // ADR-0259/1068
-      s=_smk('image',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});if(_im)s.dataUrl=_im[1].slice(0,25_000_000)}   // ADR-0353: byte-less image stays image (placeholder)
+      s=_smk('image',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});if(_im)s.dataUrl=_im[1].slice(0,25_000_000)}   // ADR-0353
     else s=_smk('rect',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
     if(sty.rounded==='1'&&_hb(s))s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
@@ -7052,7 +7065,7 @@ function drawioToShapes(txt){
     if(sa){const bs=shapes.find(s2=>s2.id===sa),bb=bs&&_bb(bs);if(bb){x1=bb.x+bb.w/2;y1=bb.y+bb.h/2}}
     if(sb){const bs=shapes.find(s2=>s2.id===sb),bb=bs&&_bb(bs);if(bb){x2=bb.x+bb.w/2;y2=bb.y+bb.h/2}}
     const s=_smk('arrow',{x1,y1,x2,y2,a:sa,b:sb});
-    // ADR-0224: fidelity — a drawn line (endArrow='none') maps to type:'line';
+    // ADR-0224
     // an arrowhead at the source end maps to s.start, curved/elbow to route flags.
     if(sty.endArrow==='none')s.type='line';
     else if(sty.endArrow==='oval'||sty.endArrow==='diamond')s.head='dot';   // ADR-0256
@@ -7074,7 +7087,7 @@ function drawioToShapes(txt){
       s.cbend=_max(-400,_min(400,((_p.x-_mx)*(-_dy/_L)+(_p.y-_my)*(_dx/_L))));
       s.way=null;}
     if(/orthogonal|elbow/i.test(_St(sty.edgeStyle||'')))s.elbow=1;
-    // ADR-0221: drawio exitX/exitY/entryX/entryY fixed ports → aF/bF
+    // ADR-0221
     // (same normalisation as ADR-0209's Alt-drop path)
     if(sa&&sty.exitX!=null){const fx=+sty.exitX,fy=+sty.exitY;
       if(_fin(fx)&&_fin(fy))s.aF={fx:_c01(fx),fy:_c01(fy)}}
@@ -7091,14 +7104,14 @@ function drawioToShapes(txt){
   }
   return shapes;
 }
-// ADR-0250: real .drawio files are deflate-raw + base64 inside <diagram>.
+// ADR-0250
 // Native DecompressionStream inflates them with no dependency; older engines
 // keep the re-save warning.
 async function _dioInflate(b64){
   try{
     const bin=Uint8Array.from(atob(_trm(_St(b64))),c=>c.charCodeAt(0));
     const ds=new DecompressionStream('deflate-raw');
-    // ADR-0325: deflate bomb guard — abort the stream and surface an error
+    // ADR-0325
     // text instead of buffering an unbounded payload into memory.
     const rd=new Response(new Blob([bin]).stream().pipeThrough(ds)).body.getReader(),dec=new TextDecoder();
     let txt='';
@@ -7108,7 +7121,7 @@ async function _dioInflate(b64){
   }catch(_){return null}
 }
 function importDrawioText(txt,wp){
-  if(state.ro){_roNo();return true}   // ADR-1102: also stops the multi-page broadcast leak
+  if(state.ro){_roNo();return true}   // ADR-1102
   // ADR-0324/0311
   const _dms=[..._St(txt||'').matchAll(/<diagram[^>]*>([^<]+)<\/diagram>/g)];
   if(_ln(_dms)&&!txt.includes('<mxGraphModel')){
@@ -7119,7 +7132,7 @@ function importDrawioText(txt,wp){
       importDrawioText('<mxfile>'+ok.map(x=>`<diagram>${x}</diagram>`).join('')+'</mxfile>',wp)});
     return true;
   }
-  // ADR-0650: ≥2 non-empty <diagram> pages import as real Board pages —
+  // ADR-0650
   // pageAdd carries its member shapes (one op per page); the companion
   // addMany broadcast keeps pre-0650 peers converged (idempotent byId guard).
   const _dgs=[..._St(txt||'').matchAll(/<diagram\b[^>]*>[\s\S]*?<\/diagram>/g)];
@@ -7187,13 +7200,13 @@ function _dioCells(shapes){
   const nl=v=>esc(v).replace(/\n/g,'&lt;br&gt;');
   const cells=[],idOf=_mP();
   let i=0;
-  // ADR-0336: Board groupId → drawio group cell (one level —
+  // ADR-0336
   // child geometry stored relative to the group origin).
   const _gbx=_wM();for(const s of shapes)if(_gi(s)&&_hb(s)){const g=_gbx[_gi(s)]||(_gbx[_gi(s)]={x:1/0,y:1/0,x2:-1/0,y2:-1/0});   // ADR-0975
     g.x=_min(g.x,s.x);g.y=_min(g.y,s.y);g.x2=_max(g.x2,s.x+s.w);g.y2=_max(g.y2,s.y+(s.h||0))}
   for(const gid in _gbx){const g=_gbx[gid];
     _pu(cells,`<mxCell id="g_${_dioEsc(gid)}" value="" style="group;" vertex="1" parent="1"><mxGeometry x="${g.x}" y="${g.y}" width="${g.x2-g.x}" height="${g.y2-g.y}" as="geometry"/></mxCell>`)}
-  // ADR-0345: pre-assign vertex ids up-front so a member can reference
+  // ADR-0345
   // its containing frame's swimlane cell id regardless of z-order
   for(const s of shapes)if(s.type!=='line'&&s.type!=='arrow'&&s.type!=='pen')idOf.set(s.id,'b'+(i++));
   const _frs=shapes.filter(_frm);
@@ -7232,7 +7245,7 @@ function _dioCells(shapes){
     const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
     _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_dioEsc(_gi(s))}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
-  // ADR-0354: pen strokes export as polyline edges; one
+  // ADR-0354
   // mxPoint per stroke point keeps the ink visible in draw.io.
   for(const s of shapes){
     if(s.type!=='pen'||!s.pts||_ln(s.pts)<2)continue;
@@ -7430,7 +7443,7 @@ function svgToShapes(txt){
       const pts=_svgPathPts(_ga(el,'d'),m2);
       if(_ln(pts)>1)s=_smk('pen',{pts});
     }else if(tag==='image'){
-      // ADR-0235: <image href=data:...> — round-trips our own SVG exports.
+      // ADR-0235
       // Only inline data: URIs are accepted (the mapping is the sanitizer);
       // external hrefs would be a network fetch we can't honour offline.
       const href=_ga(el,'href')||_ga(el,'xlink:href')||'';
@@ -7532,7 +7545,7 @@ function excToShapes(txt){
         }
         if(_ln(pts)<2)break;
         if(e.type==='freedraw'){if(_iA(e.pressures))pts.forEach((p,i)=>{if(_fin(e.pressures[i]))p[2]=+e.pressures[i].toFixed(3)});s=_smk('pen',{pts});break}   // ADR-0268
-        // ADR-0097: multi-segment line/arrow stays a real connector — any
+        // ADR-0097
         // interior points map onto the way[] array (ADR-0090), not a
         // dead-end pen stroke. Elbowed excalidraw arrows land naturally
         s=_smk(_arw(e)?'arrow':'line',{x1:pts[0][0],y1:pts[0][1],x2:_pL(pts)[0],y2:_pL(pts)[1]});
@@ -7559,16 +7572,16 @@ function excToShapes(txt){
       if(_conn(s.type)&&e.roundness&&!e.elbowed){s.curve=1;delete s.r}   // ADR-0317: excalidraw's round routes are curved
       if(_iA(e.scale)&&(e.scale[0]<0||e.scale[1]<0))s.flip=((e.scale[0]<0)?1:0)|((e.scale[1]<0)?2:0);   // ADR-0276
       _oa(s,S);_pu(shapes,s);   // ADR-0241
-      // ADR-0223: line/arrow keep a back-ref to their exc element so
+      // ADR-0223
       // start/endBinding (element ids) can resolve
       if(_conn(s.type))_pu(_excBnd,[s,e]);
       if(e.id)idOf.set(e.id,s.id);
       if(_txt(s)&&e.containerId){_excTxt.set(s.id,e.containerId);_excTxtE.set(s.id,e)}
-      // ADR-0229: excalidraw groupIds → Board groupId (first only — nested collapses
+      // ADR-0229
       // to the outermost — Board models one group level)
       if(_iA(e.groupIds)&&_ln(e.groupIds))s.groupId=e.groupIds[0]}
   }
-  // ADR-0225: container text folds back into its parent shape when
+  // ADR-0225
   // exported from. Parent kept when it carries its own label.
   for(const [sid,cid] of _excTxt){
     const s=shapes.find(x=>x.id===sid),p=shapes.find(x=>x.id===idOf.get(cid));
@@ -7626,7 +7639,7 @@ function importExcText(txt,wp){
   _iv();_oT('excImported');
   return true;
 }
-// ADR-0115: paste .board JSON → shapes added at the view centre …
+// ADR-0115
 // of copyBoardJSON). _placeCopies remaps ids/groupIds/bindings so the same
 // JSON can paste repeatedly onto the same board without id collisions.
 function importBoardText(txt,wp){
@@ -7666,12 +7679,12 @@ function importBoard(file){
   r.onload=()=>{
     try{
       const d=_JP(r.result);
-      // ADR-0043: content beats extension — an .excalidraw under a
+      // ADR-0043
       // different suffix still routes to the excalidraw importer.
       if(d&&d.type==='excalidraw'){importExcText(r.result);return}
       const shapes=(d.shapes||[]).filter(validShape);
       if(!_ln(shapes)){_wT(_EM);return}
-      // ADR-1054: non-empty board gets a merge-or-replace choice.
+      // ADR-1054
       if(_ln(_sh())){
         if(confirm(t('importMerge'))){_mergeImport(shapes);return}
         if(!confirm(t('importConfirm')))return;
@@ -7915,7 +7928,7 @@ function buildSVG(shapes,paper){
         _pu(els,'</text>');break;}
       case 'image':
         if(_iS(s.dataUrl)&&/^data:image\//.test(_du(s))){
-          // ADR-0149: flip composes INSIDE the image transform
+          // ADR-0149
           // so it mirrors along the shape's local axes
           const fT=s.flip?` translate(${_num(X+W/2+ox)} ${_num(Y+H/2+oy)}) scale(${s.flip&1?-1:1} ${s.flip&2?-1:1}) translate(${_num(-(X+W/2+ox))} ${_num(-(Y+H/2+oy))})`:'';
           const _cr2=_min(s.r||0,_abs(W)/2,_abs(H)/2);   // ADR-0168
@@ -7923,7 +7936,7 @@ function buildSVG(shapes,paper){
           _pu(els,`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(_du(s))}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}${_sh}/>`);
           if(_sk(s)&&_szz(s))_pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(_sk(s))}" stroke-width="${_num(_szz(s))}"${dA}${a}${rT}/>`);   // ADR-0176/0178
         }
-        else _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" fill="none" stroke="${_esc(_sk(s)||'#CBD5E1')}" stroke-width="1"${a}${rT}/>`);   // ADR-1067: unresolved ref draws the placeholder box
+        else _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" fill="none" stroke="${_esc(_sk(s)||'#CBD5E1')}" stroke-width="1"${a}${rT}/>`);   // ADR-1067
         if(_lb(s))_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -7959,10 +7972,10 @@ function buildSVG(shapes,paper){
   _pu(els,'</svg>');
   return els.join('\n');
 }
-// ADR-0074: box-shape label wrapped to the shape width, vertically centred —
+// ADR-0074
 // mirrors _drawBoxLabel so canvas and SVG agree …
 // heuristic as sticky's export path).
-// ADR-0083: image caption strip — mirrors _drawImgLabel …
+// ADR-0083
 // wrapped text anchored to the inside bottom edge).
 function _svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT){
   const fs=_fS(s)||14,pad=4;   // ADR-0169
@@ -8091,7 +8104,7 @@ const Net={
       this._presenceTimer=setInterval(()=>{
         this._send(_mk('ping',_nm()));   // ADR-0740/1053
         this._reapPeers();this._reapFrags();
-        // ADR-0835/1049: aged parked refs re-request via imgq; park drops at 60s —
+        // ADR-0835/1049
         // the ref still heals on any later blob or the 5-min _imgRescan re-ask.
         this._imgqSweep(nowTs());
         if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}   // ADR-1049
@@ -8100,7 +8113,7 @@ const Net={
       },NET_PRESENCE_INTERVAL);
     }catch{}
   },
-  // ADR-0069: wire image refs — ops carry {img:key}; blob bytes ride {k:'img'}
+  // ADR-0069
   // msgs sent BEFORE the referencing op on both ordered channels; snapshots
   // re-emit every key (fresh `sent` set, late joiners). Inbound shapes whose
   // blob hasn't landed park in _imgPending.
@@ -8113,7 +8126,7 @@ const Net={
     }
   },
   _imgOuts:[], _fragOuts:[], _imgChunks:_mP(),
-  _stgOK(outs,b){let s=_ln(b)||0;for(const e of outs)s+=_ln(e[1]);return s<=67108864},   // ADR-1062: staged outflow shares the answer byte bound
+  _stgOK(outs,b){let s=_ln(b)||0;for(const e of outs)s+=_ln(e[1]);return s<=67108864},   // ADR-1062
   _imgDbGet(k){   // ADR-1063
     if(!Persist.db||!_idOK(k))return;
     try{const rq=_oS(_trx(Persist.db,DB_IMG_STORE,_RO),DB_IMG_STORE).get(k);
@@ -8196,7 +8209,7 @@ const Net={
   },
   _attachShape(s,raw){
     if(s&&_iS(s.img)){
-      // ADR-1066: bytes beat refs on install — same rule as _imgAttach. A kept
+      // ADR-1066
       // stale ref would clobber dataUrl on a coincidental blob arrival; a merge
       // needs the raw pair to arbitrate by clock.
       if(_du(s)){if(!raw){const{img:_x,...rest}=s;return rest}}
@@ -8226,7 +8239,7 @@ const Net={
       }catch(_){}
     }
   },
-  // ADR-0010: ephemeral peer cursor presence — same dual-transport pattern
+  // ADR-0010
   // as broadcast() (BC-only via _send): cursors
   _lastCursorSend:0,
   sendCursor(wp){
@@ -8271,7 +8284,7 @@ const Net={
   },
   _pk(msg,viaRtc){   // ADR-0498: peer-key routing — RTC peers use
     if(!viaRtc)return msg.peer;
-    // ADR-1032: a link partner who is also a room peer must not count twice —
+    // ADR-1032
     // presence lands on their real row when one exists and the synthetic
     // 'rtc:' row is folded away; pure-link partners keep the link row.
     if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}
@@ -8321,7 +8334,7 @@ const Net={
         // ADR-0629
         for(const s of _sh())if(s.img===msg.key){delete s.img;s.dataUrl=data;this._imgPending.delete(s.id)}
         _iv();break;}
-      case 'imgq':{   // ADR-0835: O(1) answer — wire refs only ever exist for
+      case 'imgq':{   // ADR-0835
         // keys slimmed (_imgSent) or received (_imgIn); a _sh() scan would let an
         // imgq flood cost O(board)/msg. ADR-0836: one answer per key per 10s.
         if(!_idOK(msg.key))break;   // ADR-1077: junk keys can't reserve a throttle slot
@@ -8332,7 +8345,7 @@ const Net={
           else if(_idOK(msg.key))this._imgDbGet(msg.key)}   // ADR-1063: misses throttle too (bounds IDB reads)
         break;}
       case 'snap':case 'opc':{
-        // ADR-0383/0431/0987: frag streams are DC-only — a BC-forged chunk
+        // ADR-0383/0431/0987
         // ping-pongs the single reassembly slot vs a real RTC stream (wedge DoS).
         if(!viaRtc)break;
         const joined=this._fragIn(msg,msg.k==='snap'?'_snapIn':'_opcIn','rtc');
@@ -8362,7 +8375,7 @@ const Net={
         if(_nS()===0)this._applySnapshot(msg);
         // Merge ops are 'add' only
         else if(_iA(msg.ops))for(const op of _s0(msg.ops,SHARE_MAX_SHAPES)){if(op.clock?.peer===msg.peer)this._mergeSnapshotOp(op)}   // ADR-0474/0932
-        // ADR-1055: tomb deltas — newer _del clocks land; locked survives.
+        // ADR-1055
         if(_iO(msg.dels)){const de=_oe(msg.dels);let rm=false;
           if(_ln(de)<=SHARE_MAX_SHAPES)for(const[id,c]of de)if(_idOK(id)&&validClock(c)){_fTs(c.ts);
             const w=_wc()[id]||(_wc()[id]=_wM());
@@ -8413,7 +8426,7 @@ const Net={
   // entries stay distinct across reorders. `ops` is required: a non-empty
   // receiver already has shapes — omitting ops fails to sync.
   _snapshotMsg(req){
-    // ADR-0058: ship each shape's per-prop wc for non-empty LWW merge
+    // ADR-0058
     // ADR-1055
     const ops=[];
     for(const s of _shWB()){
@@ -8421,7 +8434,7 @@ const Net={
       if(!send&&w)for(const k in w)if(clockNewer(w[k],rc)){send=true;break}
       if(send)ops.push({op:'add',shape:clone(s),wc:clone(w||{}),clock:{peer:_pi(),seq:'snap:'+s.id,ts:0,_snap:true}});
     }
-    // ADR-0069: slim every shape in one pass; parked-blob
+    // ADR-0069
     // puts always re-emit (late joiners need the bytes)
     const slim=this._slimShapes(ops.map(o=>o.shape),_mP());
     ops.forEach((o,i)=>o.shape=slim[i]);
@@ -8434,7 +8447,7 @@ const Net={
     }
     return msg;
   },
-  // ADR-0058: merge one snapshot add-op — unknown → add; known → per-property LWW.
+  // ADR-0058
   _mergeSnapshotOp(op){
     op=this._attachOp(op,1);                          // ADR-0069/1066
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
@@ -8451,16 +8464,16 @@ const Net={
       if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}   // ADR-0927: existence clocks merge too
       // ADR-0372
       const v=op.shape[k],lc=lw[k];
-      if(lc&&!clockNewer(rc,lc)){if(_emOK(k,ex[k])&&_JS(ex[k])!==_JS(v))_pu(em,{k,b:(v===_ud||validPatch({[k]:v}))?v:_ud,a:ex[k]});continue}   // ADR-1124: local-newer divergent — the responder can't see it
+      if(lc&&!clockNewer(rc,lc)){if(_emOK(k,ex[k])&&_JS(ex[k])!==_JS(v))_pu(em,{k,b:(v===_ud||validPatch({[k]:v}))?v:_ud,a:ex[k]});continue}   // ADR-1124
       if(v===_ud||k==='id'||k==='pg'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;   // ADR-0919
       if(k==='type'&&!_typOK(v,null,ex))continue;   // ADR-0990
       {ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k]);if(k==='dataUrl')duNew=true;else if(k==='img'&&_iS(v))imgNew=true}   // ADR-0969/1065
     }
     for(const k in lw)if(!(k in rw)&&_emOK(k,ex[k])&&validClock(lw[k])){const bv=op.shape[k];if(_JS(ex[k])!==_JS(bv))_pu(em,{k,b:(bv===_ud||validPatch({[k]:bv}))?bv:_ud,a:ex[k]})}   // ADR-1124
     if(_ln(em)){for(const e of em)_pu(_txE||(_txE=[]),{id:op.shape.id,k:e.k,b:e.b,a:e.a});_txFlush()}   // ADR-1124
-    // ADR-0745/0746: drop parked img refs the merge didn't adopt (a late blob would clobber dataUrl)
+    // ADR-0745/0746
     if(_iS(op.shape.img)&&ex.img!==op.shape.img&&this._imgPending.get(ex.id)?.k===op.shape.img)this._imgPending.delete(ex.id);
-    // ADR-1065: bytes beat refs — adopted dataUrl kills surviving refs; an adopted ref parks for imgq heal.
+    // ADR-1065
     if(duNew&&_iS(ex.img)){this._imgPending.delete(ex.id);delete ex.img}
     else if(imgNew){if(_sw(ex.img,'@'))ex.img=ex.img.slice(1);_park(this._imgPending,ex.id,ex.img)}
     if(dirty){
@@ -8475,12 +8488,12 @@ const Net={
   _lastSnapAt:0,_snapT:0,
   _sendSnapshot(req){
     const now=_now(),w=1000-(now-this._lastSnapAt);
-    // ADR-0452: deferred resend — a dropped throttled hello/sync-req left a 2-peer joiner empty.
+    // ADR-0452
     if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot(req)},w);return}
     this._lastSnapAt=now;
     this._send(this._snapshotMsg(req));
   },
-  // ADR-1055: causal horizon for sync-req — per-id newest clock (delta sync); over-cap → null (full snapshot).
+  // ADR-1055
   _syncReqWc(){
     const m={};
     for(const[id,w]of _oe(_wc())){let mx=null;for(const k in w){const c=w[k];if(validClock(c)&&(!mx||clockNewer(c,mx)))mx=c}if(mx)m[id]=mx}
@@ -8708,7 +8721,7 @@ const Share={
     }
     return base+'#b='+_eU(payload);
   },
-  // ADR-0045: a '#s=<offer>' hash is a peer invite: prefill the
+  // ADR-0045
   // invite field and open the Share modal so the
   // explicit "create answer" click is still required (no auto-connect)
   inviteFromHash(){
@@ -8781,12 +8794,12 @@ const Share={
       // ADR-0004
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       _rs(valid.map(s=>Net._attachShape(clone(s))));   // ADR-1041: parked refs park for imgq heal
-      _scl();state.wclock=_wM();   // ADR-1111: clean tomb slate before the new doc's page-set adopt
+      _scl();state.wclock=_wM();   // ADR-1111
       _pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
       // Match the replace op's _apply: drop stale selection ids and per-property write
       // clocks from the board we just swapped out
       if(_vpOK(data.viewport)){
-        // ADR-0112: adopt the sharer's viewport (same gates as the
+        // ADR-0112
         // IDB restore path — corrupt/out-of-range zoom never reaches state).
         _vp().x=+data.viewport.x;_vp().y=+data.viewport.y;
         _vp().zoom=clampZoom(+data.viewport.zoom);
@@ -8866,7 +8879,7 @@ const Persist={
       if(quota&&usage/quota>0.8){this._qWAt=_now();_eT('quotaWarn')}
     }).catch(()=>{});
   },
-  // ADR-1005: db absent (open error/versionchange) → saves silently no-op;
+  // ADR-1005
   // warn once per session (saveBlocked parity, not a per-debounce storm).
   _dbWarn(){if(this._dbW)return;this._dbW=1;_eT('noStore')},
   async save(explicit){
@@ -8876,7 +8889,7 @@ const Persist={
       const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
       const stored=new Map(ks.map((k,i)=>[k,kv[i]]));
-      // ADR-0031: strip image bytes from the doc record into content-hash
+      // ADR-0031
       // blobs — doc + :prev share one copy; autosave clones stay small.
       const{slim,puts}=_imgSlim(_shWB(),stored,1);
       for(const[k,d]of puts)imgs.put(d,k);
@@ -8992,7 +9005,7 @@ const Persist={
       const origSel=_selIds();
       const _bpg=clone(_pgs()),_bcp=state.curPg;   // ADR-0646
       _rs(shapes.map(clone));   // ADR-0009
-      _scl();state.wclock=_wM();   // ADR-1111: clean tomb slate before the new doc's page-set adopt
+      _scl();state.wclock=_wM();   // ADR-1111
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
       _docN(d);_bName();
       if(_iS(d.rs)&&_ln(d.rs)<=64)state.roomSecret=d.rs;   // ADR-1056: keep the same secret across restores
@@ -9009,7 +9022,7 @@ const Persist={
     }catch(_){_eT('backupRestoreFailed');return false}
   }};
 function txDone(tx){return new Promise((r,j)=>{tx.oncomplete=()=>r();tx.onerror=()=>j(tx.error);tx.onabort=()=>j(tx.error)})}
-// ADR-0031: content-hash keys for image blobs — FNV-1a over the dataUrl; the
+// ADR-0031
 // rare collision chains (':1', ':2', …) against the stored value.
 function _imgHash(d){let h=0x811c9dc5;for(let i=0;i<_ln(d);i++){h^=d.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return 'i'+_ln(d).toString(36)+'x'+h.toString(36)}
 function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+1):k+':1'}
@@ -9032,7 +9045,7 @@ function _imgSlim(shapes,stored,fmark){
 // keep the wire dataUrl).
 function _imgAttach(shapes,imgs){
   return shapes.map(s=>{
-    if(s&&_iS(s.img)&&_du(s)){const{img:_x,...rest}=s;return rest}   // ADR-1065: bytes beat refs — drop stale coexistence
+    if(s&&_iS(s.img)&&_du(s)){const{img:_x,...rest}=s;return rest}   // ADR-1065
     if(s&&_iS(s.img)){
       if(_sw(s.img,'@')){const{img:_x,...rest}=s;return{...rest,img:s.img.slice(1)}}   // ADR-1033: foreign ordinal — strip, stay parked
       const d=imgs.get(s.img);
@@ -9095,7 +9108,7 @@ const UI={
     _sa(b,_AL,t(key));_sa(b,'title',t(key));
     b.dataset.themeMode=mode??'auto';
   },
-  // ADR-0014: LANG/T are `let`; toggleLang() rebinds them — a
+  // ADR-0014
   // few things cache a translated string once;
   // everything else (toasts, ctx menu, applyI18n) re-reads T.k.
   // t()/T on its next call and needs no help here.
@@ -9386,7 +9399,7 @@ const UI={
         // ADR-0040
         _hdn(_g('shareWarnLong'),_ln(url)<=SHARE_URL_WARN);
       }).catch(()=>{
-        // ADR-0040: previously swallowed — a stale URL stayed in the
+        // ADR-0040
         // field and the user would copy a broken link.
         _g('shareUrl').value='';
         _hdn(_g('shareWarnLong'),true);
@@ -9607,7 +9620,7 @@ function wire(){
   // ~33MB); debounce to the trailing edge so the resize settles once.
   const _resizeSoon=()=>{_cT(_rszT);_rszT=_stO(resize,150)};
   _on(window,'resize',_resizeSoon);
-  // ADR-0627: GPU resets silently wipe raster caches — preventDefault on
+  // ADR-0627
   // contextlost allows contextrestored; on restore purge caches and repaint.
   const _ctxUp=()=>{ctx=_g2(canvas);octx=_g2(ocanvas);_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache();_iv();_ivO()};
   _on(canvas,'contextlost',_pd);_on(ocanvas,'contextlost',_pd);
@@ -9652,7 +9665,7 @@ function wire(){
   const _copyCode=async(taId)=>{const v=_g(taId).value;if(!v)return;const ok=await copyText(v);_tst(ok?t('shareCodeCopied'):t(_CF),ok?'ok':'warn')};
   _oC(_g('rtcOfferCopyBtn'),()=>_copyCode('rtcOffer'));
   _oC(_g('rtcAnswerCopyBtn'),()=>_copyCode('rtcAnswer'));
-  // ADR-0045: invite link — the offer rides in the URL hash, skipping
+  // ADR-0045
   // the "paste the invite code" step entirely …
   // "create answer" and send the answer back).
   // link must not expose the joiner's IP to the host before consent.
@@ -9666,7 +9679,7 @@ function wire(){
   // Net presence → UI
   Net._onConnChange=()=>{UI.refreshPeers();const n=_pr().size;if(n!==(Net._pCt|0))_ann(t(n>(Net._pCt|0)?'peerJoined':'peerLeft'));Net._pCt=n};   // ADR-0463: join/leave was SR-silent
 }
-// ADR-0059: a prop is adopted only when EVERY unlocked selected shape shares it.
+// ADR-0059
 // a mixed prop is left alone rather than showing a misleading value. Selection
 // changes are detected by a sorted-id signature compared once per frame.
 let _selSig=null;
@@ -9738,7 +9751,7 @@ function toggleElbow(){
   })
   _so(before,after)
 }
-// ADR-0111: select a frame's contents (ctx). Reuses withFrameChildren's
+// ADR-0111
 // spatial containment — the same rule drags/nudge/z-order already use, so
 // "what moves with the frame" is exactly what gets selected. Frame itself
 // drops out of the selection so follow-up ops act on the contents.
@@ -9753,7 +9766,7 @@ function selectFrameContents(){
   _aS();_o(inner.size+' '+t(_SM));
   _iv();
 }
-// ADR-0110: sticky ↔ text conversion (ctx). Same type-patch trick as
+// ADR-0110
 // ADR-0109 — text/align/fontSize/w/h carry over; sticky's `color` simply
 // becomes unused on text (text ink = stroke), text's `stroke` unused on
 // sticky (border is fixed). Undo restores the original type wholesale.
@@ -9765,7 +9778,7 @@ function toggleStickyText(){
   })
   _so(before,after)
 }
-// ADR-0119: arrowhead style cycle (ctx) — arrow → dot → open. One s.head
+// ADR-0119
 // drives both ends; 'line' shapes carry the property harmlessly until
 // converted (a line never draws heads).
 const HEAD_STYLES=['arrow','dot','bar','open','none'];   // ADR-0233/0294
@@ -9778,7 +9791,7 @@ function cycleArrowHead(){
   _cOp({op:'style',before:sel.map(s=>({id:s.id,head:s.head??null})),after:sel.map(s=>({id:s.id,head:next}))});
   _iv();_oT('stylePasted');
 }
-// ADR-0291: start-end head cycle (ctx) — none → arrow → dot → open.
+// ADR-0291
 // s.start toggles presence, s.startHead carries the style (null = inherit s.head).
 function cycleStartHead(){
   const sel=_selL(s=>s&&_arw(s)&&!_lk(s));
@@ -9791,7 +9804,7 @@ function cycleStartHead(){
     after:sel.map(s=>({id:s.id,start:next==='none'?0:1,startHead:next==='none'?null:next==='arrow'?'arrow':next}))});
   _iv();_oT('stylePasted');
 }
-// ADR-0109: line ↔ arrow type conversion (ctx). Bindings/way/label/route
+// ADR-0109
 // (elbow/curve) all live on the shape, so a type patch preserves everything —
 // only head rendering changes. Type rides the existing style op so undo +
 // LWW + remote sync need no new plumbing.
@@ -9826,7 +9839,7 @@ function toggleHop(){
   _so(before,after)
 }
 
-// ADR-0092: corner-radius toggle — rects default to adaptive rounding
+// ADR-0092
 // (min(8,w/4,h/4)). r=0 is sharp; toggling back restores the adaptive
 // default by removing the override …
 // via the ??null convention, leaving r falsy → 8px at draw).
@@ -9839,7 +9852,7 @@ function toggleRound(){
   })
   _so(before,after)
 }
-// ADR-0101: sticky colour quick-cycle through the palette (style op).
+// ADR-0101
 // The fill swatch already remaps for stickies (ADR-0082); this cycles the
 // canonical 6-colour set in one click — no picker round-trip.
 function cycleStickyColor(){
@@ -9850,7 +9863,7 @@ function cycleStickyColor(){
   })
   _so(before,after)
 }
-// ADR-0085: fit frame to contents — union bbox of shapes fully inside each
+// ADR-0085
 // selected frame + 12px padding, via one align op (multi-frame atomic undo).
 // "Fully inside" matches the membership rule used by move/delete/duplicate.
 function fitFrames(){
@@ -9877,7 +9890,7 @@ function fitFrames(){
   }
   if(_ln(before)){_rcOp({op:'align',dir:'framefit',before,after});_iv()}
 }
-// ADR-0084: route reset — one style op clears way/bend/elbow/curve back to a
+// ADR-0084
 // straight edge (draw.io "Clear Waypoints"). way/bend are objects → ??null;
 // elbow/curve keep the existing numeric-flag convention (0).
 function resetRoute(){
@@ -9891,7 +9904,7 @@ function resetRoute(){
   })
   _so(before,after)
 }
-// ADR-0198: reverse a connector's direction — draw.io "Reverse". Swaps
+// ADR-0198
 // endpoints + bound shapes + waypoint order; labelPos mirrors along the route.
 // s.head stays (it's a style, not a side) and s.start is already a bool at the
 // new start (old end always had a head, so the flag survives the swap).
@@ -9909,7 +9922,7 @@ function reverseConn(){
   })
   _so(before,after)
 }
-// ADR-0199: fit sticky to text — draw.io "Autosize". Shrinks width to the
+// ADR-0199
 // longest unwrapped line (re-wrapping at the new width) and always sizes the
 // height to the wrapped line count, so pasted long text no longer overflows
 // the clipped card. One undoable style op over the selection.
@@ -9958,7 +9971,7 @@ function unbindSelection(){
   })
   _so(before,after)
 }
-// ADR-0159: label valign cycle (ctx) — ''(mid)→'top'→'bottom'→''.
+// ADR-0159
 // draw.io/mermaid parity for tall boxes in org charts & flow diagrams.
 function cycleVAlign(){
   const before=[],after=[],seq=[null,'top','bottom'],seqS=[null,'middle','bottom'];
@@ -10023,7 +10036,7 @@ const _rdb=()=>{_md(!0);_ru();_ps()},
       _forConn=f=>_forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s))return;f(s,id)}),
       _forTxt=f=>_forSel((s,id)=>{if((s.type!=='text'&&s.type!=='sticky'&&s.type!=='frame'&&!_lb(s))||_lk(s))return;f(s,id)}),
       _pp=(b,a,id,k,c,n)=>{_pu(b,{id,[k]:c});_pu(a,{id,[k]:n})};
-// ADR-0443: undo/redo propagate as fresh-clock wire ops — a revert becomes a new
+// ADR-0443
 // write that restores old values …
 // consistent). group/ungroup/replace/beautify have no remote-safe inverse: their
 // per-shape befores aren't carried on the op — they stay local-only.
@@ -10034,7 +10047,7 @@ function _undoWire(op){
     case 'del':case 'clear':{const o=[{op:'addMany',shapes:op.shapes,wc:op.wc}];   // ADR-0721: ride the wclock snapshot too
       for(const c of op.connClears||[])if(c.before)_pu(o,{op:'upd',id:c.id,after:c.before});
       return o;}
-    case 'move':{const o={op:'move',ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy};   // ADR-0719/1113: a delta inverse stays wire-legal — _slimOp fabricates the absolutes
+    case 'move':{const o={op:'move',ids:op.moved||op.ids,dx:-op.dx,dy:-op.dy};   // ADR-0719/1113
       if(_iA(op.after)&&_iA(op.before)){o.after=op.before;o.before=op.after}   // ADR-0732
       return[o];}
     case 'upd':case 'style':case 'resize':case 'align':case 'beautify':
@@ -10119,7 +10132,7 @@ function cycleFillStyle(){
   })
   _so(before,after)
 }
-// ADR-0166: swap stroke↔fill on painted shapes via one style op …
+// ADR-0166
 // ⇧X parity). Sticky maps its body paint through `color` — the same convention
 // applyStyleToSelection uses — and stroke↔color is meaningful there too
 // (border tint vs body). Pen/line/arrow/text/image are stroke-only → skipped.
@@ -10136,7 +10149,7 @@ function swapFillStroke(){
   })
   if(_ln(before)){_nugPush({op:'style',before,after});_iv();_oT('swapDone')}   // ADR-0961: held ⇧X folds into one swap op
 }
-// ADR-0173: cycle font family system→mono→serif→system for text-bearing
+// ADR-0173
 // shapes via style op (Excalidraw font-switch parity).
 function cycleFont(){
   const before=[],after=[];
@@ -10148,7 +10161,7 @@ function cycleFont(){
   })
   _so(before,after)
 }
-// ADR-0174: ctx opacity cycle — same style op as the digit keys (ADR-0167),
+// ADR-0174
 // reachable from touch/ctx. Levels mirror Figma's decimal steps.
 function cycleOpacity(){
   const first=_sb().find(s=>s&&!_lk(s));
@@ -10168,7 +10181,7 @@ function cycleTextAlign(){
   })
   _so(before,after)
 }
-// ADR-0136: corner-radius cycle for rects — s.r existed in every render
+// ADR-0136
 // path (canvas/SVG/hatch) since the box renderer, but nothing set it.
 // Steps 0→8→16→24→0 via style op (undo + sync free, same as other toggles).
 function cycleCorner(){
@@ -10183,7 +10196,7 @@ function cycleCorner(){
   })
   _so(before,after)
 }
-// ADR-0194: drop shadow for box shapes — style op, canvas shadow props +
+// ADR-0194
 // a single shared SVG feDropShadow filter.
 function toggleShadow(){
   const before=[],after=[];
@@ -10204,7 +10217,7 @@ function toggleBothEnds(){
   })
   _so(before,after)
 }
-// ADR-0161: the look-props extractor shared by ⌥C copy-style and the
+// ADR-0161
 // eyedropper tool — geometry (x/y/w/h/pts/way/bend/rotate/flip/z) stays out:
 // format-painter copies look, not placement. Sticky's paint reads as `fill`
 // here so it pastes onto box shapes; applyStyleToSelection maps it back to
@@ -10216,7 +10229,7 @@ function _styleOf(sh){return{
   align:sh.align,valign:sh.valign,fontSize:sh.fontSize,lineH:sh.lineH,spacing:sh.spacing,   // ADR-0159/0189/0205
   r:sh.r,head:sh.head,start:sh.start,elbow:sh.elbow,curve:sh.curve,cbend:sh.cbend,font:sh.font,shadow:sh.shadow,   // ADR-0194
 };}
-// ADR-0304: ctx link set/open — completes ADR-0301's s.link round-trip with
+// ADR-0304
 // a user-facing setter (prompt → style op on every unlocked selection).
 function setSelLink(){
   const first=_sb().find(s=>s&&!_lk(s));
@@ -10267,7 +10280,7 @@ const Presentation=(()=>{
   // v1.6.90: Screen Wake Lock — display stays on during presentation; auto-
   // released on tab hide and re-acquired on visible (unsupported: skip).
   let _wakeLock=null;
-  // ADR-0983: the request resolves on a later turn — a leave() meanwhile
+  // ADR-0983
   // would store a sentinel that never gets released, and a second request
   // would orphan the first sentinel's handle.
   async function _acquireWakeLock(){
@@ -10311,7 +10324,7 @@ const Presentation=(()=>{
     _focusTrigger=_aE();
     _active=true;_idx=0;
     _savedVp={x:_vp().x,y:_vp().y,zoom:_vp().zoom};
-    _ann(`${t('presEnter')} — ${_ln(_frames)} ${t('frame')}`);   // ADR-0639: SR's only signal that presentation started
+    _ann(`${t('presEnter')} — ${_ln(_frames)} ${t('frame')}`);   // ADR-0639
     // Build overlay
     _overlay=_ce('div');
     _overlay.id='presOverlay';
@@ -10391,7 +10404,7 @@ const Minimap=(()=>{
   const W=160,H=100;
   let _raf=0;
 
-  // ADR-0025: minimap splits into (a) shape content — the scene
+  // ADR-0025
   // data, cached to an offscreen bitmap keyed on _gridVer — and (b) the
   // viewport rect, redrawn every call for one strokeRect. Cheap frames
   // (cursor, _iv() causes) no longer re-walk every shape.
@@ -10502,7 +10515,7 @@ const Minimap=(()=>{
 function _onSwUpdate(){ _oT('appUpdated'); }
 // offline-first caching of this single page (sw.js, see ADR-1025)
 if('serviceWorker' in navigator){
-  // ADR-1025: register() rejects blob:/data: script URLs by spec, so the
+  // ADR-1025
   // previous inline-blob worker never actually registered — sw.js is a real file.
   navigator.serviceWorker.register('sw.js').catch(()=>{});
   // controllerchange fires when a new SW takes control → prompt reload.
