@@ -1416,7 +1416,7 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64)\n                          &&op.ids.every(id=>op.before.some(b=>b.id===id));")],
+    html.includes("op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64&&(b.groupId==null||_idOK(b.groupId)))\n                          &&op.ids.every(id=>op.before.some(b=>b.id===id));")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
     html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64)")],
@@ -9703,7 +9703,7 @@ try {
     assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(65),before:[{id:'a'}]}),false,'group gid >64 rejected');
     assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(64),before:[{id:'a'}]}),true,'group gid <=64 accepted');
     assert.strictEqual(validRemotePayload({op:'ungroup',ids:['a'],gids:['g'.repeat(65)]}),false,'ungroup gid >64 rejected');
-    assert.strictEqual(validRemotePayload({op:'ungroup',ids:['a'],gids:['g'.repeat(64)]}),true,'ungroup gid <=64 accepted');
+    assert.strictEqual(validRemotePayload({op:'ungroup',ids:['a'],gids:['g'.repeat(64)],before:[{id:'a',groupId:'g'}]}),true,'ungroup gid <=64 accepted');
     console.log('  ✓ validRemotePayload caps zorder frac keys + group gids (ADR-0473)');
   }
 
@@ -10530,7 +10530,7 @@ try {
     assert.ok(html.includes("sendCursorHide(){"),'sendCursorHide exists');
     assert.ok(html.includes("p.cursor=msg.h===1?null:{x:msg.x,y:msg.y}"),'h:1 clears the peer cursor');
     assert.ok(html.includes("Net.sendCursorHide()});   // ADR-0611"),'pointerleave notifies peers');
-    assert.ok(html.includes("Net.sendCursorHide();   // ADR-0611: blur doesn't fire pointerleave"),'window blur also hides the peer cursor');
+    assert.ok(html.includes("Net.sendCursorHide();   // ADR-0611: no pointerleave on blur"),'window blur also hides the peer cursor');
     console.log('  ✓ cursor-hide-on-leave pinned (4 asserts)');
   }
 
@@ -13204,7 +13204,7 @@ try {
       'ADR-0602: zorder with 501 changes accepted (was rejected)');
     assert.ok(validRemotePayload({op:'group',ids:Array(501).fill('s1'),gid:'g1',before:[{id:'s1'}]}),
       'ADR-0602: group with 501 ids accepted (was rejected)');
-    assert.ok(validRemotePayload({op:'ungroup',ids:Array(501).fill('s1'),gids:['g1']}),
+    assert.ok(validRemotePayload({op:'ungroup',ids:Array(501).fill('s1'),gids:['g1'],before:[{id:'s1',groupId:'g1'}]}),
       'ADR-0602: ungroup with 501 ids accepted (was rejected)');
     // Above the board ceiling still rejected
     assert.ok(!validRemotePayload({op:'zorder',changes:Array(200001).fill({id:'x',before:'a',after:'b'})}),
@@ -13218,7 +13218,7 @@ try {
       'v1.7.45a: zorder with 1 change still accepted');
     assert.ok(validRemotePayload({op:'group',ids:['s1','s2'],gid:'g1',before:[{id:'s1'},{id:'s2'}]}),
       'v1.7.45a: group with 2 ids still accepted');
-    assert.ok(validRemotePayload({op:'ungroup',ids:['s1','s2'],gids:['g1']}),
+    assert.ok(validRemotePayload({op:'ungroup',ids:['s1','s2'],gids:['g1'],before:[{id:'s1',groupId:'g1'},{id:'s2',groupId:'g1'}]}),
       'v1.7.45a: ungroup with 2 ids still accepted');
     console.log('  ✓ validRemotePayload zorder/group/ungroup: board-ceiling bound (v1.7.45a/ADR-0602)');
   }
@@ -13425,7 +13425,7 @@ try {
     // After fix: g.length>0 added — '' rejected (parity with group op's gid non-empty check).
     assert.ok(!validRemotePayload({op:'ungroup',ids:['a'],gids:['']}),
       'v1.7.49e: ungroup with empty-string gid rejected (parity with group.gid non-empty check)');
-    assert.ok(validRemotePayload({op:'ungroup',ids:['a'],gids:['valid-gid']}),
+    assert.ok(validRemotePayload({op:'ungroup',ids:['a'],gids:['valid-gid'],before:[{id:'a',groupId:'valid-gid'}]}),
       'v1.7.49e: ungroup with non-empty gid still accepted');
     console.log('  ✓ validRemotePayload ungroup: empty gid rejected (parity fix, v1.7.49e)');
   }
@@ -18487,6 +18487,34 @@ pass += 6;
   assert.ok(validRemotePayload({op:'beautify',after:[{id:'x',type:'rect',x:0,y:0,w:5,h:5}],before:[{id:'x',type:'pen',pts:[[0,0],[1,1]]}]}),'beautify: sparse retype before still accepted (exempt)');
   assert.ok(validRemotePayload({op:'upd',id:'x',after:{x:9}}),'upd: sparse before stays exempt');
   console.log('  \u2713 ADR-1087 complete-baseline coverage (10 asserts)');
+}
+pass += 10;
+
+// ---- ADR-1088: ungroup before contract + groupId bounds ----
+{
+  // ungroup shipped ids/gids but left `before` unvalidated while _lwwDrop and
+  // _stampWrites iterate it: a non-iterable or null-entry before threw past
+  // intake into the applyRemote catch (exception-drop instead of a clean
+  // rejection, dedup-key eviction on every redelivery). And `before` entries
+  // are the ungroup baseline — groupId must be a real wire id, not junk.
+  const G={op:'ungroup',ids:['a'],gids:['g'],clock:{peer:'p',seq:1,ts:nowTs()}};
+  assert.ok(validRemotePayload({...G,before:[{id:'a',groupId:'g'}]}),'ungroup: covered before accepted');
+  assert.ok(!validRemotePayload({...G}),'ungroup: missing before rejected');
+  assert.ok(!validRemotePayload({...G,before:{a:1}}),'ungroup: non-array before rejected');
+  assert.ok(!validRemotePayload({...G,before:[null]}),'ungroup: null entry rejected');
+  assert.ok(!validRemotePayload({...G,before:[{id:'a'}]}),'ungroup: groupId-less before rejected (baseline must say which group)');
+  assert.ok(!validRemotePayload({...G,before:[{id:'b',groupId:'g'}]}),'ungroup: before not covering ids rejected');
+  assert.ok(!validRemotePayload({...G,before:[{id:'a',groupId:'x'.repeat(65)}]}),'ungroup: oversized groupId rejected');
+  assert.ok(!validRemotePayload({op:'group',ids:['a'],gid:'g',before:[{id:'a',groupId:5}]}),'group: non-string before groupId rejected');
+  assert.ok(validRemotePayload({op:'group',ids:['a'],gid:'g',before:[{id:'a'}]}),'group: groupId-less before still accepted (first-time members)');
+  // behavioural: a groupId-less before could not ungroup anyway (_chg sees
+  // undefined→undefined and _lwwDrop filters the id) — the gate rejects it up
+  // front instead of silently applying a partial op.
+  const a0=Shape.make('rect',{x:0,y:0,w:10,h:10});a0.id='ugA';a0.groupId='ugG';state.shapes.push(a0);
+  Store.applyRemote({...G,before:[{id:'ugA'}]});
+  assert.ok(byId('ugA').groupId==='ugG','rejected ungroup leaves the shape grouped');
+  state.shapes=state.shapes.filter(s=>s.id!=='ugA');
+  console.log('  \u2713 ADR-1088 ungroup before contract (10 asserts)');
 }
 pass += 10;
 

@@ -1,3 +1,14 @@
+## [1.8.112] - 2026-10-01
+
+### Fixed
+- **round838 / ADR-1088 — `ungroup` requires a covered `before` baseline**: the last unvalidated `before` surface — `validRemotePayload` checked only `ids`/`gids` while `_lwwDrop` and `_stampWrites` iterate `op.before` unconditionally. `before:{}` (non-iterable) or `before:[null]` passed intake and threw *past* `_apply` inside `_lwwDrop`, landing in the `applyRemote` catch as an exception-drop: the dedup key was evicted (ADR-1026), so every redelivery re-crashed instead of hitting the dedup Set. Intake now requires `before` = array of `{id, groupId}` (both `_idOK`) covering every `ids` member — symmetric with `group` (ADR-1087) and exactly what `doUngroup`/undo-wire emit. A groupId-less entry is rejected up front: `_chg` reads `undefined→undefined` as unchanged, so `_lwwDrop` would silently filter that member and apply a partial op. `group`'s `before[].groupId` is now bounded to a wire id when present too.
+
+### Docs
+- `docs/ADR-1088-ungroup-before-contract.md`.
+
+### Tests
+- test.mjs: 10 ADR-1088 pins (coverage/non-array/null/groupId-less/oversized-groupId rejection; group junk-groupId rejection; groupId-less group acceptance; rejected ungroup leaves the shape grouped). Fixtures on the pre-1088 ungroup contract migrated.
+
 ## [1.8.111] - 2026-10-01
 
 ### Fixed

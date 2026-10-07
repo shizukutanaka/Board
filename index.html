@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.111';   // ADR-1087
+const V='1.8.112';   // ADR-1088
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1446,13 +1446,15 @@ function validRemotePayload(op){
           &&patches(op.before)&&op.before.every(noLock)&&cov(op.after,op.before);}   // ADR-1087
     case 'group':  return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
                           &&_iS(op.gid)&&_ln(op.gid)>0&&_ln(op.gid)<=64   // ADR-0473
-                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64)
-                          &&op.ids.every(id=>op.before.some(b=>b.id===id));   // ADR-1087
+                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64&&(b.groupId==null||_idOK(b.groupId)))
+                          &&op.ids.every(id=>op.before.some(b=>b.id===id));   // ADR-1087/1088
     case 'pageAdd':  return _idOK(op.id)&&(op.name==null||_iS(op.name)&&_ln(op.name)<=80)&&(op.i==null||_fin(op.i))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0755
     case 'pageDel':  return _idOK(op.id)&&(op.firstId==null||_idOK(op.firstId))&&(op.unpage==null||op.unpage===1)&&(!op.unpage||_iA(op.shapes))&&(op.shapes==null||_iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape));   // ADR-0776
     case 'pageName': return _idOK(op.id)&&_iS(op.after)&&_ln(op.after)<=80&&(op.nts==null||_tsOK(op.nts));   // ADR-0791
     case 'ungroup':return _iA(op.ids)&&_ln(op.ids)<=MAX_OP_SHAPES&&op.ids.every(_idOK)
-                          &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64);   // ADR-0473
+                          &&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64)
+                          &&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_idOK(b.id)&&_idOK(b.groupId))
+                          &&op.ids.every(id=>op.before.some(b=>b.id===id));   // ADR-1088
     default:       return false;
   }
 }
@@ -1938,7 +1940,7 @@ function _lwwSkip(id,key,op){
   return !!(wc&&wc[key]&&wc[key].peer!==_pi()&&clockNewer(wc[key],op.clock));
 }
 function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
-function _tmb(id,op){const wd=_wc()[id];return !!(wd&&wd._del&&clockNewer(wd._del,op.clock||{})&&!(wd._born&&clockNewer(wd._born,wd._del)))}   // ADR-0922/0927: newer tomb outranks restore — unless a newer birth superseded
+function _tmb(id,op){const wd=_wc()[id];return !!(wd&&wd._del&&clockNewer(wd._del,op.clock||{})&&!(wd._born&&clockNewer(wd._born,wd._del)))}   // ADR-0922/0927: newer tomb outranks restore
 // Bound connectors: s.a/s.b (shape id) derive from the bound shape's edge
 // at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
@@ -4852,7 +4854,7 @@ function wheelPx(e){
 }
 _on(canvas,'wheel',e=>{
   _pd(e);
-  if(_pA())return;   // ADR-0640: pan/zoom behind the overlay would unfocus the fitted frame
+  if(_pA())return;   // ADR-0640: pan/zoom behind overlay unfocuses the fitted frame
   const d=wheelPx(e);
   if(_mod(e)){
     // ADR-0033: ctrl+wheel (trackpad pinch) gets the pinch
@@ -4914,7 +4916,7 @@ function _clearTouchState(){_pointers.clear();_pinchPrev=0;if(_pinchSnap){_pinch
 _on(window,'blur',()=>{
   if(ptr.down)_cancelPointerGesture();
   _clearTouchState();
-  Net.sendCursorHide();   // ADR-0611: blur doesn't fire pointerleave — hide our cursor on peers too
+  Net.sendCursorHide();   // ADR-0611: no pointerleave on blur — hide our cursor for peers
   if(window._prevTool){pickTool(window._prevTool);window._prevTool=null}   // space keyup lost to a blur
   _ivO();   // ADR-1008
 });
@@ -6842,7 +6844,7 @@ function excScene(shapes){
         if(_lb(s)){const _lp=_connLabelXY(s),_tid=uid();_pu(els,_ct(s,_tid,_lb(s),true,null,{x:_lp.x-40,y:_lp.y-10,w:80,h:20}));els[_ln(els)-2].boundElements=[{id:_tid,type:'text'}]}   // ADR-0266/0280
         break;}
       case'image':{
-        const _du2=_du(s)||Net._imgIn.get(s.img)||'';   // ADR-1067: dangling fileId stands for the unresolved img ref
+        const _du2=_du(s)||Net._imgIn.get(s.img)||'';   // ADR-1067: dangling fileId marks the unresolved img ref
         const fid='f'+s.id;
         if(_du2)files[fid]={id:fid,mimeType:(_du2.match(/^data:([^;]+)/)||[])[1]||'image/png',dataURL:_du2,created:0,lastRetrieved:0};
         _pu(els,E(s,{type:'image',x:s.x,y:s.y,width:s.w||0,height:s.h||0,fileId:fid,status:'saved',
@@ -6991,7 +6993,7 @@ function drawioToShapes(txt){
       if(sty.fillColor&&sty.fillColor!=='none')s.color=sty.fillColor}
     else if(('text' in sty||sty.text===1)&&!w&&!ht)s=_smk('text',{x,y,w:120,h:24,text:_s0(lbl,2000)});
     else if(sty.shape==='image'){const _im=(_ga(c,'style')||'').match(/image=(data:image\/[^;]*;base64,[^;]*)/);   // ADR-0259/1068
-      s=_smk('image',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});if(_im)s.dataUrl=_im[1].slice(0,25_000_000)}   // ADR-0353: byte-less image cells stay images (placeholder), not rects
+      s=_smk('image',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});if(_im)s.dataUrl=_im[1].slice(0,25_000_000)}   // ADR-0353: byte-less image stays image (placeholder)
     else s=_smk('rect',{x,y,w:w||120,h:ht||80,label:_s0(lbl,240)});
     if(sty.rounded==='1'&&_hb(s))s.r=8;
     if(sty.fillColor)s.fill=sty.fillColor==='none'?'none':sty.fillColor;   // ADR-0288
@@ -7894,7 +7896,7 @@ function buildSVG(shapes,paper){
           _pu(els,`<image x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" href="${_esc(_du(s))}"${_cr2>0?` clip-path="url(#irc${_esc(s.id)})"`:''}${a}${rT}${fT}${_sh}/>`);
           if(_sk(s)&&_szz(s))_pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" rx="${_cr2}" fill="none" stroke="${_esc(_sk(s))}" stroke-width="${_num(_szz(s))}"${dA}${a}${rT}/>`);   // ADR-0176/0178
         }
-        else _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" fill="none" stroke="${_esc(_sk(s)||'#CBD5E1')}" stroke-width="1"${a}${rT}/>`);   // ADR-1067: canvas parity — the unresolved ref draws the placeholder box
+        else _pu(els,`<rect x="${X+ox}" y="${Y+oy}" width="${W}" height="${H}" fill="none" stroke="${_esc(_sk(s)||'#CBD5E1')}" stroke-width="1"${a}${rT}/>`);   // ADR-1067: unresolved ref draws the placeholder box
         if(_lb(s))_svgImgLabel(els,s,X,Y,W,H,ox,oy,stroke,paper,rT);  // ADR-0083
         break;
       case 'frame':{
@@ -8055,7 +8057,7 @@ const Net={
     if(typeof BroadcastChannel===_un)return;     // not supported
     try{
       this.bc=new BroadcastChannel(NET_CHANNEL_PREFIX+state.roomId);
-      this.bc.onmessage=e=>{try{this._onRecv(e.data)}catch(_){}};   // ADR-1026: same guard as the DC path — one bad message can't wedge intake
+      this.bc.onmessage=e=>{try{this._onRecv(e.data)}catch(_){}};   // ADR-1026: one bad BC message can't wedge intake
       // announce arrival + request snapshot
       this._send(_mk('hello'));   // ADR-0740
       this._send(_mk('sync-req',{wc:this._syncReqWc()}));   // ADR-1055
@@ -8076,7 +8078,7 @@ const Net={
   // re-emit every key (fresh `sent` set, late joiners). Inbound shapes whose
   // blob hasn't landed park in _imgPending.
   _imgSent:_mP(), _imgIn:_mP(), _imgPending:_mP(), _imgqT:_mP(),
-  _imgqSweep(now){   // ADR-1064: one imgq per key per sweep — N shapes sharing
+  _imgqSweep(now){   // ADR-1064: one imgq per key per sweep
     const asked=_sT();   // a content-hash ref used to broadcast N identical asks
     for(const[id,e]of this._imgPending){
       if(now-e.t0>60000)this._imgPending.delete(id);
@@ -8084,7 +8086,7 @@ const Net={
     }
   },
   _imgOuts:[], _fragOuts:[], _imgChunks:_mP(),
-  _stgOK(outs,b){let s=_ln(b)||0;for(const e of outs)s+=_ln(e[1]);return s<=67108864},   // ADR-1062: staged outflow shares the answer store's byte bound
+  _stgOK(outs,b){let s=_ln(b)||0;for(const e of outs)s+=_ln(e[1]);return s<=67108864},   // ADR-1062: staged outflow shares the answer byte bound
   _imgDbGet(k){   // ADR-1063: durable fallback — a reloaded holder's _imgSent is empty,
     if(!Persist.db||!_idOK(k))return;   // but its persisted blob still answers imgq via the imgs store
     try{const rq=_oS(_trx(Persist.db,DB_IMG_STORE,_RO),DB_IMG_STORE).get(k);
@@ -8231,7 +8233,7 @@ const Net={
     if(q){if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)_pu(q,m),this._dcQB=(this._dcQB||0)+_ln(m);return}   // ADR-0783
     if(!d||d.readyState!=='open')return;
     try{d.send(m)}catch(_){this._dcQ=[m];this._dcQB=_ln(m);d.bufferedAmountLowThreshold=65536;
-      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b||[])this._sendDC(x);if(_ln(this._fragOuts))this._flushFragOuts();if(_ln(this._imgOuts))this._flushImgOuts()}}   // ADR-1060/1061: staged frag/img outflow resumes once the backlog drains
+      d.onbufferedamountlow=()=>{const b=this._dcQ;this._dcQ=null;this._dcQB=0;for(const x of b||[])this._sendDC(x);if(_ln(this._fragOuts))this._flushFragOuts();if(_ln(this._imgOuts))this._flushImgOuts()}}   // ADR-1060/1061: staged outflow resumes when the backlog drains
   },
   _canon(m){const c={...m};delete c.mac;delete c.dmac;delete c.data;return _JS(c)},   // ADR-1056
   _mac(m){return _hmac(_sec(),this._canon(m))},
@@ -8281,7 +8283,7 @@ const Net={
         this._imgChunks.delete(kk);
         const data=st.p.join('');
         if(_ln(data)>12_000_000)break;
-        if(_imgHash(data)!==msg.key.replace(/:\d+$/,'')||!_sw(data,'data:image/'))break;   // ADR-0864/1068: hash+type gate — junk can't plant a dataUrl
+        if(_imgHash(data)!==msg.key.replace(/:\d+$/,'')||!_sw(data,'data:image/'))break;   // ADR-0864/1068: junk can't plant a dataUrl
         if(this._imgIn.has(msg.key))this._imgInB-=_ln(this._imgIn.get(msg.key));
         this._imgIn.set(msg.key,data);this._imgInB=(this._imgInB||0)+_ln(data);
         while(this._imgIn.size>256||this._imgInB>64_000_000){const k0=this._imgIn.keys().next().value;if(k0==null)break;this._imgInB-=_ln(this._imgIn.get(k0));this._imgIn.delete(k0)}   // ADR-0784
@@ -8300,7 +8302,7 @@ const Net={
         const _t=nowTs(),_qt=this._imgqT.get(msg.key);
         if(!_qt||_t-_qt>10000){if(this._imgqT.size<4096)this._imgqT.set(msg.key,_t);
           if(d0){if(this._stgOK(this._imgOuts,d0)){_pu(this._imgOuts,[msg.key,d0]);this._flushImgOuts()}}
-          else if(_idOK(msg.key))this._imgDbGet(msg.key)}   // ADR-1063: misses throttle too — bounds the IDB read rate
+          else if(_idOK(msg.key))this._imgDbGet(msg.key)}   // ADR-1063: misses throttle too (bounds IDB reads)
         break;}
       case 'snap':case 'opc':{
         // ADR-0383/0431/0987: frag streams are DC-only — a BC-forged chunk
@@ -8411,7 +8413,7 @@ const Net={
   // known shape → per-property LWW so concurrent edits on both
   // peers converge instead of split-braining (loser reports 'skip').
   _mergeSnapshotOp(op){
-    op=this._attachOp(op,1);                          // ADR-0069/1066: raw pair — the merge arbitrates img×dataUrl by clock
+    op=this._attachOp(op,1);                          // ADR-0069/1066: merge arbitrates img×dataUrl by clock
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
     const ex=byId(op.shape.id);
     if(!ex){_wAdopt(op.shape.id,op.wc);Store.applyRemote(op);return 'add';}   // ADR-0927
@@ -8551,7 +8553,7 @@ const Net={
   _wrtcInit(){
     if(this.rtc){try{this.rtc.close()}catch(_){}}
     if(this.dc){try{this.dc.close()}catch(_){}}
-    this._dcQ=null;this._dcQB=0;   // ADR-1059: a superseded link's backlog must not wedge/ride the next channel
+    this._dcQ=null;this._dcQB=0;   // ADR-1059: superseded-link backlog must not ride the next channel
     if(typeof RTCPeerConnection===_un)throw new Error('WebRTC not supported');
     this._rtcConnFailed=false;this._dcKey=null;   // ADR-1056
     this.rtc=new RTCPeerConnection({iceServers:[
@@ -8999,7 +9001,7 @@ function _imgNextKey(k){const m=/^(.*):(\d+)$/.exec(k);return m?m[1]+':'+(+m[2]+
 function _imgSlim(shapes,stored,fmark){
   const slim=[],puts=[];
   for(const s of shapes){
-    if(s&&_im(s)&&_iS(s.dataUrl)&&_sw(_du(s),'data:image/')&&_du(s).length>128){   // ADR-1068: never slim a non-image dataUrl — it would fail validShapen
+    if(s&&_im(s)&&_iS(s.dataUrl)&&_sw(_du(s),'data:image/')&&_du(s).length>128){   // ADR-1068: non-image dataUrl would fail validShapen
       let k=_imgHash(_du(s));
       while(stored.get(k)!==_ud&&stored.get(k)!==_du(s))k=_imgNextKey(k);
       if(stored.get(k)===_ud){stored.set(k,_du(s));_pu(puts,[k,_du(s)])}
@@ -9589,7 +9591,7 @@ function wire(){
   const _ctxUp=()=>{ctx=_g2(canvas);octx=_g2(ocanvas);_penCache.clear();_penCachePx=0;_inkD=null;Minimap.invalidateCache();_iv();_ivO()};
   _on(canvas,'contextlost',_pd);_on(ocanvas,'contextlost',_pd);
   _on(canvas,'contextrestored',_ctxUp);_on(ocanvas,'contextrestored',_ctxUp);
-  if(window.visualViewport)_on(visualViewport,'resize',_resizeSoon);   // ADR-0251: iOS url-bar/keyboard shrink doesn't fire window resize
+  if(window.visualViewport)_on(visualViewport,'resize',_resizeSoon);   // ADR-0251: iOS url-bar/keyboard shrink fires no resize
   // devicePixelRatio change (window dragged to a denser display)
   _watchDPR();
   // some Android devices fire orientationchange separately from resize
@@ -10308,7 +10310,7 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.statusbar'),'none');
     _qs(document,'.minimap-wrap')?.style.setProperty('display','none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
-    ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too; DOM keeps it above scene, below presOverlay
+    ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024: lift overlay too (scene below, presOverlay above)
     // The CSS box just changed to fullscreen but the backing buffer
     // still holds its old smaller size and would be stretched blurry —
     // and the world↔screen transform math _zoomToFrame left is stale.
