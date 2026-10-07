@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.125';   // ADR-1101
+const V='1.8.126';   // ADR-1102
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1494,8 +1494,7 @@ const Store={
     _rdb();
     if(op.clock.peer===_pi())Net.broadcast(op);   // outbound only
   },
-  // Remote del connClears covers only sender-known connectors; a missed one snaps
-  // to its resolved endpoint before _apply spreads the del.
+  // Remote del connClears covers only sender-known connectors; a missed one snaps to its resolved endpoint before _apply spreads the del.
   _remoteDelConnFix(op){
     if(op.op!=='del'||!_iA(op.shapes))return null;
     const goneIds=_sT(op.shapes.map(s=>s.id).filter(id=>!(byId(id)||{}).locked));   // ADR-0760: locked ids survive
@@ -4682,6 +4681,7 @@ function _lblFollow(){
 // (base64 in IDB/history/links while displaying ~400wu) only when smaller.
 const IMG_IMPORT_MAX_DIM=2048;
 function _imgImportFile(f,cb){
+  if(state.ro){_roNo();return}   // ADR-1102
   if(_bigFile(f)){_wT(_IB);return}   // ADR-0877
   const reader=new FileReader();
   reader.onload=()=>{
@@ -4713,29 +4713,25 @@ function _imgImportFile(f,cb){
 }
 // ADR-0518: shared text-intake cascade — SVG markup → .board JSON →
 // .excalidraw → mxfile → TSV grid → plain-text shape. `wp` is the landing
-// point in world coords (drop: the cursor; keyboard paste: viewport centre).
-// Returns true when the text was consumed; false → caller falls back to the
-// internal clipboard path.
+// point in world coords. Returns true when consumed; false → internal paste.
 function _textCascade(s,wp){
+  if(state.ro){_roNo();return true}   // ADR-1102
   if(/^\s*(<\?xml[^?]*\?>\s*)?<svg[\s>]/i.test(s)){importSvgText(s,wp);return true}
   if(/^\s*\{/.test(s)&&/"(shapes|v)"\s*:/.test(_s0(s,8192))&&/"shapes"\s*:\s*\[/.test(s)){
-    // ADR-0516: our own OS-clipboard echo → internal doPaste …
-    // _pasteCount cascade) instead of a foreign re-import.
+    // ADR-0516: our own OS-clipboard echo → internal doPaste, not a re-import.
     if(s===_osClip){doPaste();return true}
     if(importBoardText(s,wp)!==false)return true;
   }
   if(/^\s*\{/.test(s)&&/"type"\s*:\s*"excalidraw"/.test(_s0(s,4096))){
     if(importExcText(s,wp)!==false)return true;
   }
-  // ADR-0232: drawio's copy puts uncompressed
-  // route it to the drawio importer instead of the generic text cascade
+  // ADR-0232: drawio's copy is uncompressed mxfile XML → the drawio importer.
   if(/<mxfile[\s>]/.test(_s0(s,4096))){
     if(importDrawioText(s,wp)!==false)return true;
   }
   const txt=_trm(s);
   if(!txt)return false;
-  // ADR-0273: tab-separated intake → sticky grid
-  // columns, rows → rows). Any cell may be empty.
+  // ADR-0273: tab-separated intake → sticky grid (columns × rows).
   if(/\t/.test(txt)&&txt.includes('\n')){
     const rows=_spL(_s0(txt,PASTE_MAX_CHARS)).map(r=>r.split('\t'));
     const C=_max(...rows.map(_ln)),R=_ln(rows);
@@ -4781,8 +4777,7 @@ _on(canvas,'drop',e=>{
     return;
   }
   const wp=_o2w(e);
-  // Cascade dropped images by per-iteration index — reader.onload is async,
-  // so the placement offset must come from forEach's `i`, not a shared counter.
+  // Cascade dropped images by per-iteration index — reader.onload is async, so the offset comes from forEach's `i`.
   files.forEach((f,i)=>{
     _imgImportFile(f,(dataUrl,nw,nh)=>{
       const maxDim=400;
@@ -4797,9 +4792,8 @@ _on(canvas,'drop',e=>{
 });
 
 // ---- OS clipboard bridge ----
-// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain); setData
-// so keydown marks _cpNow and this handler
-// writes the JSON. _osClip echoes back to take the internal doPaste path.
+// ADR-0516: ⌘C/⌘X write the selection as .board JSON (text/plain);
+// _osClip echoes it back to the internal doPaste path.
 let _osClip=null,_cpNow=false;
 function _osCopy(e){
   if(!_cpNow)return;
@@ -7089,6 +7083,7 @@ async function _dioInflate(b64){
   }catch(_){return null}
 }
 function importDrawioText(txt,wp){
+  if(state.ro){_roNo();return true}   // ADR-1102: also stops the multi-page broadcast leak
   // ADR-0324: every <diagram> page carries its own deflate payload — inflate ALL
   // of them and re-wrap into one uncompressed mxfile — the multi-page path
   // (ADR-0311) flattens every page, not just page 1.
@@ -7436,6 +7431,7 @@ function svgToShapes(txt){
   return shapes;
 }
 function importSvgText(txt,wp){
+  if(state.ro){_roNo();return true}   // ADR-1102
   let shapes=null;
   try{shapes=svgToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796
@@ -7592,6 +7588,7 @@ function excToShapes(txt){
   return shapes;
 }
 function importExcText(txt,wp){
+  if(state.ro){_roNo();return true}   // ADR-1102
   let shapes=null;
   try{shapes=excToShapes(txt)}catch(_){shapes=null}
   if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796
