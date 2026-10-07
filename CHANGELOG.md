@@ -1,3 +1,8 @@
+## [1.8.148] - 2026-10-01
+
+### Fixed
+- **round874 / ADR-1124 — snapshot merge propagates joiner-newer divergence**: the snapshot channel is one-directional — its `add` ops carry only the *responder's* clocks/values, so the merge only resolved props where the remote won. When a rejoining peer's local prop clock was newer than the responder's, the local value stayed put but the responder (and every peer) kept the stale value forever — permanent divergence. `_mergeSnapshotOp` now emits a convergence `upd` for each divergent local-winning prop (`before` = the remote's own value, `after` = the local winner) via the shared `_txFlush` drain — the responder's per-prop LWW converges on the same end state, and equal values emit nothing (idempotent, no traffic storm). Structural/img/`dataUrl`/`locked`/`type` keys are excluded (`_emOK` mirrors `_stripStruct` + the forged-key window ADR-1122 closed). Covers the remote-clock-less sweep (props the responder never stamped). 12 behavioural pins; also compresses severed comment tails back under the raw ceiling.
+
 ## [1.8.147] - 2026-10-01
 
 ### Fixed

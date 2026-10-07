@@ -1149,6 +1149,8 @@ Board/
 │   └── ADR-1120-stored-op-aliasing.md  # 履歴 op と live 状態の参照共有監査 — wclock/pages/shapes は全経路で `clone` 切断、verbatim 代入なし (監査 clean、docs+pin)
 │   └── ADR-1121-global-op-log-history.md  # 履歴境界監査 — 単一 op-log (ローカル+リモート同一 push)、redo chop、MAX_HISTORY=500、undo/redo 全 restamp、echo なし (監査 clean、docs+pin)
 │   └── ADR-1122-nolock-baseline-coverage.md  # `locked` を全 patch ベースラインでゲート — 偽造 `upd` before.locked が undo でローカルのみ着地 (inverse は peers 棄却)、偽造 `move` after.locked が _stampWrites 経由で仲裁時計汚染 → `noLock` ホイスト + before/after 両側ゲートで閉塞
+│   └── ADR-1123-text-3way-merge.md  # remote-wins text/label を `_mT3` 3-way マージ — disjoint hunk は union 保持 (両編集生存、時計は remote 勝ちで決定性)、union emit を `_txFlush` で収束
+│   └── ADR-1124-snapshot-merge-emit.md  # snapshot merge が joiner-newer 発散 prop を伝搬 — 一方向チャネルで永久 stale 化していた残穴を、remote 値を `before` とする収束 `upd` emit (`_emOK` + lw-sweep) で閉塞
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

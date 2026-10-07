@@ -5188,7 +5188,9 @@ try {
     assert.strictEqual(ls.x,0,'local-newer prop wins (x untouched)');
     assert.strictEqual(ls.label,'remote','remote-newer prop adopted (label)');
     assert.strictEqual(state.wclock['S'].label.ts,2000,'merged clock recorded for future LWW');
-    assert.strictEqual(state.history.length,hlen,'merge writes no undo history');
+    // ADR-1124: the local-newer prop (x) diverges → the merge emits a real
+    // convergent 'upd' — exactly one history op, never silent history writes.
+    assert.strictEqual(state.history.length,hlen+1,'merge emits one convergent op for the divergent prop');
     // no wc → old-peer fallback keeps everything
     assert.strictEqual(Net._mergeSnapshotOp({op:'add',shape:snapShape}),'skip','missing wc → keep (legacy)');
     // unknown shape → add path
@@ -5200,6 +5202,63 @@ try {
      assert.strictEqual(res,'skip','non-add op rejected at merge path');
      assert.ok(byId(snapShape.id)&&byId(snapShape.id).x===before,'shape untouched by rejected op');}
     console.log('  ✓ snapshot LWW merge: per-prop convergence, no history (6 asserts)');
+  }
+
+  // ADR-1124: joiner-newer divergent props propagate — the responder's ops only
+  // carry ITS clocks, so a prop the joiner wrote more recently would otherwise
+  // stay forever stale on every peer. The merge emits a convergent 'upd'
+  // (before = the remote's own value) for each divergent local-winning prop.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,text:'local',label:'mine',stroke:'#000',size:2,opacity:1};
+    Store.commit({op:'add',shape:r});
+    state.wclock['S']={text:{peer:'B',seq:5,ts:5000},label:{peer:'B',seq:6,ts:6000},stroke:{peer:'B',seq:7,ts:4000},opacity:{peer:'B',seq:8,ts:4000}};
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      const snap={...JSON.parse(JSON.stringify(r)),text:'remote',label:'theirs',stroke:'#fff'};
+      const res=Net._mergeSnapshotOp({op:'add',shape:snap,wc:{
+        text:{peer:'A',seq:2,ts:1000},     // older → local wins → emit
+        label:{peer:'A',seq:3,ts:7000},    // newer → remote wins → adopt
+        // stroke/opacity: remote has no clock → lw-sweep emit
+      },clock:{peer:'A',seq:9,ts:9}});
+      const ls=byId('S');
+      assert.strictEqual(res,'merge','merge reported');
+      assert.strictEqual(ls.text,'local','local-newer value kept');
+      assert.strictEqual(ls.label,'theirs','remote-newer adopted');
+      const emits=sent.filter(o=>o.op==='upd'&&o.id==='S');
+      assert.strictEqual(emits.length,1,'one grouped upd per shape');
+      const emit=emits[0];
+      assert.strictEqual(emit.after.text,'local','emitted local value');
+      assert.strictEqual(emit.before.text,'remote','emit baseline = remote value');
+      assert.strictEqual(emit.after.stroke,'#000','remote-clock-less prop emitted too');
+      assert.strictEqual(emit.before.stroke,'#fff','remote unclocked value is the baseline');
+      assert.ok(!('label' in emit.after)&&!('opacity' in emit.after),'remote-won and equal props not emitted');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1124: merge emits joiner-newer divergence (9 asserts)');
+  }
+
+  // ADR-1124: exclusions — img/dataUrl (blob plumbing) and locked/type never emit;
+  // equal values emit nothing.
+  {
+    state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
+    const r={id:'S3',type:'rect',z:1,x:0,y:0,w:10,h:10,text:'same',img:'k1:2',stroke:'#000'};
+    Store.commit({op:'add',shape:r});
+    state.wclock['S3']={text:{peer:'B',seq:5,ts:5000},img:{peer:'B',seq:6,ts:5000},stroke:{peer:'B',seq:7,ts:4000}};
+    const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
+    try{
+      const snap={...JSON.parse(JSON.stringify(r)),img:'k9:2'};
+      Net._mergeSnapshotOp({op:'add',shape:snap,wc:{
+        text:{peer:'A',seq:2,ts:1000},     // local wins but equal → no emit
+        img:{peer:'A',seq:3,ts:1000},      // local wins but excluded key → no emit
+      },clock:{peer:'A',seq:9,ts:9}});
+      const emits=sent.filter(o=>o.op==='upd'&&o.id==='S3');
+      assert.strictEqual(emits.length,0,'equal-valued + excluded props emit nothing');
+      assert.strictEqual(byId('S3').img,'k1:2','local img kept, no propagation');
+      assert.strictEqual(byId('S3').text,'same','equal text untouched');
+    }finally{Net.broadcast=_ob}
+    console.log('  ✓ ADR-1124: img/dataUrl/locked/ equal-value exclusions (3 asserts)');
   }
 
   // ADR-0372: snapshot merge gates values — NaN coords, non-array pts, structural
@@ -19868,7 +19927,7 @@ pass += 7;
   console.log('  \u2713 ADR-1123 disjoint text merge + convergence emit (9 asserts)');
 }
 pass += 9;
-pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
+pass += 1959; // prev 1947 + 12 ADR-1124 merge-emit pins
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
