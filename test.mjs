@@ -20360,6 +20360,56 @@ pass += 12;
 }
 pass += 9;
 
+// ADR-1134 — the flush reads live state: an entry stranded by a mid-apply
+// throw no longer emits the queue-time value (a fresh clock would let the
+// stale value outrank the user's newer write and converge peers onto an
+// abandoned one), a dead id emits nothing, and an already-converged entry
+// emits nothing (live === the remote's claim → the divergence is gone).
+{
+  state.shapes=[{id:'r1',type:'rect',x:1,y:0,w:1,h:1,z:1},{id:'r2',type:'rect',x:2,y:0,w:1,h:1,z:1}];
+  state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  Store._stampWrites({op:'upd',id:'r1',after:{x:1},before:{x:0},clock:{peer:'zz',seq:1,ts:9e15}});
+  Store._stampWrites({op:'upd',id:'r2',after:{x:2},before:{x:0},clock:{peer:'zz',seq:1,ts:9e15}});
+  Store._lwwDrop({op:'upd',id:'r1',after:{x:5},before:{x:0},clock:{peer:'zz',seq:1,ts:1}});   // strands {a:1}
+  Store._lwwDrop({op:'upd',id:'r2',after:{x:5},before:{x:0},clock:{peer:'zz',seq:1,ts:1}});   // strands {a:2}
+  byId('r1').x=9;   // live moved past the queue-time value
+  state.shapes.splice(state.shapes.findIndex(s=>s.id==='r2'),1);_invalidateGrid();   // r2 dies mid-window
+  const calls=[],_ob=Net.broadcast;Net.broadcast=o=>calls.push(o);
+  _txFlush();
+  const u=calls.filter(o=>o.id==='r1');
+  assert.strictEqual(u.length,1,'ADR-1134: the stranded emit still fires');
+  assert.strictEqual(u[0].after.x,9,'ADR-1134: emit carries the live value, not the queue-time value');
+  assert.strictEqual(calls.filter(o=>o.id==='r2').length,0,'ADR-1134: a dead id emits nothing');
+  // a converged prop emits nothing
+  Store._lwwDrop({op:'upd',id:'r1',after:{x:5},before:{x:0},clock:{peer:'zz',seq:1,ts:1}});
+  byId('r1').x=5;   // converged to the remote claim before the flush
+  calls.length=0;_txFlush();
+  assert.strictEqual(calls.length,0,'ADR-1134: a converged entry emits nothing');
+  // structural emits read live membership/frac too
+  state.shapes.push({id:'S',type:'rect',x:0,y:0,w:1,h:1,z:1,groupId:'gL',frac:'f2'});_invalidateGrid();
+  state.wclock['S']={groupId:{peer:'zz',seq:9,ts:9e15},frac:{peer:'zz',seq:9,ts:9e15}};
+  Store._lwwDrop({op:'group',ids:['S'],gid:'gR',before:[{id:'S'}],clock:{peer:'zz',seq:1,ts:1}});
+  Store._lwwDrop({op:'zorder',changes:[{id:'S',before:'f1',after:'f9'}],clock:{peer:'zz',seq:1,ts:1}});
+  byId('S').groupId='gR';byId('S').frac='f9';   // both converge to the remote claims
+  calls.length=0;_txFlush();
+  assert.strictEqual(calls.filter(o=>o.op==='group'||o.op==='ungroup').length,0,'ADR-1134: a converged membership emits nothing');
+  assert.strictEqual(calls.filter(o=>o.op==='zorder').length,0,'ADR-1134: a converged frac emits nothing');
+  // still-diverged membership emits the live group
+  Store._lwwDrop({op:'group',ids:['S'],gid:'gX',before:[{id:'S'}],clock:{peer:'zz',seq:1,ts:1}});
+  byId('S').groupId='gL';   // live moved to yet another group mid-window
+  calls.length=0;_txFlush();
+  const ge=calls.filter(o=>o.op==='group');
+  assert.strictEqual(ge.length,1,'ADR-1134: a diverged membership emits');
+  assert.strictEqual(ge[0].gid,'gL','ADR-1134: emit carries the live gid');
+  Net.broadcast=_ob;
+  assert.ok(html.includes("const s=byId(e.id);if(!s)continue;"),'ADR-1134: flush resolves the live shape');
+  assert.ok(html.includes("p.a[e.k]=s[e.k]"),'ADR-1134: upd emit reads live');
+  assert.ok(html.includes("if(_ln(_ok(p.a)))_txC"),'ADR-1134: a fully-converged upd emits nothing');
+  state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ ADR-1134 live-read convergence flush (11 asserts)');
+}
+pass += 11;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
