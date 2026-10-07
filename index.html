@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.131';   // ADR-1107
+const V='1.8.132';   // ADR-1108
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1013,7 +1013,7 @@ const I18N={
     undone:'元に戻した',redone:'やり直した',created:'作成',editLabel:'選択中の図形を編集',
     confirmClear:'すべて削除しますか？',
     pgPage:'ページ',pgPrev:'前のページ',pgNext:'次のページ',pgAdd:'ページを追加',pgDel:'ページを削除',pgDelQ:'このページとその図形を削除しますか',pgRename:'ページ名を変更',pgDup:'ページを複製',pgMax:'ページ数は64までです',
-    ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
+    ctxCut:'カット',ctxCopy:'コピー',ctxPasteInPlace:'同じ位置に貼り付け',ctxPasteAt:'ここに貼り付け',ctxPaste:'貼り付け',ctxDuplicate:'複製',
     ctxDelete:'削除',ctxCopyStyle:'スタイルコピー',ctxPasteStyle:'スタイル適用',ctxElbow:'エルボー (直角)',ctxCurve:'曲線',ctxHop:'ホップ (交差を飛び越す)',ctxRouteReset:'ルートをリセット (直線に戻す)',ctxReverse:'方向を反転',ctxFitText:'テキストに合わせる',ctxSelContents:'内容を選択',ctxFrameFit:'コンテンツに合わせる',ctxArrowHead:'矢印ヘッド (矢印→丸→T字→シェブロン→なし)',ctxStartHead:'開始ヘッド (なし→矢印→丸→T字→シェブロン)',ctxToArrow:'矢印に変換',ctxToLine:'直線に変換',ctxBothEnds:'両端ヘッド',ctxRrect:'角スタイル (角丸→直角)',ctxStickyColor:'付箋の色 (順送り)',ctxToText:'テキストに変換',ctxToSticky:'付箋に変換',ctxTextAlign:'テキスト揃え (左→中央→右)',ctxFillStyle:'塗りスタイル (塗り→ハッチ→斜格子)',ctxSetLink:'リンクを設定…',ctxOpenLink:'リンクを開く',ctxCopyLink:'リンクをコピー',linkPrompt:'リンク URL (https://…) — 空で解除',badUrl:'http:// または https:// の URL のみ有効です',
     ctxSelectSameType:'同じ種類を選択',ctxSelectSame:'同色を選択',ctxSearch:'検索',ctxFit:'全体を表示',ctxZoomReset:'ズーム100%',ctxGrid:'グリッド',ctxSnap:'吸着',ctxMinimap:'ミニマップ',ctxWrapFrame:'フレームで包む',ctxGroup:'グループ化',ctxUngroup:'グループ解除',ctxBringFront:'最前面へ',ctxBringForward:'前面へ',
     ctxSendBackward:'背面へ',ctxSendBack:'最背面へ',
@@ -1095,7 +1095,7 @@ const I18N={
     undone:'Undone',redone:'Redone',created:'Created',editLabel:'Edit selected shape',
     confirmClear:'Delete everything?',
     pgPage:'Page',pgPrev:'Previous page',pgNext:'Next page',pgAdd:'Add page',pgDel:'Delete page',pgDelQ:'Delete this page and its shapes',pgRename:'Rename page',pgDup:'Duplicate page',pgMax:'At most 64 pages',
-    ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
+    ctxCut:'Cut',ctxCopy:'Copy',ctxPasteInPlace:'Paste in place',ctxPasteAt:'Paste here',ctxPaste:'Paste',ctxDuplicate:'Duplicate',
     ctxDelete:'Delete',ctxCopyStyle:'Copy style',ctxPasteStyle:'Paste style',ctxElbow:'Elbow (right-angle)',ctxCurve:'Curved',ctxHop:'Jump arcs at crossings',ctxRouteReset:'Reset route (straighten)',ctxReverse:'Reverse direction',ctxFitText:'Fit to text',ctxSelContents:'Select contents',ctxFrameFit:'Fit to contents',ctxArrowHead:'Arrowhead (arrow→dot→bar→open→none)',ctxStartHead:'Start head (none→arrow→dot→bar→open)',ctxToArrow:'Convert to arrow',ctxToLine:'Convert to line',ctxBothEnds:'Arrowheads both ends',ctxRrect:'Corners (round→sharp)',ctxStickyColor:'Sticky colour (cycle)',ctxToText:'Convert to text',ctxToSticky:'Convert to sticky',ctxTextAlign:'Text align (left→center→right)',ctxFillStyle:'Fill style (solid→hatch→cross)',ctxSetLink:'Set link…',ctxOpenLink:'Open link',ctxCopyLink:'Copy link',linkPrompt:'Link URL (https://…) — empty clears',badUrl:'Only http:// or https:// URLs are allowed',
     ctxSelectSameType:'Select same type',ctxSelectSame:'Select same colour',ctxSearch:'Search',ctxFit:'Fit board',ctxZoomReset:'Zoom 100%',ctxGrid:'Grid',ctxSnap:'Snap',ctxMinimap:'Minimap',ctxWrapFrame:'Frame selection',ctxGroup:'Group',ctxUngroup:'Ungroup',ctxBringFront:'Bring to front',ctxBringForward:'Bring forward',
     ctxSendBackward:'Send backward',ctxSendBack:'Send to back',
@@ -1639,7 +1639,7 @@ const Store={
     this._apply(op,false);
     _pgFollow(op);   // ADR-0652
     state.histIdx--;
-    for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};   // distinct seqs for dedup; same (ts,peer) arbitration
+    for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};   // dedup needs distinct seqs
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615
       this._stampWrites(w);Net.broadcast(w)}
     _rdb();
@@ -4371,7 +4371,7 @@ _on(canvas,_PM,e=>{
         const sh=byId(ptr.wayOrig.id);
         if(sh){
           const wa=_wayArr(sh),i=ptr.wayIdx|0;
-          if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts the vertex; stay under the wire bound (0866)
+          if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts the vertex (0866 bound)
           else{
             const pts=_linePts(sh),mx=(pts[i].x+pts[i+1].x)/2,my=(pts[i].y+pts[i+1].y)/2;
             if(_hp(wp.x-mx,wp.y-my)<6/_vp().zoom){wa.splice(i,1);if(_ln(wa))sh.way=wa;else delete sh.way}   // ADR-0088: RAW point keeps the clear gesture reachable
@@ -6762,7 +6762,7 @@ function exportPDF(){
     w2.document.close();_stO(()=>URL.revokeObjectURL(url),30e3);
   };
   if(typeof off.toBlob==='function')off.toBlob(fin,'image/png');
-  else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // rejection → same exportFailed toast as toBlob(null)
+  else off.convertToBlob({type:'image/png'}).then(fin,()=>fin(null));   // rejection → exportFailed toast parity
 }
 
 function exportSVG(shapes=_shV()){   // ADR-0658
@@ -8607,7 +8607,7 @@ const Net={
       try{this._onRecv(_JP(e.data),true)}catch(_){}   // ADR-0010: viaRtc=true
     };
     dcRef.onclose=()=>{
-      if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}   // purge THIS channel's row even when superseded
+      if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}   // purge this channel's row
       if(this.dc!==dcRef)return;   // stale close must not clobber the live link's state
       this._dcQ=null;this._snapIn=null;this._opcIn=null;this._dcQB=0;this._dcKey=null;   // ADR-0446/0448/1056
       if(!this._rtcConnFailed)_wT('disconnected');
@@ -9147,6 +9147,7 @@ const UI={
     const has=_selN()>0;
     while(m.firstChild)m.removeChild(m.firstChild);
     const items=customItems||[
+      has&&['ctxCut','⌘X',()=>{doCopy();_cpNow=false;doDelete()}],   // ADR-1108
       has&&['ctxCopy','⌘C',()=>{doCopy();_cpNow=false}],   // ADR-1107: menu copy has no event — clear so the next OS gesture re-captures
       _cl()&&['ctxPaste','⌘V',doPaste],
       _cl()&&['ctxPasteAt','',()=>doPasteAt(m._wx,m._wy)],

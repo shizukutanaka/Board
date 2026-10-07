@@ -1,3 +1,11 @@
+## [1.8.132] - 2026-10-01
+
+### Fixed
+- **round858 / ADR-1108 — ctx menu Cut item**: Cut was the only clipboard op unreachable from the context menu (Copy/Paste/Duplicate/Delete were present; Cut only existed as ⌘X and the OS Edit menu). ADR-0135-class keyboard-only reachability gap. `ctxCut` added before `ctxCopy` with the same `_cpNow` drain as the menu copy (no OS event follows a menu click) followed by `doDelete()` — under ro the copy lands and the delete is gated, matching ⌘X. ja/en i18n keys added. The audit also verified the OS-gesture axis is otherwise closed: `paste` is event-driven on `clipboardData.items` (image/svg/text/`.board` echo) with no capture-flag dependency, and `contextmenu` opens the real menu after cancelling a live gesture.
+
+### Tests
+- 4 source pins: menu item carries the exact `doCopy();_cpNow=false;doDelete()` composite, `ctxCut` precedes `ctxCopy` (standard order), ja + en keys present.
+
 ## [1.8.131] - 2026-10-01
 
 ### Fixed
