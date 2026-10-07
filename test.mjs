@@ -19353,6 +19353,31 @@ assert.ok(html.includes("if(state.ro){_roRe(op);_roNo();return}")&&html.includes
 assert.ok((html.match(/if\(state\.ro\)return/g)||[]).length>=3,'slider preview inputs early-return on ro');
 pass += 2;
 
+
+// ---- ADR-1105: ro page-dup can't leak member shapes to peers ----
+{
+  const _roM=/\u95b2\u89a7|View only/,_ot=UI.toast,_nb=Net.broadcast,seen=[],sent=[];
+  UI.toast=(m,k)=>{seen.push(m)};Net.broadcast=(m)=>{sent.push(m)};
+  try{
+    state.shapes.length=0;state.ro=false;_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+    const s1=Shape.make('rect',{x:0,y:0,w:10,h:10});s1.id='pd-a';s1.pg='pA';Store.commit({op:'add',shape:s1});
+    state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+    const n0=state.pages.length,sentN0=sent.length;
+    state.ro=true;
+    _pgDup();
+    assert.strictEqual(state.pages.length,n0,'ro page-dup: no page added');
+    assert.strictEqual(sent.length,sentN0,'ro page-dup: no addMany broadcast leak');
+    assert.ok(seen.some(m=>_roM.test(m)),'ro page-dup toasts readOnlyMode');
+    state.ro=false;
+    _pgDup();
+    assert.strictEqual(state.pages.length,n0+1,'editable control: page-dup adds a page');
+    assert.ok(sent.length>sentN0,'editable control: members broadcast');
+  }finally{state.ro=false;state.shapes.length=0;state.selection=new Set();state.pages=null;state.curPg=null;_invalidateGrid();state.history=[];state.histIdx=-1;UI.toast=_ot;Net.broadcast=_nb}
+  console.log('  \u2713 ADR-1105 ro page-dup broadcast leak gate (5 asserts)');
+}
+pass += 5;
+assert.ok(html.includes("function _pgDup(){   // ADR-0651\n  if(state.ro){_roNo();return}"),'ro gate on _pgDup entry');
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
