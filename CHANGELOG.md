@@ -1,3 +1,8 @@
+## [1.8.162] - 2026-10-01
+
+### Fixed
+- **round888 / ADR-1138 — peer-name staleness closure**: `_nIn` only ever *set* `p.n` — a peer who cleared their display name (the sender omits `n` from every presence envelope) kept the revoked name on every other board for the rest of the session, and a rename never repainted the DOM avatar tooltip (only `p.pg` flips did). `_nIn` now re-derives unconditionally — absent `n` means anonymous — and calls `UI.refreshPeers()` whenever the stored name changes, covering ping/cursor/selection uniformly. 6 behavioural pins.
+
 ## [1.8.161] - 2026-10-01
 
 ### Fixed
