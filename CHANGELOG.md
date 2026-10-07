@@ -1,3 +1,12 @@
+## [1.8.135] - 2026-10-01
+
+### Fixed
+- **round861 / ADR-1111 — doc-switch tomb separation + sender-side adopted-page birth stamps**: wclock doc-switch audit closed two defects. (A) `_recordCommitted`'s replace branch stamped `_bT` on `op.after` shapes but never on adopted `op.pages` — the sender held no `_born` for pages it had just adopted, so tomb arbitration was asymmetric (receiver `_born`-protected, sender tomb-vulnerable) and a stale tomb could kill the page on the sender only. Now stamps `_bT` at the carried `bts`/`btp` birth or `op.clock`, mirroring `_pgAdopt`. (B) all three clk-less doc-switch sites (`importBoard`, `importFromHash`, backup restore) ran `_pgAdopt` BEFORE `state.wclock=_wM()` — `_pgHealS` inside the adopt read the OLD document's tomb map, suppressing `'?'` stubs for new-doc `s.pg` ids that happened to be tomb-dead in the old doc (permanently invisible shapes) and arbitrating the new page set against a foreign kill history. The tomb-map reset now precedes the adopt at all three sites. `pageDel` backward also carries `bts`/`btp` on the restored record — the last wire-carriage gap for records minted outside `pageAdd` forward.
+
+### Tests
+- 5 behavioural pins: sender stamps carried `bts` as adopted-page `_born`; `bts`-less adopts at `op.clock`; `beforePages` tomb retention; `?`-stub heal on a clean slate; reset-before-adopt pairing at all 3 clk-less sites.
+- One source pin updated: `importBoard clears selection+wclock` now pins the reset-*precedes*-adopt ordering.
+
 ## [1.8.134] - 2026-10-01
 
 ### Fixed
