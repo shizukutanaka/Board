@@ -19791,6 +19791,20 @@ pass += 10;
 }
 pass += 8;
 
+// ADR-1120: stored-op × live-state aliasing audit — clean pass, contract pinned.
+{
+  assert.ok(html.includes("function clone(o){return _JP(_JS(o))}"),'ADR-1120: clone is deep — no nested aliasing into history');
+  assert.ok(!html.includes("state.wclock=op"),'ADR-1120: the tomb map is never adopted verbatim');
+  assert.ok(!html.includes("state.pages=op"),'ADR-1120: the page set is never adopted verbatim');
+  assert.ok(html.includes("state.pages=keep&&_ln(keep)?clone(keep):null"),'ADR-1120: page adoption deep-clones');
+  assert.ok(html.includes("n[k]=clone(w[k])")&&html.includes("w[k]=clone(rc)"),'ADR-1120: clock restores merge per-key clones');
+  assert.ok(html.includes("op.wc[sh.id]=clone(_wc()[sh.id])")&&html.includes("op.wc[id]=clone(_wc()[id])"),'ADR-1120: op wc snapshots clone each record');
+  assert.ok(html.split("shapes:clone(").length-1>=3,'ADR-1120: del commits store cloned shapes');
+  assert.ok(html.split("_attachShape(clone(").length-1>=5,'ADR-1120: every install clones before attach');
+  console.log('  ✓ ADR-1120 stored-op × live-state aliasing (8 asserts)');
+}
+pass += 8;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
