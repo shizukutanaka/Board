@@ -1,3 +1,8 @@
+## [1.8.154] - 2026-10-01
+
+### Fixed
+- **round880 / ADR-1130 — `_txFlush` drains best-effort**: a `_txC` throw mid-drain (e.g. `Net.broadcast` down) aborted the whole flush — every remaining convergence emit in `g`/`z`/`gg` was silently lost, leaving the dropped-prop sender permanently stale with no retry path (the flush is one-shot). The drain now attempts every emit (`_run` collects the first error) and rethrows it afterward — the failure signal is preserved while the rest of the queue still converges. `before:{}` verified legal (`validPatch` vacuous on empty objects), so `b===_ud` entries emit fine. 8 behavioural pins; `_txFlush` added to the test export surface.
+
 ## [1.8.153] - 2026-10-01
 
 ### Fixed
