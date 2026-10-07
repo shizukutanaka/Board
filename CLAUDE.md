@@ -1165,6 +1165,7 @@ Board/
 │   └── ADR-1136-flush-funnel-coverage-audit.md  # 収束emit完全監査が clean 完走: `_txE` 武装は6サイトのみ・全 `_apply` チェーン尾が `_txFlush`・`_nugEnd` が全 commit 漏斗を先行・`_roRe` 復元域完備・`state.ro` 採用/永続/解除が閉域・`_slimOp` フィールド行列全 undo-wire 網羅
 │   └── ADR-1137-stub-heal-tomb-gate.md  # op-intake heal `f()` が tomb-dead ページ id を無ゲートで '?' スタブ化→zombie 復活していた残穴を、共有述語 `_stubOk` 抽出で `_pgHealS` と同じ tomb ゲートへ統一 (unknown/born-newer は従来通り heal)
 │   └── ADR-1138-peer-name-staleness.md  # `_nIn` が `p.n` を設定のみで消去できず、ピアの名前消去が他盤面へ永続・改名が avatar tooltip に届かなかった残穴を、無条件再導出 + 変更時 `UI.refreshPeers()` で閉塞
+│   └── ADR-1139-dup-chain-arming-gate.md  # `_placeCopies` が全呼出で `dupIds`/`dupDelta` を再シードし、ペースト/インポートの任意センタリングベクトルがスマート複製チェーンを武装→⌘V→⌘D で遥か画面外に不可視複製を commit/broadcast していた残穴を、第4引数 `dup` で ⌘D 経路のみ武装するよう閉塞 (ADR-0080「harmless」推定を撤回)
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
