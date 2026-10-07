@@ -1157,6 +1157,7 @@ Board/
 │   └── ADR-1128-commit-dedup-eviction.md  # commit/_txC の例外境界 — apply/broadcast 失敗で dedup key が滞留し同一 op の再試行を永久棄却 (_txFlush 経由なら排出キューごと消失) → ADR-1026 parity の catch→delete→rethrow で閉塞
 │   └── ADR-1129-recordcommit-eviction-undo-redo-atomicity.md  # _recordCommitted 最後の dedup 無防備サイト (pre-record throw でキー滞留→再配送を永久棄却) を catch→delete→rethrow で閉塞 + undo/redo の histIdx を apply 成功後へ移動 (undo は _pgFollow throw で二重 revert、redo は apply throw で op スキップの非対称を対称化)
 │   └── ADR-1130-best-effort-flush-drain.md  # _txFlush の drain 中 _txC throw が残収束キューを静黙放棄 (one-shot・再試行なし→発散 prop が永久 stale) → best-effort drain + 先頭エラー再throw (ADR-1128 個別 evict 契約は維持)
+│   └── ADR-1131-dropped-key-before-parity.md  # _lwwDrop が after のみフィルタで before を不対称残留 → drop キーの before も除去 (op は適用差分のみを記述; group/ungroup parity) + remote op は history 非登録・_vPages が [null] 拒否の契約ピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
