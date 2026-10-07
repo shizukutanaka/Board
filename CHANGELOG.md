@@ -1,3 +1,14 @@
+## [1.8.116] - 2026-10-01
+
+### Fixed
+- **round842 / ADR-1092 — rep-independent docName arbitration + writer-clock normalization**: closes the two residual defects Devin Review found in ADR-1091's merge-path fix. (F1) The strict name line sat at the `case 'snapshot'` tail — *after* the ADR-0617 stale-`rep` `break` — so a snapshot whose swap marker predated `_lastRep` skipped name arbitration too: a peer that renamed after missing our swap kept a divergence forever. The arbitration now runs before the rep gate (names are an independent LWW domain) and persists via `_ps()` on the stale path. (F2) Writer-less adoption adopted the new `nameTs` but kept the previous `_namePeer` — a `(ts, peer)` clock nobody wrote, misattributing later equal-ts arbitration. All adoption sites (`case 'snapshot'`, `_applySnapshot`, IDB restore) now adopt the writer clock as a normalized pair gated on the ts adopt: `_namePeer=_idOK(peer)?peer:''`, and arbitration compares against the same `_idOK`-normalized input so an oversized writer is treated as absent (ADR-0780 bound preserved).
+
+### Docs
+- `docs/ADR-1092-rep-independent-docname-arbitration.md`.
+
+### Tests
+- test.mjs: 5 ADR-1092 behavioural pins — stale-rep snapshot still arbitrates a winning docName (rep marker untouched), losing name rejected, writer-less adoption resets `_namePeer` on merge and empty paths; the ADR-0780 pin now expects normalization to `''`.
+
 ## [1.8.115] - 2026-10-01
 
 ### Fixed

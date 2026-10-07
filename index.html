@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.115';   // ADR-1091
+const V='1.8.116';   // ADR-1092
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8329,6 +8329,7 @@ const Net={
         break;
       case 'snapshot':
         this._snapRx=true;   // ADR-0475
+        if(_iS(msg.name)&&_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_idOK(msg.namePeer)?msg.namePeer:'')){_nameTs=msg.nameTs;_namePeer=_idOK(msg.namePeer)?msg.namePeer:'';_setDocName(_s80(msg.name));_ps()}   // ADR-1091/1092
         // ADR-0617: a snapshot predating our newest swap is stale — merging re-adds it.
         if(msg.rep&&validClock(msg.rep)&&state._lastRep&&clockNewer(state._lastRep,msg.rep))break;
         if(_nS()===0)this._applySnapshot(msg);
@@ -8348,7 +8349,6 @@ const Net={
           if(!_pgs())_pgAdopt(msg.pages,state.curPg);   // ADR-0672
           else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:''}if(_ln(np)<64)_pu(np,l||clone(p))}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773
         }
-        if(_iS(msg.name)&&_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')){_nameTs=msg.nameTs;if(_idOK(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name))}   // ADR-1091
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep))state._lastRep=msg.rep;   // ADR-0617
         _ps();   // ADR-0973
         break;
@@ -8486,7 +8486,7 @@ const Net={
     _scl();_sz();   // ADR-1010
     for(const s of valid)_wAdopt(s.id,wm.get(s.id));   // ADR-0927
     _pgAdopt(msg.pages,state.curPg);   // ADR-0672
-    if(_iS(msg.name)&&(_iN(msg.nameTs)?_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:''):!0)){if(_tsOK(msg.nameTs))_nameTs=msg.nameTs;if(_idOK(msg.namePeer))_namePeer=msg.namePeer;_setDocName(_s80(msg.name));}   // ADR-0618/0699/0780/0791
+    if(_iS(msg.name)&&(_iN(msg.nameTs)?_tsOK(msg.nameTs)&&_nameWin(msg.nameTs,_idOK(msg.namePeer)?msg.namePeer:''):!0)){if(_tsOK(msg.nameTs)){_nameTs=msg.nameTs;_namePeer=_idOK(msg.namePeer)?msg.namePeer:''}_setDocName(_s80(msg.name));}   // ADR-0618/0699/0780/0791/1092
     _iv();_ru();_ps();
   },
   _touchPeer(peerId){
@@ -8910,7 +8910,7 @@ const Persist={
       _docN(d);
       if(d.wc&&_iO(d.wc))for(const k in d.wc)if(_idOK(k))_wAdopt(k,d.wc[k]);   // ADR-0460/1037
       if(_iS(d.rs)&&_ln(d.rs)<=64)state.roomSecret=d.rs;   // ADR-1056
-      if(validClock(d.rep))state._lastRep=d.rep;if(_tsOK(d.nts))_nameTs=d.nts;if(_idOK(d.ntp))_namePeer=d.ntp;   // ADR-0695/0699/0701/0780/0791
+      if(validClock(d.rep))state._lastRep=d.rep;if(_tsOK(d.nts)){_nameTs=d.nts;_namePeer=_idOK(d.ntp)?d.ntp:''}   // ADR-0695/0699/0701/0780/0791/1092
       state.ro=d.ro===1;_roBadge();   // ADR-1057
       state.lastSaveAt=d.savedAt||0;
       _sz();

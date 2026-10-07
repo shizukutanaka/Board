@@ -281,7 +281,7 @@ const checks = [
   ["addMany validates the wc clock snapshot (ADR-0726)", html.includes("op.wc==null||wcOk(op.wc)") && html.includes("const wcOk=m=>_iO(m)")],
   ["_recordCommitted sets _lastRep for local 'replace' (ADR-0616)", html.includes("if(op.op==='replace'){state._lastRep=op.clock")],
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
-  ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_iS(msg.namePeer)?msg.namePeer:'')")],
+  ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_idOK(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
   ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_nugPush({op:'move',ids,dx,dy,orig})")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
@@ -17385,7 +17385,7 @@ try {
     assert.strictEqual(Net._snapshotMsg().namePeer,'base','baseline namePeer stored');
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'SnapName',nameTs:Date.now()+6000,namePeer:'A'.repeat(200)},false);
     assert.strictEqual(state.docName,'SnapName','snapshot name still applies on ts win');
-    assert.strictEqual(Net._snapshotMsg().namePeer,'base','oversized namePeer rejected at intake');
+    assert.strictEqual(Net._snapshotMsg().namePeer,'','oversized namePeer normalized to absent at intake (ADR-1092)');
     Net._onRecv({k:'snapshot',shapes:[],ops:[],peer:'sp',name:'Snap2',nameTs:Date.now()+7000,namePeer:'ok'},false);
     assert.strictEqual(Net._snapshotMsg().namePeer,'ok','valid namePeer still stored');
     console.log('  ✓ snapshot namePeer bounded like every wire id (ADR-0780)');
@@ -18996,6 +18996,38 @@ pass += 10;
   console.log('  \u2713 ADR-1091 merge-path docName parity (4 asserts)');
 }
 pass += 4;
+
+// ---- ADR-1092: stale-rep snapshot still arbitrates docName + writer normalization ----
+{
+  const sE=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sE.id='n1';
+  state.roomId='roomOld';Net.init('roomX');   // resets _nameTs/_namePeer (ADR-0619)
+  state.shapes=[sE];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  // a snapshot whose rep marker loses still gets its winning docName arbitrated
+  Net._onRecv({k:'name',name:'OldName',ts:1,peer:'p9'},false);
+  state._lastRep={ts:200,peer:'p1',seq:1};
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'NewName',nameTs:5,rep:{ts:100,peer:'p9',seq:1}},false);
+  assert.strictEqual(state.docName,'NewName','stale-rep snapshot still arbitrates docName');
+  assert.deepStrictEqual(state._lastRep,{ts:200,peer:'p1',seq:1},'stale rep marker is not adopted');
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'Loser',nameTs:1,rep:{ts:99,peer:'p9',seq:1}},false);
+  assert.strictEqual(state.docName,'NewName','stale-rep losing name is rejected');
+  // a namePeer-less adoption does not inherit the previous writer (merge path)
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[sE];state._lastRep=null;
+  Net._onRecv({k:'name',name:'W1',ts:9,peer:'z9'},false);
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'Snap',nameTs:10},false);
+  Net._onRecv({k:'name',name:'Tie',ts:10,peer:'a'},false);
+  assert.strictEqual(state.docName,'Tie','namePeer-less adopt resets writer (merge path)');
+  // same normalization on the empty-path adopt
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state._lastRep=null;
+  Net._onRecv({k:'name',name:'W2',ts:9,peer:'z9'},false);
+  Net._onRecv({k:'snapshot',peer:'p9',shapes:[sE],ops:[],name:'Snap2',nameTs:10},false);
+  Net._onRecv({k:'name',name:'Tie2',ts:10,peer:'a'},false);
+  assert.strictEqual(state.docName,'Tie2','namePeer-less adopt resets writer (empty path)');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1092 stale-rep name arbitration + writer normalization (5 asserts)');
+}
+pass += 5;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
