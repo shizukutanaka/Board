@@ -19805,6 +19805,21 @@ pass += 8;
 }
 pass += 8;
 
+// ADR-1121: global op-log history boundary audit — clean pass, contract pinned.
+{
+  assert.ok(html.includes("const _hi=()=>state.history")&&html.includes("const _hx=()=>state.histIdx"),'ADR-1121: one shared op log + cursor');
+  assert.ok(html.includes("const MAX_HISTORY=500"),'ADR-1121: bounded history');
+  assert.ok(html.split("_hi().length=_hx()+1").length-1===3,'ADR-1121: every push path chops the redo branch');
+  assert.ok(!html.includes("state.history="),'ADR-1121: the log is append/shift only — never reassigned');
+  assert.ok(html.split("if(op.clock.peer===_pi())Net.broadcast(op)").length-1>=2,'ADR-1121: remote ops are recorded, never echoed');
+  assert.ok(html.includes("histIdx:-1"),'ADR-1121: cursor starts before the first op');
+  assert.ok(html.includes("op.clock={peer:_pi(),seq:++state.seq,ts:_ut}")&&html.includes("w.clock={peer:_pi(),seq:++state.seq,ts:_ut}"),'ADR-1121: undo + undo-wire restamp fresh own clocks');
+  assert.ok(html.includes("_fck(op)"),'ADR-1121: redo re-mints a newer clock');
+  assert.ok(html.includes("_hi()[_hx()].shape=clone(s)"),'ADR-1121: text surgery patches a cloned shape');
+  console.log('  ✓ ADR-1121 global op-log history boundary (9 asserts)');
+}
+pass += 9;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
