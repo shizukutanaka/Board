@@ -272,7 +272,7 @@ const checks = [
   ["del/clear undo-wire carries wc; addMany applies it (ADR-0721)", html.includes("{op:'addMany',shapes:op.shapes,wc:op.wc}") && html.includes("if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w)")],
   ["pageDel snapshots + restores member wclocks (ADR-0722)", html.includes("op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id])") && html.includes("op.shapes||[],wc:op.wc}")],
   ["clear undo merges op.wc, never replaces (ADR-0723)", html.includes("if(op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);_selR(op)")],
-  ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId)") && html.includes("unpage:_pgs()?0:1") && html.includes("_pgDel2(op,firstId,only,viewId)")],
+  ["pageAdd undo: unpage wire + _pgDel2 only-set (ADR-0724)", html.includes("_pgDel2(op,null,die,firstId,i===0?op.id:null)") && html.includes("unpage:_pgs()?0:1") && html.includes("_pgDel2(op,firstId,only,viewId,pg0)")],
   ["pageDel wire carries the sender rehome target (ADR-0725)", html.includes("const rehome=op.unpage?null:((op.firstId!=null&&_pgById(op.firstId))?op.firstId:firstId)") && html.includes("s.firstId=op.firstId")],
   ["wire page-op aux fields validated (ADR-0755)", html.includes("(op.i==null||_fin(op.i))") && html.includes("(op.firstId==null||_idOK(op.firstId))") && html.includes("(op.nts==null||_tsOK(op.nts))")],
 ["del redo re-derives connClears (ADR-0758)", html.includes("this._remoteDelConnFix(op);if(fx)for(const p of fx)_oa(byId(p.id),p.patch)")],
@@ -19464,6 +19464,20 @@ pass += 7;
   console.log('  ✓ ADR-1108 ctx menu Cut item (4 asserts)');
 }
 pass += 4;
+
+// ADR-1109: local 'replace' tombs dropped page ids (remote-forward parity at
+// :1770) + _pgDel2 resolves implicit members on the PRE-delete first page —
+// deleting the first page must kill/rehome its null-pg members, not slide
+// them onto the survivor.
+{
+  assert.ok(html.includes("for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock)"),'local replace tombs dropped page ids');
+  assert.ok(html.includes("function _pgDel2(op,firstId,only,viewId,pg0)"),'_pgDel2 takes pre-delete first page (pg0)');
+  assert.ok(html.includes("(s.pg||pg0||firstId)===op.id"),'implicit membership resolves via pg0');
+  assert.ok(html.includes("re,null,undefined,pi===0?id:null"),'dels page tomb passes first-page flag');
+  assert.ok(html.includes("rehome,null,firstId,i===0?op.id:null"),'pageDel forward passes first-page flag');
+  console.log('  ✓ ADR-1109 page tomb + implicit-member kill parity (5 asserts)');
+}
+pass += 5;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
