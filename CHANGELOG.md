@@ -1,3 +1,8 @@
+## [1.8.144] - 2026-10-01
+
+### Tests
+- **round870 / ADR-1120 — stored-op × live-state aliasing audit (docs+pin)**: `Store.commit` payloads (`shapes`, `before`/`after`, `pages`, `wc`) share no references with live state — `clone` is deep (`_JP(_JS)`); `state.wclock=`/`state.pages=` are never adopted verbatim (`_pgAdopt` clones `keep`); `_wR`/`_wAdopt` merge per-key cloned clocks; both `op.wc` snapshot sites clone each record; every backward install pushes `_attachShape(clone(s))`; every `del` commit stores `shapes:clone(…)`; clock objects are never mutated in place so `_wTb`'s carried refs are safe. 8 source pins.
+
 ## [1.8.143] - 2026-10-01
 
 ### Tests
