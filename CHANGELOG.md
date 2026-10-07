@@ -1,3 +1,8 @@
+## [1.8.156] - 2026-10-01
+
+### Verified
+- **round882 / ADR-1132 — existence-clock helper equivalence**: audit of the three tomb helpers (`_tmE`/`_tmb`, `_bN`, `_tAlive`) confirms they share one dominance relation — a `_born` newer than `_del` keeps the shape alive on every admission path, a `_del` newer than the arriving op's clock gates it, and `_bT` only ever upgrades `_born`. Also verified clean: `_attachOp` covers every shape-bearing op (pageAdd members attach at apply-site), `_placeCopies` remaps every structural field (id/frac/groupId/a/b/pg), the MAC canon binds `msg.peer` (`data` excluded but compensated by `_imgHash`), `origSel` never crosses the wire (`_slimOp` strips it → remote `_selR` is a no-op), and `_shCap` gates every remote push (the `replace` member install is intake-bounded). ADR-1048 P0-b's imgq heal→repaint path exists (`_iv()` on blob arrival + `img.onload` minimap invalidation). 12 behavioural pins; 5 helpers added to the test export surface.
+
 ## [1.8.155] - 2026-10-01
 
 ### Fixed
