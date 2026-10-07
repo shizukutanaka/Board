@@ -1416,7 +1416,7 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});")],
   // v1.7.33: validRemotePayload group must require before (string-id array)
   ['validRemotePayload group: requires before array with string ids',
-    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64);")],
+    html.includes("&&_iA(op.before)&&_ln(op.before)<=MAX_OP_SHAPES&&op.before.every(b=>b&&_iS(b.id)&&_ln(b.id)<=64)\n                          &&op.ids.every(id=>op.before.some(b=>b.id===id));")],
   // v1.7.34: validRemotePayload ungroup must require gids array
   ['validRemotePayload ungroup: requires gids array with string elements',
     html.includes("&&_iA(op.gids)&&_ln(op.gids)<=MAX_OP_SHAPES&&op.gids.every(g=>_iS(g)&&_ln(g)>0&&_ln(g)<=64)")],
@@ -3500,7 +3500,7 @@ try {
     assert.strictEqual(ls.id,sid,'id rebind stripped');
     assert.strictEqual(ls._penSig,undefined,'_penSig stripped');
     assert.strictEqual(ls.x,7,'legit prop in the same patch still applied');
-    Store.applyRemote({op:'style', after:[{id:sid,type:'pen',stroke:'#123456'}], before:[{id:sid,stroke:'#0F172A'}], clock:{peer:'attacker', seq:31, ts:6}});
+    Store.applyRemote({op:'style', after:[{id:sid,type:'pen',stroke:'#123456'}], before:[{id:sid,type:'rect',stroke:'#0F172A'}], clock:{peer:'attacker', seq:31, ts:6}});
     assert.strictEqual(ls.type,'rect','batch-patch validity-breaking type rebind stripped (ADR-0990 gate)');
     assert.strictEqual(ls.stroke,'#123456','batch-patch legit prop applied');
     console.log('  ✓ ADR-0373: remote patches cannot rebind id/write _-keys; type applies only when valid (7 asserts)');
@@ -5037,7 +5037,7 @@ try {
   // Step 3: validRemotePayload guards the zorder delta against malformed peers
   {
     assert.ok(validRemotePayload({op:'zorder',changes:[{id:'a',before:'V',after:'k'}]}),'well-formed delta accepted');
-    assert.ok(validRemotePayload({op:'zorder',changes:[{id:'a',after:'k'}]}),'missing before (null) accepted');
+    assert.ok(!validRemotePayload({op:'zorder',changes:[{id:'a',after:'k'}]}),'missing before rejected (ADR-1087)');
     assert.ok(!validRemotePayload({op:'zorder',changes:[{id:'a',after:{evil:1}}]}),'non-string key rejected');
     assert.ok(!validRemotePayload({op:'zorder',changes:[{before:'V',after:'k'}]}),'missing id rejected');
     assert.ok(!validRemotePayload({op:'zorder',changes:'nope'}),'non-array changes rejected');
@@ -9700,8 +9700,8 @@ try {
     const mk=o=>({op:'zorder',changes:[{id:'a',before:'a',after:o}]});
     assert.strictEqual(validRemotePayload(mk(badFrac)),false,'zorder change with >600-char after is rejected');
     assert.strictEqual(validRemotePayload(mk(okFrac)),true,'zorder change with a normal frac is accepted');
-    assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(65),before:[]}),false,'group gid >64 rejected');
-    assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(64),before:[]}),true,'group gid <=64 accepted');
+    assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(65),before:[{id:'a'}]}),false,'group gid >64 rejected');
+    assert.strictEqual(validRemotePayload({op:'group',ids:['a'],gid:'g'.repeat(64),before:[{id:'a'}]}),true,'group gid <=64 accepted');
     assert.strictEqual(validRemotePayload({op:'ungroup',ids:['a'],gids:['g'.repeat(65)]}),false,'ungroup gid >64 rejected');
     assert.strictEqual(validRemotePayload({op:'ungroup',ids:['a'],gids:['g'.repeat(64)]}),true,'ungroup gid <=64 accepted');
     console.log('  ✓ validRemotePayload caps zorder frac keys + group gids (ADR-0473)');
@@ -11898,7 +11898,7 @@ try {
     const RAorig=JSON.parse(JSON.stringify(byId(RA.id)));
     const arm=()=>{ptr.down=true;ptr.reborn=null;ptr.dragKind='move';ptr.dragStartShapes=new Map([[RA.id,JSON.parse(JSON.stringify(byId(RA.id)))]])};
     arm();byId(RA.id).x+=30;   // in-flight local delta
-    Net._onRecv({k:'op',op:{op:'style',after:[{id:RA.id,stroke:'#ff0000'}],before:[],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);
+    Net._onRecv({k:'op',op:{op:'style',after:[{id:RA.id,stroke:'#ff0000'}],before:[{id:RA.id,stroke:'#0F172A'}],clock:{peer:'p9',seq:1,ts:nowTs()}},peer:'p9'},false);
     assert.strictEqual(byId(RA.id).stroke,'#ff0000','remote prop write lands mid-gesture');
     _cancelPointerGesture();
     assert.strictEqual(byId(RA.id).stroke,'#ff0000','cancel keeps the remote prop write');
@@ -11956,7 +11956,7 @@ try {
     Store.commit({op:'add',shape:MC});
     state.selection=new Set([MC.id]);
     applyStyleToSelection('stroke','#111111');      // pending style; before.stroke=orig
-    Net._onRecv({k:'op',op:{op:'style',after:[{id:MC.id,fill:'#ff0000'}],before:[],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);   // remote fill lands mid-run
+    Net._onRecv({k:'op',op:{op:'style',after:[{id:MC.id,fill:'#ff0000'}],before:[{id:MC.id,fill:'#FFFFFF'}],clock:{peer:'p9',seq:2,ts:nowTs()}},peer:'p9'},false);   // remote fill lands mid-run
     byId(MC.id).locked=true;
     _nugEnd();
     assert.strictEqual(byId(MC.id).fill,'#ff0000','_nugLock: remote style prop survives the locked-member restore');
@@ -12316,7 +12316,7 @@ try {
   {
     assert.ok(validRemotePayload({op:'style',after:[{id:'x',shadow:true}],before:[{id:'x',shadow:null}]}),
       'validPatch: boolean shadow flag accepted');
-    assert.ok(validRemotePayload({op:'style',after:[{id:'x',shadow:1}],before:[{id:'x'}]}),
+    assert.ok(validRemotePayload({op:'style',after:[{id:'x',shadow:1}],before:[{id:'x',shadow:0}]}),
       'validPatch: numeric shadow flag accepted');
     assert.ok(!validRemotePayload({op:'style',after:[{id:'x',shadow:'yes'}],before:[{id:'x'}]}),
       'validPatch: string shadow flag rejected');
@@ -14483,7 +14483,7 @@ try {
       const s=Shape.make('rect',{x:0,y:0,w:10,h:10});
       Store.commit({op:'add',shape:s});
       state.selection=new Set([s.id]);
-      Store.applyRemote({op:'style',before:[{id:s.id}],after:[{id:s.id,visible:0}],clock:{peer:'r-peer-h',seq:9,ts:Date.now()}});
+      Store.applyRemote({op:'style',before:[{id:s.id,visible:1}],after:[{id:s.id,visible:0}],clock:{peer:'r-peer-h',seq:9,ts:Date.now()}});
       assert.strictEqual(state.shapes.find(x=>x.id===s.id).visible,0,'remote hide applied');
       assert.ok(!state.selection.has(s.id),'remote hide drops the id from selection');
     }
@@ -18406,7 +18406,7 @@ pass += 4;
   Store.commit({op:'style',before:[{id:'wA',x:10}],after:[{id:'wA',x:11}]});
   Store.commit({op:'upd',id:'wB',before:{x:10},after:{x:12}});
   Store.commit({op:'zorder',changes:[{id:'wA',before:'0',after:'V'}]});
-  Store.commit({op:'align',dir:'left',before:[{id:'wA'}],after:[{id:'wA',x:0}]});
+  Store.commit({op:'align',dir:'left',before:[{id:'wA',x:10}],after:[{id:'wA',x:0}]});
   Net.broadcast=_ob;
   assert.ok(sent.length>=5,'every patch-op emit path produced a wire op');
   const mv=sent.find(o=>o.op==='move');
@@ -18448,6 +18448,47 @@ pass += 7;
 }
 console.log('  \u2713 ADR-1086 move requires before (6 asserts)');
 pass += 6;
+
+// ---- ADR-1087: asymmetric local emitters (resetRoute / point-shape rotate / group rotate) stay key-equivalent ----
+{
+  const sent=[];const _ob=Net.broadcast;
+  Net.broadcast=o=>{sent.push(JSON.parse(JSON.stringify(Net._slimOp(o))))};
+  state.shapes.length=0;state.history=[];state.histIdx=-1;
+  const A=Shape.make('arrow',{x1:0,y1:0,x2:50,y2:50});A.id='cvA';A.labelPos=0.3;A.cbend=4;A.curve=1;
+  state.shapes.push(A);_invalidateGrid();
+  state.selection=new Set(['cvA']);resetRoute();Store.undo();Store.redo();
+  state.selection=new Set(['cvA']);doRotate(1);try{_nugEnd()}catch(_){}
+  Store.undo();Store.redo();
+  Net.broadcast=_ob;
+  assert.ok(sent.filter(o=>o.op==='style').length>=3&&sent.filter(o=>o.op==='align'&&o.dir==='rotate').length>=3,'resetRoute + rotate emits and their undo/redo wires captured');
+  for(const o of sent)assert.ok(validRemotePayload(o),'local emit passes cov on the wire: '+o.op+(o.dir?':'+o.dir:''));
+  assert.ok(html.includes("const before=after.map(a=>({...'rotate'in a&&{rotate:0},...ptr.gOrig.get(a.id)}));"),'group rotate baseline seeds rotate:0 for unrotated boxes');
+  state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();_invalidateGrid();
+  console.log('  \u2713 ADR-1087 local emitter key-equivalence ('+(sent.length+2)+' asserts)');
+  pass += sent.length+2;
+}
+// ---- ADR-1087: complete baseline on key-equivalent patch families ----
+{
+  // A key missing from the matching `before` entry reads as "changed" at _chg,
+  // so a forged sparse baseline stamps/applies every prop in `after` — the same
+  // divergence ADR-1085/1086 closed, one level down. Emit sites for
+  // move/style/resize/align produce key-equivalent pairs, so intake requires
+  // identical key sets per id. zorder changes need before AND after; group needs
+  // a before entry per member id. `upd` (changed-keys-only finalize) and
+  // `beautify` (retype introduces props with no baseline) are exempt by design.
+  assert.ok(!validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}],before:[{id:'x',x:0}]}),'move: sparse before missing y rejected');
+  assert.ok(!validRemotePayload({op:'style',after:[{id:'x',stroke:'#000'}],before:[{id:'x'}]}),'style: key-less before rejected');
+  assert.ok(!validRemotePayload({op:'resize',after:[{id:'x',w:5,h:5}],before:[{id:'x',w:4}]}),'resize: before missing h rejected');
+  assert.ok(!validRemotePayload({op:'align',dir:'left',after:[{id:'x',x:0}],before:[{id:'x'}]}),'align: key-less before rejected');
+  assert.ok(!validRemotePayload({op:'move',ids:['x'],dx:1,dy:0,after:[{id:'x',x:1,y:0}],before:[{id:'x',x:0,y:0,z:9}]}),'extra before key rejected (key-set equality)');
+  assert.ok(validRemotePayload({op:'style',after:[{id:'x',stroke:'#000'}],before:[{id:'x',stroke:'#111'}]}),'style: complete baseline accepted');
+  assert.ok(validRemotePayload({op:'group',ids:['a','b'],gid:'g1',before:[{id:'a'},{id:'b'}]}),'group: full ids coverage accepted');
+  assert.ok(!validRemotePayload({op:'group',ids:['a','b'],gid:'g1',before:[{id:'a'}]}),'group: partial ids coverage rejected');
+  assert.ok(validRemotePayload({op:'beautify',after:[{id:'x',type:'rect',x:0,y:0,w:5,h:5}],before:[{id:'x',type:'pen',pts:[[0,0],[1,1]]}]}),'beautify: sparse retype before still accepted (exempt)');
+  assert.ok(validRemotePayload({op:'upd',id:'x',after:{x:9}}),'upd: sparse before stays exempt');
+  console.log('  \u2713 ADR-1087 complete-baseline coverage (10 asserts)');
+}
+pass += 10;
 
 // ---- ADR-1080: peer-selection ids resolve against live shapes ----
 {
