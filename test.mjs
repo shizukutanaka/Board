@@ -18476,7 +18476,24 @@ pass += 1;
 assert.ok(html.includes("else delete sh.pg;"),"_placeCopies drops a foreign pg on a page-less doc");
 pass += 1;
 
-pass += 1926; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
+{
+  // ADR-1073: paste/dup/import on a read-only doc — the shared gate inside
+  // _placeCopies precedes the dup-chain reseed; callers toast nothing on 0.
+  state.ro=1;
+  const before=state.shapes.length;
+  assert.deepStrictEqual(_placeCopies([Shape.make('rect',{x:0,y:0,w:10,h:10})],0,0),[],"_placeCopies early-returns [] on ro");
+  assert.strictEqual(state.shapes.length,before,"ro paste mutates nothing");
+  const payload=JSON.stringify({shapes:[{id:'x1',type:'rect',x:0,y:0,w:10,h:10,z:1}]});
+  assert.strictEqual(importBoardText(payload),true,".board paste is consumed on ro (no cascade fall-through)");
+  assert.strictEqual(state.shapes.length,before,"ro .board import adds nothing");
+  assert.strictEqual(state.dupIds.size,0,"ro paste does not reseed the dup chain");
+  state.ro=0;
+  pass += 5;
+}
+assert.ok(html.includes("if(state.ro){_roNo();return[]}")&&html.includes("if(_ln(added))_tst(t(_PA)"),"ro gate precedes the dup reseed; 0-count toasts suppressed");
+pass += 1;
+
+pass += 1932; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

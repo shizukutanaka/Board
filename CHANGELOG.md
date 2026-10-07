@@ -1,3 +1,8 @@
+## [1.8.096]
+
+### Fixed
+- **ADR-1073** — ro (閲覧のみ) ドキュメントへの paste/⌘D/スマート複製/Alt-drag/`.board` クリップボードインポートは、`_placeCopies` 共有ゲートで早期 `readOnlyMode` トーストへ。dup チェインを残存 id で汚染せず、成功トースト (`貼り付け 0`/`imported 0`) も抑止。`importBoardText` は ro で「消費済み」を返しテキストカスケードの二重 `_roNo()` を防止。
+
 ## [1.8.095]
 - **Fix: page-less doc paste drops a foreign `s.pg` (ADR-1072)** — `_placeCopies`
   only reassigned `sh.pg` when the destination doc had pages; a copy/paste or
