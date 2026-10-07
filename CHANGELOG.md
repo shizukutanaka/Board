@@ -1,3 +1,8 @@
+## [1.8.168] - 2026-10-01
+
+### Fixed
+- **round894 / ADR-1144 — bound connectors no longer pin a hidden shape's live position**: `connEnds` resolved bound endpoints through `byId` regardless of the target's `visible`, so a connector bound to a hidden shape kept tracking its live bbox edge — an arrow into "empty" space that leaks the hidden shape's exact contour (and tracks its remote/frame/undo moves). Hidden targets now resolve unbound: the endpoint falls back to the stored `x1`/`y1` (bind-time coords — the connector's own state, not the target's), while `s.a`/`s.b`/`aF`/`bF` survive so un-hiding re-activates live tracking. Same parity in `_bt`: hidden bound-endpoint names no longer hit connectors via search. Single funnel, so draw/hit/bbox/connClears/exports/minimap stay consistent. 7 behavioural pins.
+
 ## [1.8.167] - 2026-10-01
 
 ### Fixed

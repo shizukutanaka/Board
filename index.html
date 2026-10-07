@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.167';   // ADR-1143
+const V='1.8.168';   // ADR-1144
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2028,7 +2028,8 @@ function connEnds(s){
   if(_ceD>15||(!s.a&&!s.b))return s;   // ADR-0976
   _ceD++;
   try{
-  const a=s.a&&s.a!==s.id&&byId(s.a),b=s.b&&s.b!==s.id&&byId(s.b);
+  const _bnd=id=>{const t=id&&id!==s.id?byId(id):null;return t&&!_hd(t)?t:null};   // ADR-1144: hidden targets don't anchor — stored endpoints stand in, the binding survives
+  const a=_bnd(s.a),b=_bnd(s.b);
   const ba=a&&_bb(a),bb=b&&_bb(b);
   const ac=ba?{x:ba.x+ba.w/2,y:ba.y+ba.h/2}:{x:s.x1,y:s.y1};
   const bc=bb?{x:bb.x+bb.w/2,y:bb.y+bb.h/2}:{x:s.x2,y:s.y2};
@@ -4084,7 +4085,7 @@ function _sqMatches(){
   _sqList=[];
   // ADR-0381
   // "arrow into the Login button" should match
-  const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t)o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};
+  const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t&&!_hd(t))o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};   // ADR-1144
   for(const s of _sh()){if(_sv(s)&&_pgOk(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;
