@@ -1,3 +1,8 @@
+## [1.8.143] - 2026-10-01
+
+### Tests
+- **round869 / ADR-1119 — doc-switch × IDB-migration page-clock audit (docs+pin)**: the three clk-less `_pgAdopt` sites (`.board` import, `#b=` share-link import, `:prev` backup restore) each precede the adopt with `state.wclock=_wM()` and record a `'replace'` op whose `_recordCommitted` stamps `_bT` for adopted pages (sender parity with receivers' `_pgAdopt`). `Persist.load` hands `_pgClk(d)` (rep marker) to the adopt; `_undoWire('replace')` swaps `pages`→`beforePages`. IDB upgrade guards both stores with `contains()` so v1→v2 is safe from any earlier version; all `load` restores are field-gated. 8 source pins.
+
 ## [1.8.142] - 2026-10-01
 
 ### Tests
