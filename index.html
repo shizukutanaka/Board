@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.117';   // ADR-1093
+const V='1.8.118';   // ADR-1094
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1773,7 +1773,7 @@ const Store={
         _sz();
         if(forward&&op.afterWc)for(const[id,w]of _oe(op.afterWc))_wR(id,w);   // ADR-1039
         if(!forward&&op.wc)for(const[id,w]of _oe(op.wc))_wR(id,w);
-        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id))_wD(p.id,op.clock)}   // ADR-0736/0926/1093
+        if(forward){for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of old0)if(!inN.has(id)&&!(wc0[id]&&wc0[id]._born&&clockNewer(wc0[id]._born,op.clock)))_wD(id,op.clock);_wTb(wc0,op.clock,inN);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id)&&!(wc0[p.id]&&wc0[p.id]._born&&clockNewer(wc0[p.id]._born,op.clock)))_wD(p.id,op.clock)}   // ADR-0736/0926/1093
         for(const s of _sh())_bT(s.id,op.clock);   // ADR-0926/0928
         if(forward)_pgAdopt(op.pages,op.curPg,op.clock);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock);   // ADR-0646/1093: the swap carries the page set
         if(!forward)_selR(op);
@@ -1807,6 +1807,7 @@ const Store={
           // sender did; refusing here diverges the page sets permanently).
           if(!_pgs()||(_ln(_pgs())<2&&(!op.clock||op.clock.peer===_pi())))break;
           const i=_pgs().findIndex(p=>p.id===op.id);if(i<0)break;
+          if(_bN(op.id,op.clock))break;   // ADR-1094: newer-born page outranks a stale kill (del parity)
           const first=_pgs().find(q=>q.id!==op.id),firstId=first?first.id:null;
           // ADR-0725: rehome target is the SENDER's first surviving page — peers'
           // page order can diverge, so each peer's own order would split member
@@ -2205,7 +2206,7 @@ function _pgDel2(op,firstId,only,viewId){   // ADR-0646
   const dead=new Set();for(const s of _sh())if((s.pg||firstId)===op.id&&!s.locked&&(!only||only.has(s.id))&&!_bN(s.id,op.clock))dead.add(s.id);
   op.wc=_wM();for(const id of dead)if(_wc()[id])op.wc[id]=clone(_wc()[id]);   // ADR-0722
   for(const id of dead){_wc()[id]=_wM({_del:op.clock});_sdl(id)}   // ADR-0679/0734/0954
-  _wD(op.id,op.clock);   // ADR-1093: tomb the page id itself so `dels` carries it
+  if(!_bN(op.id,op.clock))_wD(op.id,op.clock);   // ADR-1093/1094: page-id tomb; a newer _born wins
   for(const s of _sh())if((s.pg||firstId)===op.id&&(s.locked||_bN(s.id,op.clock)))s.pg=firstId;
   const cc=computeConnClears(dead);   // ADR-0707
   if(_ln(cc)){op.connClears=cc;for(const p of cc){const sh=byId(p.id);if(sh)_oa(sh,p.after)}}

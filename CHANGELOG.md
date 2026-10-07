@@ -1,3 +1,14 @@
+## [1.8.118] - 2026-10-01
+
+### Fixed
+- **round844 / ADR-1094 — page tomb loses to a newer `_born` (del parity)**: shape `del` has the ADR-0926 born-gate but the page-id kill paths added in ADR-1093 had none — a stale `pageDel` could splice a page that was reborn (pageDel-undo `_bT`, union-heal stamp, re-`pageAdd`), and `_pgDel2`'s `_wD` clobbered the newer `_born` entry, letting a stale tomb outrank the real birth on the next `dels` exchange. `pageDel` forward now breaks on `_bN(op.id,op.clock)` (no splice, no member kill, no tomb), `_pgDel2` gates its page tomb the same way, and `replace` forward gates the dropped-page tomb loop on the pre-wipe `wc0` snapshot (the live map is wiped before the loop, so `_bN` would read empty). Kill ops now lose to newer births on both key spaces.
+
+### Docs
+- `docs/ADR-1094-page-tomb-born-parity.md`.
+
+### Tests
+- test.mjs: 6 ADR-1094 behavioural pins — stale `pageDel` can't splice/kill/tomb a born-newer page; fresh `pageDel` still tombs; stale `replace` writes no tomb over `_born`; fresh `replace` still tombs a dropped page id. Two fixture updates for the new contract: ADR-0707 remote pageDel fixtures clear `state.wclock` (their ts:6 kill predates a leaked ~nowTs `_born`), and ADR-0649's remote pageDel uses `Date.now()+1000` (must outrank the local `_pgAdd` born) with `_lastTs` restored for downstream fixtures.
+
 ## [1.8.117] - 2026-10-01
 
 ### Fixed

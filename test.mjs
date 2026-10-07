@@ -6181,7 +6181,7 @@ try {
       // ADR-0707: pageDel gets 'del' parity — locked members survive (rehomed) and
       // bound connectors get connClears endpoints + undo/wire restore.
       {
-        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';state.wclock={};
         const victim=Shape.make('rect',{x:0,y:0,w:10,h:10});victim.pg='pB';
         const lk=Shape.make('rect',{x:20,y:0,w:10,h:10});lk.pg='pB';lk.locked=true;
         const conn=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});conn.pg='pA';conn.a=victim.id;conn.aF=0.5;
@@ -6191,7 +6191,7 @@ try {
         assert.ok(byId(lk.id)&&byId(lk.id).pg==='pA','locked member survives, rehomed to firstId (ADR-0707)');
         assert.ok(conn.a===null&&conn.aF==null,'bound connector endpoint cleared (ADR-0707)');
         // undo re-binds via the recorded connClears (local path)
-        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+        state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';state.wclock={};
         const v2=Shape.make('rect',{x:0,y:0,w:10,h:10});v2.pg='pB';
         const c2=Shape.make('line',{x1:0,y1:0,x2:50,y2:50});c2.pg='pA';c2.a=v2.id;c2.aF=0.5;
         state.shapes=[v2,c2];
@@ -17156,9 +17156,9 @@ try {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
     _pgAdd();const dp1=state.pages[0].id,dp2=state.pages[1].id;
     switchPage(dp1);
-    Store.applyRemote({op:'pageDel',id:dp1,clock:{peer:'rp',seq:14,ts:14}});
+    Store.applyRemote({op:'pageDel',id:dp1,clock:{peer:'rp',seq:14,ts:Date.now()+1000}});   // newer than the local pageAdd's born (ADR-1094 gate)
     assert.ok(state.curPg===dp2,'remote pageDel of the viewed page falls onto a survivor via switchPage');
-    state.pages=null;state.curPg=null;
+    state.pages=null;state.curPg=null;state._lastTs=0;   // restore the HLC floor for downstream fixtures
     console.log('  ✓ page nav: PgUp/PgDn through the real key listener, wraps (ADR-0648, 4 asserts)');
     // ADR-0650: pageAdd carries member shapes — one op creates the page + its content
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;
@@ -19072,6 +19072,30 @@ pass += 5;
   console.log('  ✓ ADR-1093 page-id tombstones over the delta channel (12 asserts)');
 }
 pass += 12;
+
+// ---- ADR-1094: pageDel/replace page tomb loses to a newer _born (del parity) ----
+{
+  const sF=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));sF.id='m2';sF.pg='p2';
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[sF];state.wclock={p2:{_born:{ts:200,peer:'a',seq:0}}};state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.seenOps=new Set();state._lastRep=null;_invalidateGrid();
+  Store.applyRemote({op:'pageDel',id:'p2',clock:{ts:100,peer:'p9',seq:1}});
+  assert.ok(_pgById('p2'),'a stale pageDel cannot splice a newer-born page');
+  assert.ok(byId('m2'),'a stale pageDel cannot kill born-newer page members');
+  assert.ok(!state.wclock.p2._del&&state.wclock.p2._born.ts===200,'a stale pageDel writes no tomb and keeps the _born');
+  Store.applyRemote({op:'pageDel',id:'p2',clock:{ts:300,peer:'p9',seq:2}});
+  assert.ok(!_pgById('p2')&&state.wclock.p2._del,'a fresh pageDel still tombs the page');
+  // replace's dropped-page tomb reads the pre-wipe clock snapshot (wc0)
+  const sG=JSON.parse(JSON.stringify(sF));sG.id='m3';
+  state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];state.curPg='p1';state.wclock={p2:{_born:{ts:300,peer:'a',seq:0}}};state._lastRep=null;
+  Store.applyRemote({op:'replace',after:[sG],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:200,peer:'p9',seq:3}});
+  assert.ok(!state.wclock.p2||!state.wclock.p2._del,'a stale replace writes no tomb over a newer _born');
+  state.wclock={p2:{_born:{ts:300,peer:'a',seq:0}}};state._lastRep=null;state.pages=[{id:'p1',name:'A',nts:0},{id:'p2',name:'B',nts:0}];
+  Store.applyRemote({op:'replace',after:[sG],pages:[{id:'p1',name:'A',nts:0}],curPg:'p1',clock:{ts:400,peer:'p9',seq:4}});
+  assert.ok(state.wclock.p2&&state.wclock.p2._del,'a fresh replace still tombs a dropped page id');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1094 page tomb vs newer _born parity (6 asserts)');
+}
+pass += 6;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

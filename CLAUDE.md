@@ -1119,7 +1119,8 @@ Board/
 │   ├── ADR-1090-cache-purge-parity.md  # shape-id キャッシュ×除去経路監査 — _psc/_pcC が全除去経路をカバー、pending 消失は _imgRescan+到着掃引で治癒 (clean)
 │   ├── ADR-1091-merge-path-docname-parity.md  # delta-sync vs full-snapshot 監査 — docName LWW が空ボード経路限定で非空 joiner の改名を永久不収束 → merge 経路にも strict _nameWin 仲裁適用
 │   ├── ADR-1092-rep-independent-docname-arbitration.md  # 名前仲裁を rep ゲート前へ (stale-rep で改名不収束の残穴) + writer 時計を正規化ペアで採用 (旧 writer 残留による equal-ts 誤帰属)
-│   └── ADR-1093-page-id-tombstones.md  # pageDel がメンバーしか tomb 化しない Gap B — ページ id を shape tomb 機構に載せ dels 経路で輸送、union-heal のゾンビ残存を閉塞 (wire 新規フィールドなし)
+│   ├── ADR-1093-page-id-tombstones.md  # pageDel がメンバーしか tomb 化しない Gap B — ページ id を shape tomb 機構に載せ dels 経路で輸送、union-heal のゾンビ残存を閉塞 (wire 新規フィールドなし)
+│   └── ADR-1094-page-tomb-born-parity.md  # ページ id 側に欠けていた del parity — stale pageDel が born-newer ページを splice し _wD が _born 毎消す残穴を _bN ゲートで閉塞 (replace は pre-wipe wc0 を読む)
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
