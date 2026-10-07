@@ -11111,6 +11111,23 @@ try {
     console.log('  ✓ SW update notification: controllerchange → reload toast (web.dev SW lifecycle)');
   }
 
+  // ADR-1101: exportPDF empty-page feedback — a hidden-only board has shapes
+  // (_nS()>0) but no visible bbox; the second gate must toast 'empty' like
+  // every other export path instead of silently returning.
+  {
+    const _emSave=UI.toast;let _tk=null;
+    UI.toast=(m,k)=>{_tk={m,k}};
+    state.shapes.length=0;_invalidateGrid();
+    const hs=api.Shape.make('rect',{x:0,y:0,w:10,h:10});
+    api.Store.commit({op:'add',shape:hs});
+    byId(hs.id).visible=0;
+    try{api.exportPDF()}finally{UI.toast=_emSave;state.shapes.length=0;_invalidateGrid()}
+    assert.ok(_tk&&_tk.k==='warn','exportPDF warns on a hidden-only board');
+    assert.ok(_tk&&/(Canvas is empty|キャンバスが空)/.test(_tk.m),"exportPDF toasts the 'empty' message, not a silent return");
+    console.log('  ✓ ADR-1101 exportPDF empty-page toast parity (2 asserts)');
+    pass += 2;
+  }
+
   // v1.6.94: _esc single-quote encoding — must fail before fix, pass after
   // Before fix: stroke "' onmouseover='xss()" passes through _esc unmodified → XSS vector
   // After fix: single quote encoded as &#39; → attribute value closed safely

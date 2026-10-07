@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.124';   // ADR-1100
+const V='1.8.125';   // ADR-1101
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6750,7 +6750,7 @@ function replaceImage(){
 }
 function exportPDF(){
   if(!_nS()){_wT(_EM);return}
-  const b=_bA(_shV());if(!b)return;   // ADR-0658
+  const b=_bA(_shV());if(!b){_wT(_EM);return}   // ADR-0658/1101
   const pad=32,W=_ceil(b.w+pad*2),H=_ceil(b.h+pad*2),dpr=exportScale(W,H,_dpr()||1);
   let off;try{off=new OffscreenCanvas(W*dpr,H*dpr)}catch(_){off=_cv();_wh(off,W*dpr,H*dpr)}
   const oc=_g2(off);

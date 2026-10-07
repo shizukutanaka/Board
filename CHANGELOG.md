@@ -1,3 +1,12 @@
+## [1.8.125] - 2026-10-01
+
+### Fixed
+- **round851 / ADR-1101 — exportPDF toasts 'empty' on a visible-less page**: exportPDF gated on `_nS()` (any shapes at all) but a second `_bA(_shV())` null — shapes exist yet all hidden/off-page — silently `return`ed with no feedback while every sibling exporter (`_renderPngBlob`, viewport PNG, `exportSVG` via `buildSVG===null`, `.board`, `.excalidraw`, `.drawio`) toasts `_wT(_EM)`; the second gate now toasts identically.
+
+### Tests
+- Behavioural pin: exportPDF on a hidden-only board warns with the `empty` message instead of a silent return.
+- Docs: ADR-1101 records the full export-pipeline audit — hidden parity, page scope, remote-string escaping, payload bounds, parked-img behaviour, and import-side born-clock convergence all verified clean.
+
 ## [1.8.124] - 2026-10-01
 
 ### Tests
