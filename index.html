@@ -933,7 +933,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.122';   // ADR-1098
+const V='1.8.123';   // ADR-1099
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8362,7 +8362,7 @@ const Net={
         _ps();   // ADR-0973
         break;
       case 'name':   // ADR-0402/0581
-        if(_iS(msg.name)&&_ln(msg.name)<=80&&(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)){_nameTs=_iN(msg.ts)&&_tsOK(msg.ts)?msg.ts:_nameTs;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}   // ADR-0701/0791
+        if(_iS(msg.name)&&_ln(msg.name)<=80&&_iN(msg.ts)&&_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:'')){_nameTs=msg.ts;if(_iS(msg.peer))_namePeer=msg.peer;_setDocName(msg.name);_ps()}   // ADR-0701/0791/1099
         break;
       case 'bye':{   // ADR-0456/0986
         const pk=this._pk(msg,viaRtc);
@@ -9492,7 +9492,7 @@ function wire(){
     const _commitDocName=()=>{if(state.ro){_roNo();docNameEl.value=_dn();return}_setDocName(docNameEl.value);_md(!0);_ps();_bName()};   // ADR-0402/1057
     _on(docNameEl,'input',e=>{if(imeShouldCommit(e))_commitDocName()});
     _on(docNameEl,'compositionend',_commitDocName);
-    _on(docNameEl,_CH,()=>{if(state.ro){_roNo();docNameEl.value=_dn();return}_setDocName(docNameEl.value);_ps()});
+    _on(docNameEl,_CH,()=>{if(docNameEl.value!==_dn())_commitDocName()});   // ADR-1099
     _on(docNameEl,'blur',()=>{docNameEl.value=_dn()});   // ADR-0609
   }
   _oC(_g('btnInstall'),_onBtnInstall);

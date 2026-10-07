@@ -1,3 +1,11 @@
+## [1.8.123] - 2026-10-01
+
+### Fixed
+- **round849 / ADR-1099 — wire `name` requires a writer clock + `change`-only doc-name edits broadcast**: two gaps on the docName channel. (1) `case 'name'` adopted a name message unconditionally when `msg.ts` wasn't a number — every legitimate producer (`_bName`) stamps `{ts,peer}`, so a clockless name could only be forged: the guard now requires `_iN(msg.ts)&&_tsOK(msg.ts)&&_nameWin(...)` like every other writer-clock channel, and stamps the (ts, peer) pair on adoption only. (2) The doc-name `change` handler re-applied the field value but never stamped a writer clock or broadcast — an input-less field change (assistive tech, composition-cancel edge) landed locally while peers never learned it and `_nameTs` stayed stale; it now funnels through `_commitDocName` gated on `value!==_dn()` (an unchanged `change` is a no-op — no re-broadcast), so every name write ends up stamped + advertised.
+
+### Tests
+- Behavioural pins for the `name` intake gate (clockless/non-numeric-ts/far-future rejection, older-ts arbitration loss) and the `change` path (diverged value commits + stamps, unchanged value is a no-op).
+
 ## [1.8.122] - 2026-10-01
 
 ### Docs+Tests

@@ -5102,7 +5102,7 @@ try {
     assert.strictEqual(msg.name,'WireName','snapshot carries docName for late joiners');
     assert.ok(html.includes("case 'name'"),"receiver has a 'name' case");
     assert.ok(html.includes("_nameTs=ts;_namePeer=_pi();Net._bcast(_mk('name',{name:state.docName,ts})"),'rename stamps its own writer clock + broadcasts k:name (ADR-0581/0938)');
-    assert.ok(html.includes("(_iN(msg.ts)?_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:''):!0)"),'stale remote rename dropped; non-finite/future ts rejected (ADR-0581/0699/0701/0791)');
+    assert.ok(html.includes("_iN(msg.ts)&&_tsOK(msg.ts)&&_nameWin(msg.ts,_iS(msg.peer)?msg.peer:'')"),'stale/clockless remote rename dropped; non-finite/future ts rejected (ADR-0581/0699/0701/0791/1099)');
     assert.ok(html.includes("_iS(msg.name)"),'receiver type-guards name');
     state.docName='';
     console.log('  ✓ doc name propagates via k:name broadcast + snapshot.name (ADR-0402)');
@@ -19196,6 +19196,33 @@ pass += 6;
   console.log('  ✓ ADR-1098 egress auth coverage + dels existence parity (12 asserts)');
 }
 pass += 12;
+
+// ---- ADR-1099: wire 'name' requires a (ts,peer) clock; _CH producer parity — contracts pinned ----
+{
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state.ro=false;_invalidateGrid();
+  state.docName='Base';
+  Net._onRecv({k:'name',name:'NoTs',peer:'zz'},false);
+  assert.strictEqual(state.docName,'Base','a clockless name message is rejected');
+  Net._onRecv({k:'name',name:'BadTs',ts:'x',peer:'zz'},false);
+  assert.strictEqual(state.docName,'Base','a non-numeric ts is rejected');
+  const t1=nowTs();
+  Net._onRecv({k:'name',name:'First',ts:t1,peer:'zz'},false);
+  assert.strictEqual(state.docName,'First','a valid (ts,peer) name lands and stamps the writer pair');
+  Net._onRecv({k:'name',name:'Stale',ts:t1-1,peer:'zz'},false);
+  assert.strictEqual(state.docName,'First','an older-ts rename loses the arbitration');
+  Net._onRecv({k:'name',name:'Future',ts:t1+6e8,peer:'zz'},false);
+  assert.strictEqual(state.docName,'First','a far-future ts is rejected by _tsOK');
+  const dEl=fakeDoc.getElementById('docName');dEl.value='Typed';
+  for(const f of dEl._L.change||[])f({});
+  assert.strictEqual(state.docName,'Typed','a change-only edit commits through the shared funnel');
+  const _os=Net._send;let sent=0;Net._send=()=>sent++;
+  dEl.value=state.docName;
+  for(const f of dEl._L.change||[])f({});
+  assert.strictEqual(sent,0,'an unchanged change event is a no-op — no rebroadcast');
+  Net._send=_os;
+  console.log('  ✓ ADR-1099 name-channel clock + change-path parity (9 asserts)');
+}
+pass += 9;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
