@@ -1,3 +1,8 @@
+## [1.8.145] - 2026-10-01
+
+### Tests
+- **round871 / ADR-1121 — global op-log history boundary audit (docs+pin)**: `state.history` is a single op log shared by `commit` and `applyRemote` — both push after chopping the redo branch (`_hi().length=_hx()+1`), so undo means "undo the last applied op" and can never replay old-doc ops across a `'replace'` swap delimiter. The array is never reassigned (`push`/`shift`/`length=` only), `MAX_HISTORY=500` shift-compensates `histIdx`, and both push sites gate outbound on `clock.peer===_pi()` so remote ops are recorded but never echoed. Undo/redo/undo-wire all restamp fresh own clocks; text-editor history surgery stays local-only. 9 source pins.
+
 ## [1.8.144] - 2026-10-01
 
 ### Tests
