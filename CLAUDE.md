@@ -1103,6 +1103,7 @@ Board/
 │   └── ADR-1074-zero-delta-dup-chain.md  # ゼロデルタ dup シードをチェーンなし扱い — ⌘D の不可視スタック解消
 │   └── ADR-1075-img-heal-backup-parity.md  # img heal ページ横断 + :prev ペイロード parity 監査 (clean、契約ピン化)
 │   └── ADR-1076-read-only-funnel.md  # ro 変異漏斗網羅性監査 — 全漏斗 state.ro ゲート済み + 採用順契約 (clean、ピン化)
+│   └── ADR-1077-imgq-key-gate.md  # imgq の msg.key を _idOK ゲート — junk key のスロットルマップ占有を閉塞
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

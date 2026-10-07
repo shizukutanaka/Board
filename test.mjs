@@ -18242,6 +18242,21 @@ pass += 9;
 }
 console.log('  ✓ ADR-1064 per-key imgq dedup (8 asserts)');
 pass += 8;
+// ---- ADR-1077: imgq junk keys can't reserve throttle slots ----
+{
+  // A forged imgq whose key isn't an id used to be written into the 4096-entry
+  // _imgqT throttle map — up to 4096 attacker-sized strings of retained memory.
+  Net._imgqT.clear();
+  Net._onRecv({k:'imgq',peer:'p9',key:'K'.repeat(4096)},false);
+  assert.strictEqual(Net._imgqT.size,0,'oversized key stores no throttle stamp');
+  Net._onRecv({k:'imgq',peer:'p9',key:123},false);
+  assert.strictEqual(Net._imgqT.size,0,'non-string key stores no throttle stamp');
+  Net._onRecv({k:'imgq',peer:'p9',key:'kOK'},false);
+  assert.ok(Net._imgqT.has('kOK'),'a valid key still stamps the throttle');
+  assert.ok(html.includes('if(!_idOK(msg.key))break;'),'imgq keys are id-gated');
+}
+console.log('  ✓ ADR-1077 imgq key id-gate (4 asserts)');
+pass += 4;
 // ---- ADR-1065: img-ref × dataUrl coexistence — the patch's written prop wins ----
 {
   state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
