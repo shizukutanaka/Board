@@ -20630,6 +20630,37 @@ pass += 7;
 }
 pass += 8;
 
+// ADR-1144: a bound connector's endpoint must not pin a hidden shape's live
+// position — hidden targets resolve unbound at connEnds (stored s.x1/s.y1 stand
+// in) while the binding itself survives, so un-hiding re-activates tracking.
+// Same parity for the _bt search text: hidden target names can't hit connectors.
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  const tgt=Shape.make('rect',{x:200,y:200,w:100,h:80,label:'TGTNAME'});
+  Store.commit({op:'add',shape:tgt});
+  const arr=Shape.make('arrow',{x1:10,y1:10,x2:400,y2:400});
+  arr.a=tgt.id;
+  Store.commit({op:'add',shape:arr});
+  const e0=connEnds(arr);
+  assert.ok(e0.x1>150,'ADR-1144: visible bound target resolves the live bbox edge (not stored x1)');
+  _setSq('TGTNAME');
+  assert.ok(_sqMatches().some(s=>s.id===arr.id),'ADR-1144: a visible target name hits the bound connector via _bt');
+  byId(tgt.id).visible=0;_invalidateGrid();
+  const e1=connEnds(arr);
+  assert.strictEqual(e1.x1,10,'ADR-1144: hidden target falls back to stored x1 — no live-position pin');
+  assert.strictEqual(e1.y1,10,'ADR-1144: hidden target falls back to stored y1');
+  assert.strictEqual(byId(arr.id).a,tgt.id,'ADR-1144: the binding survives while the target is hidden');
+  _setSq('TGTNAME');
+  assert.ok(!_sqMatches().some(s=>s.id===arr.id),'ADR-1144: a hidden target name no longer hits via _bt');
+  delete byId(tgt.id).visible;_invalidateGrid();
+  const e2=connEnds(arr);
+  assert.ok(e2.x1>150,'ADR-1144: un-hiding re-activates live endpoint tracking');
+  _setSq('');
+  state.shapes=[];_invalidateGrid();
+  console.log('  ✓ ADR-1144 bound-connector hidden parity (7 asserts)');
+}
+pass += 7;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
