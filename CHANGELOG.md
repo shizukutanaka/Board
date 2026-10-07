@@ -1,3 +1,8 @@
+## [1.8.152] - 2026-10-01
+
+### Fixed
+- **round878 / ADR-1128 — local-commit dedup eviction on apply throw**: `Store.commit` and the headless emit `_txC` record the dedup key *before* applying, like `applyRemote` — but unlike it (ADR-1026) they never evicted the key on a throw. A failing `_apply` thus stranded the key permanently: the same op could never be retried, and a throw inside `_txFlush` additionally aborted the drain, silently losing every queued convergence emit. Both paths now `catch(e){_sO().delete(k);throw e}` — evict first, keep propagating (today's failure mode unchanged for callers, no swallowed local op). No phantom history entry: the push happens after `_apply`. 7 behavioural pins; `_txC` added to the test export surface only.
+
 ## [1.8.151] - 2026-10-01
 
 ### Changed
