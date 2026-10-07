@@ -19742,6 +19742,55 @@ pass += 8;
 }
 pass += 6;
 
+// ---- ADR-1118: op-clock seq contract — every local mint stamps
+// {peer:_pi(),seq:++state.seq,ts:nowTs()} via _fck (commit/redo) or the
+// inline twins (undo/undo-wire/direct broadcasts). peerId carries a
+// per-launch incarnation suffix (ADR-0459) so the 'peer:seq' seenOps key
+// stays unique though state.seq resets on reload. 'snap:' seqs ride
+// snapshot-embedded adds at ts:0 — dedup-key-only, never arbitrate
+// (clockNewer compares ts first). The seq tie-break is intra-peer only;
+// mixed string/number compares false both ways → deterministic not-newer.
+{
+  const seed=()=>{state.roomId='roomOld';Net.init('roomX');state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;state.seq=0;_invalidateGrid()};
+  seed();
+  Store.commit({op:'add',shape:{id:'a1',type:'rect',x:0,y:0,w:10,h:10,stroke:'#000',fill:'none',size:2,opacity:1}});
+  Store.commit({op:'add',shape:{id:'a2',type:'rect',x:5,y:0,w:10,h:10,stroke:'#000',fill:'none',size:2,opacity:1}});
+  assert.strictEqual(state.history[0].clock.seq,1,'ADR-1118: first commit mints seq 1');
+  assert.strictEqual(state.history[1].clock.seq,2,'ADR-1118: second commit mints seq 2 — one shared counter');
+  assert.strictEqual(state.history[0].clock.peer,state.peerId,'ADR-1118: mint binds the incarnation peer id');
+  assert.ok(html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)"),'ADR-1118: peerId carries the per-launch suffix (dedup keys launch-unique)');
+  Store.undo();
+  assert.strictEqual(state.history[1].clock.seq,3,'ADR-1118: undo restamps the op with a fresh seq');
+  assert.ok(state.seenOps.has(state.peerId+':1')&&state.seenOps.has(state.peerId+':2'),'ADR-1118: dedup key is peer:seq');
+  assert.ok(html.includes("_iS(c.seq)&&c.seq&&_ln(c.seq)<=80")&&html.includes("seq:'snap:'+s.id"),'ADR-1118: snap-tag clock is wire-legal');
+  assert.ok(!clockNewer({ts:0,peer:'p',seq:'snap:x'},{ts:1,peer:'p',seq:9}),'ADR-1118: snap clock (ts:0) never wins');
+  assert.ok(clockNewer({ts:5,peer:'p',seq:9},{ts:5,peer:'p',seq:3}),'ADR-1118: intra-peer seq tie-break orders');
+  assert.ok(!clockNewer({ts:5,peer:'p',seq:'snap:x'},{ts:5,peer:'p',seq:3})&&!clockNewer({ts:5,peer:'p',seq:3},{ts:5,peer:'p',seq:'snap:x'}),'ADR-1118: mixed-type seq compare is deterministic not-newer');
+  seed();
+  console.log('  ✓ ADR-1118 op-clock seq contract (10 asserts)');
+}
+pass += 10;
+
+// ADR-1119: doc-switch × IDB-migration page-clock audit — clean pass, contract pinned.
+// The three clk-less _pgAdopt sites (local .board import, share-link import, backup
+// restore) are each preceded by `state.wclock=_wM()` (clean tomb slate) and followed
+// by `_repC` → `_recordCommitted`, which stamps _bT for adopted pages with the same
+// carried bts / op.clock receivers' _pgAdopt uses. The IDB upgrade guards both
+// stores with contains() so v1→v2 is safe from any earlier version, and the
+// 'replace' undo-wire swaps the page sets (pages→beforePages).
+{
+  assert.ok(html.includes("!d.objectStoreNames.contains(DB_STORE))d.createObjectStore(DB_STORE)"),'ADR-1119: docs store guarded on upgrade');
+  assert.ok(html.includes("objectStoreNames.contains(DB_IMG_STORE)"),'ADR-1119: imgs store guarded on upgrade (v1→v2)');
+  assert.ok(html.split("state.wclock=_wM()").length-1>=3,'ADR-1119: clean tomb slate precedes every clk-less _pgAdopt');
+  assert.ok(html.includes("for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null"),'ADR-1119: sender stamps adopted pages\' _born like receivers');
+  assert.ok(html.includes("_pgAdopt(d.pages,d.curPg,_pgClk(d))"),'ADR-1119: Persist.load passes the rep clock');
+  assert.ok(html.includes("pages:op.beforePages,curPg:op.beforeCurPg"),'ADR-1119: undo-wire swaps the page sets');
+  assert.ok(html.includes("rs:state.roomSecret"),'ADR-1119: room secret persists on the doc records');
+  assert.ok(html.includes("wc:_wc()"),'ADR-1119: doc record persists the tomb map');
+  console.log('  ✓ ADR-1119 doc-switch × IDB-migration page clocks (8 asserts)');
+}
+pass += 8;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
