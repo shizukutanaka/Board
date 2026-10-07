@@ -1,3 +1,8 @@
+## [1.8.167] - 2026-10-01
+
+### Fixed
+- **round893 / ADR-1143 — presentation frames skip hidden shapes**: `_getFrames` and `_goto`'s re-resolve filtered on frame-type + page only, making the frame list the last non-hidden-aware enumeration — every other visible surface (minimap, exports, marquee, peer selections, hop marks, snap) already excludes `visible===0`. Hidden frames were walked as empty black slides, and a remote `hide` landing mid-presentation never dropped the current frame from the deck. Both filters now exclude `_hd`; an all-hidden deck takes the `noFrames` path, and losing every visible frame mid-presentation exits via the same `leave()` seam as deletion. 8 behavioural pins.
+
 ## [1.8.166] - 2026-10-01
 
 ### Fixed
