@@ -1,3 +1,8 @@
+## [1.8.179] - 2026-10-01
+
+### Fixed
+- **round905 / ADR-1155 — an invoker inside a dying overlay is never recorded**: generalised the ADR-1154 rule into a shared dying-host predicate `_dyingH` (inside `#ctx` or an open `.help-overlay`) and closed the shared `_prevFocus` slot's two clobber directions at the chokepoint: `_captureFocus` skips recording a dying host's child (the already-armed invoker stands in for it), and `openCtxMenu` early-returns while a modal dialog is open — a menu can never float over a modal and record a dialog child. `toggleSq`'s `_sqPrev` substitution now consults `_dyingH` (covers dialog interiors too). The editors' `_edPrev` is documented unreachable (all editor-open paths are gated while either overlay is up). 10 pins + recalibrated ADR-1154 source pin.
+
 ## [1.8.178] - 2026-10-01
 
 ### Fixed

@@ -20911,7 +20911,7 @@ pass += 7;
 
 // ---- ADR-1154: the sq invoker slot skips elements inside the closing ctx menu ----
 {
-  assert.ok(html.includes("_sqPrev=e&&m.contains(e)?UI._prevFocus:e"),'ADR-1154: a menu item is never recorded as the sq invoker');
+  assert.ok(html.includes("_sqPrev=_dyingH(e)?UI._prevFocus:e"),'ADR-1154/1155: a menu item is never recorded as the sq invoker');
   const cm=fakeDoc.getElementById('ctx');cm.dataset.open='false';
   const sq=fakeDoc.getElementById('sqinput');sq.select=()=>{};sq.matches=()=>true;sq.style.display='none';sq.value='';
   const inv={f:0,focus(){inv.f++},isConnected:true};
@@ -20936,6 +20936,49 @@ pass += 7;
   console.log('  ✓ ADR-1154 sq invoker skips ctx menu items (5 asserts)');
 }
 pass += 5;
+
+// ---- ADR-1155: an invoker inside a dying overlay is never recorded ----
+{
+  assert.ok(html.includes('if(_openDialog())return'),'ADR-1155: the ctx menu never opens over a modal dialog');
+  assert.ok(html.includes('if(!_dyingH(e))this._prevFocus=e'),'ADR-1155: capture keeps the armed invoker when focus sits inside a dying overlay');
+  assert.ok(html.includes('_dyingH=e=>'),'ADR-1155: the dying-host predicate exists');
+  // a menu must never open over a modal
+  const hp=fakeDoc.getElementById('help');hp.dataset.open='true';hp.contains=()=>false;
+  const cm=fakeDoc.getElementById('ctx');cm.dataset.open='false';cm.contains=()=>false;
+  UI._prevFocus=null;
+  UI.openCtxMenu(10,10);
+  assert.strictEqual(cm.dataset.open,'false','ADR-1155: openCtxMenu is a no-op while a modal dialog is open');
+  assert.strictEqual(UI._prevFocus,null,'ADR-1155: the refused open captures nothing');
+  hp.dataset.open='false';
+  // a dialog opened over the menu keeps the menu's armed invoker
+  const inv={f:0,focus(){inv.f++},isConnected:true};
+  fakeDoc.activeElement=inv;
+  UI.openCtxMenu(100,100);            // captures inv
+  const item={focus(){},isConnected:true};
+  cm.contains=(el)=>el===item;
+  fakeDoc.activeElement=item;
+  UI.toggleHelp();                    // a second overlay captures — must not clobber
+  assert.ok(!!hp.dataset.open,'ADR-1155: help opened over the menu');
+  assert.strictEqual(UI._prevFocus,inv,'ADR-1155: a dying menu item is never recorded as the dialog invoker');
+  hp.dataset.open='true';             // fakeDoc keeps the raw boolean — normalize to the DOM-coerced form
+  UI.toggleHelp();                    // close → restores the invoker the item stood in for
+  assert.strictEqual(inv.f,1,'ADR-1155: dialog close restores the real invoker');
+  // the find box applies the same rule inside an open dialog
+  const dEl={inside:true,isConnected:true};
+  hp.dataset.open='true';hp.contains=(x)=>x===dEl;
+  const sq=fakeDoc.getElementById('sqinput');sq.select=()=>{};sq.matches=()=>true;sq.style.display='none';sq.value='';
+  fakeDoc.activeElement=dEl;UI._prevFocus=inv;
+  toggleSq();
+  assert.strictEqual(sq.style.display,'block','ADR-1155: the find box opens over a dialog');
+  hp.dataset.open='false';fakeDoc.activeElement=sq;
+  toggleSq();
+  assert.strictEqual(inv.f,2,'ADR-1155: sq fold restores the armed invoker, not the dying dialog child');
+  // reset
+  cm.contains=()=>false;hp.contains=()=>false;UI._prevFocus=null;fakeDoc.activeElement=null;sq.style.display='none';
+  state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1155 dying-overlay invoker never recorded (10 asserts)');
+}
+pass += 10;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.178';   // ADR-1154
+const V='1.8.179';   // ADR-1155
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -5953,6 +5953,9 @@ function _openDialog(){
   for(const id of ['help','share']){const m=_g(id);if(m&&m.dataset.open==='true')return m;}
   return null;
 }
+// ADR-1155: an invoker that dies with its overlay is never recorded — a
+// .ctx-item vanishes with the menu, a dialog child with the modal.
+const _dyingH=e=>{const m=_g('ctx'),d=_openDialog();return m.contains(e)||!!(d&&d.contains(e))};
 _on(window,_KD,e=>{
   if(e.target.matches?.('input,textarea')){
     // ADR-1151: Esc in the find box folds it (and returns focus to the
@@ -6126,7 +6129,7 @@ let _sqPrev=null;
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
   const open=sq.style.display==='none';
-  if(open){const e=_aE(),m=_g('ctx');_sqPrev=e&&m.contains(e)?UI._prevFocus:e}   // ADR-1154: a menu item dies with the menu — record the invoker it stood in for
+  if(open){const e=_aE();_sqPrev=_dyingH(e)?UI._prevFocus:e}   // ADR-1155: a dying overlay child is never the invoker — record who stood in for it
   _dsp(sq,open?'block':'none');
   if(open){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
   else{_setSq('');sq.value='';_ivO();
@@ -9224,7 +9227,7 @@ const UI={
   },
   // ADR-0215/0982
   _prevFocus:null,
-  _captureFocus(){this._prevFocus=_aE()},
+  _captureFocus(){const e=_aE();if(!_dyingH(e))this._prevFocus=e},   // ADR-1155
   _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)_fc(p.isConnected===false?canvas:p)},
   toggleHelp(){
     const h=_g('help'),open=h.dataset.open!=='true';
@@ -9233,6 +9236,7 @@ const UI={
     else this._restoreFocus();
   },
   openCtxMenu(x,y,customItems){
+    if(_openDialog())return;   // ADR-1155: a menu must never float over a modal
     if(ptr.down)_cancelPointerGesture();   // ADR-0948
     const m=_g('ctx');
     if(m.dataset.open!=='true')this._captureFocus();   // ADR-1150
