@@ -1,3 +1,8 @@
+## [1.8.184] - 2026-10-01
+
+### Fixed
+- **round910 / ADR-1160 — the activation-key contract covers presentation mode**: ADR-1159's button guard sat *below* the `_pA()` branch, so inside a presentation the last reachable control (the `✕ Esc` exit button) was still hijacked — a focused-button Space press hit the pres nav mapping: `_pd` suppressed the button's native click **and** `Presentation.next()` advanced the slide, so Space could never fire `leave()`. (Enter was already consistent — not a pres nav key — and arrow keys aren't activation keys.) The guard is hoisted above `_pA()`: `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` now precedes every routed branch, one line moved, zero new logic. Uniform contract: a focused control owns Enter/Space in every mode. 5 pins (guard position + pres-focused-button Space/Enter stay on frame 0 + off-control non-vacuity); the ADR-1159 ordering pin recalibrated for the hoist.
+
 ## [1.8.183] - 2026-10-01
 
 ### Fixed
