@@ -16963,6 +16963,45 @@ try {
       pass += 4;
     }
     {
+      // ADR-1181: presence receive-side contract — the peer row is minted only
+      // on ping (BC) or RTC arrival, never by an unauthenticated BC presence
+      // msg; pg payloads truncate at 64; dead ids are filtered at intake AND
+      // render; over-length/self/'rtc:'-forged envelope peers drop pre-MAC.
+      const _pBak2=new Map(state.peers);const _rtcBak=Net._rtcPeerId;
+      state.peers.clear();
+      Net._onRecv({k:'cursor',peer:'ghost1181',x:1,y:1},false);
+      assert.ok(!state.peers.has('ghost1181'),'a BC cursor for an unknown peer mints no row');
+      Net._onRecv({k:'ping',peer:'p1181'},false);
+      assert.ok(state.peers.has('p1181'),'ping mints the peer row');
+      Net._onRecv({k:'cursor',peer:'p1181',x:5,y:6,pg:'x'.repeat(80)},false);
+      assert.deepStrictEqual(state.peers.get('p1181').cursor,{x:5,y:6},'cursor lands for a known peer');
+      assert.strictEqual(state.peers.get('p1181').pg.length,64,'pg truncates at 64 on intake');
+      Net._onRecv({k:'selection',peer:'p1181',ids:'not-an-array'},false);
+      assert.strictEqual(state.peers.get('p1181').sel,undefined,'non-array sel ids rejected');
+      const _l1181='a'.repeat(200);
+      state.shapes.push({id:'live1181',type:'rect'});
+      Net._onRecv({k:'selection',peer:'p1181',ids:['live1181','dead1181',_l1181]},false);
+      assert.deepStrictEqual(state.peers.get('p1181').sel,['live1181'],'dead + non-wire ids filtered at intake');
+      Net._onRecv({k:'cursor',peer:'q'.repeat(200),x:1,y:1},false);
+      assert.ok(!state.peers.has('q'.repeat(200)),'an over-length envelope peer is rejected');
+      Net._onRecv({k:'cursor',peer:state.peerId,x:1,y:1},false);
+      assert.ok(!state.peers.has(state.peerId),'self-echo mints no row');
+      Net._onRecv({k:'cursor',peer:'rtc:forged1181',x:1,y:1},false);
+      assert.ok(!state.peers.has('rtc:forged1181'),'a BC-forged rtc: peer is rejected');
+      Net._rtcPeerId='rtc:z1181';
+      Net._onRecv({k:'cursor',peer:'unknownPeer',x:2,y:3},true);
+      assert.ok(state.peers.has('rtc:z1181'),'viaRtc presence resurrects the link row');
+      assert.deepStrictEqual(state.peers.get('rtc:z1181').cursor,{x:2,y:3},'the RTC cursor lands on the link row');
+      Net._onRecv({k:'cursor',peer:'p1181',x:9,y:9,h:1},false);
+      assert.strictEqual(state.peers.get('p1181').cursor,null,'h:1 clears the peer cursor');
+      assert.ok(html.includes("p.sel=_s0(ids.filter(byId),4096)"),'sel caps at 4096 live-resolved ids');
+      assert.strictEqual(html.split("const npg=_iS(msg.pg)?_s0(msg.pg,64):null").length-1,2,'both presence kinds bound pg at 64');
+      state.peers=_pBak2;Net._rtcPeerId=_rtcBak;
+      state.shapes=state.shapes.filter(s=>s.id!=='live1181');
+      console.log('  ✓ presence receive-side contract (ADR-1181)');
+      pass += 13;
+    }
+    {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
       // one exists — a dual-connected peer must not count as two avatars.
       assert.ok(html.includes("if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}"),'viaRtc presence folds the synthetic row into the real row');
