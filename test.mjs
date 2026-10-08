@@ -16794,7 +16794,7 @@ try {
       assert.ok(html.includes("_lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'}"),'single _lwwOp gate shared by drop+stamp');
       assert.ok(html.includes("key==='pg'||key==='frac'||key==='groupId'||key[0]==='_'"),'structural keys stay outside per-prop LWW stamping');
       assert.ok(html.includes("this._stampWrites(w);try{Net.broadcast(w)}"),'undo stamps the inverse wire ops');
-      assert.ok(html.includes("this._stampWrites(op);Net.broadcast(op)"),'redo stamps the restamped op');
+      assert.ok(html.includes("this._stampWrites(op);let _werr=null;try{Net.broadcast(op)}"),'redo stamps the restamped op');
       state.shapes.length=0;state.seenOps=new Set();state.wclock={};_invalidateGrid();
       const r29=Shape.make('rect',{x:0,y:0,w:10,h:10});state.shapes=[r29];
       Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:5},before:{x:0},clock:{peer:'p9',seq:1,ts:100}}},false);
@@ -20258,7 +20258,7 @@ pass += 8;
   assert.ok(html.includes("const MAX_HISTORY=500"),'ADR-1121: bounded history');
   assert.ok(html.split("_hi().length=_hx()+1").length-1===3,'ADR-1121: every push path chops the redo branch');
   assert.ok(!html.includes("state.history="),'ADR-1121: the log is append/shift only — never reassigned');
-  assert.ok(html.split("if(op.clock.peer===_pi())Net.broadcast(op)").length-1>=2,'ADR-1121: remote ops are recorded, never echoed');
+  assert.ok(html.split("if(op.clock.peer===_pi())").length-1===2,'ADR-1121: remote ops are recorded, never echoed');
   assert.ok(html.includes("histIdx:-1"),'ADR-1121: cursor starts before the first op');
   assert.ok(html.includes("op.clock={peer:_pi(),seq:++state.seq,ts:_ut}")&&html.includes("w.clock={peer:_pi(),seq:++state.seq,ts:_ut}"),'ADR-1121: undo + undo-wire restamp fresh own clocks');
   assert.ok(html.includes("_fck(op)"),'ADR-1121: redo re-mints a newer clock');
@@ -20309,7 +20309,7 @@ pass += 7;
   assert.ok(!ops.some(o=>o.op==='upd'&&o.id==='t1'),'ADR-1123: no union emit when nothing survives');
   Net.broadcast=_ob;
   assert.ok(html.includes('_mT3='),'ADR-1123: 3-way text merger exists');
-  assert.ok(html.split('_txFlush();').length-1===5,'ADR-1123/1125: emit flush on every commit path (commit/applyRemote+drop-return/undo/redo)');
+  assert.ok(html.split('_txFlush();').length-1===6,'ADR-1123/1125/1171: emit flush on every commit path + the commit send-failure arm');
   assert.ok((html.match(/_mT3\(sh\[_tk\]/g)||[]).length===2,'ADR-1123: merge hooks at the upd + patch-list apply sites');
   state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
   console.log('  \u2713 ADR-1123 disjoint text merge + convergence emit (9 asserts)');
@@ -20628,7 +20628,7 @@ pass += 11;
   assert.ok(threw&&threw.message==='net-fail','ADR-1135: the first send error surfaces after cleanup');
   assert.ok(html.includes("try{Net.broadcast(w)}catch(e){if(!_werr)_werr=e}"),'ADR-1135: per-op send is guarded');
   assert.ok(html.includes("Net.broadcast(w)}catch(e){if(!_werr)_werr=e}}   // ADR-1135: best-effort — a mid-loop send failure must not strand the rest\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the undo wire ops');
-  assert.ok(html.includes("Net.broadcast(op);   // ADR-0615\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the redo broadcast');
+  assert.ok(html.includes("{_werr=e}   // ADR-0615/1171\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the redo broadcast');
   assert.ok(html.includes("if(_werr)throw _werr;"),'ADR-1135: first error rethrown after flush');
   state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();state.history=[];state.histIdx=-1;_invalidateGrid();
   console.log('  ✓ ADR-1135 undo-wire send exception tolerance (7 asserts)');
@@ -21499,7 +21499,46 @@ pass += 2;
 pass += 6;
 assert.ok(html.split('_hi().push(op)').length-1===2,'exactly two history producers — commit + _recordCommitted, both local funnels (ADR-1170)');
 {const _ar=html.slice(html.indexOf('  applyRemote(op){'),html.indexOf('  _lwwOp(op)'));assert.ok(!_ar.includes('_hi(')&&!_ar.includes('histIdx'),'applyRemote contains no history write (ADR-1170)');}
-assert.ok(html.split('if(op.clock.peer===_pi())Net.broadcast(op)').length-1===2,'both record funnels re-broadcast only own-clock ops (ADR-1170)');
+assert.ok(html.split('if(op.clock.peer===_pi())').length-1===2,'both record funnels re-broadcast only own-clock ops (ADR-1170)');
+pass += 3;
+
+// ---------- ADR-1171: send-failure bookkeeping parity — propagation sends strand nothing ----------
+// ADR-1135 gave undo's wire loop best-effort sends: a broadcast throw collects
+// and rethrows after _pgFollow/_txFlush/_rdb. The same class lived at the two
+// other propagation sites: redo's send could strand _pgFollow/_txFlush/_rdb
+// (local re-applied + pointer advanced, peers never told, follow-up skipped)
+// and commit's could strand _txFlush (convergence queue stays armed, draining
+// out of order later). Both now run bookkeeping before surfacing the error;
+// _recordCommitted's send is already its last statement.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const ob=E.Net.broadcast;
+  // (a) redo: send throw still runs bookkeeping, then rethrows
+  E.state.pages=[{id:'p1',name:'P1',nts:0}];E.state.curPg='p1';
+  E.state.history=[{op:'pageAdd',id:'p9',name:'P9',clock:{peer:E.state.peerId,seq:1,ts:E.state._lastTs+1}}];E.state.histIdx=-1;
+  E.Net.broadcast=()=>{throw new Error('send fail')};
+  let threw=false;try{E.Store.redo()}catch(e){threw=true}finally{E.Net.broadcast=ob}
+  assert.ok(threw,'redo rethrows the send failure (ADR-1171)');
+  assert.ok(E.state.histIdx===0&&E.state.curPg==='p9','send failure strands no bookkeeping — pointer advanced + page follow landed (ADR-1171)');
+  // (b) commit: apply + record + flush complete before the send error surfaces
+  const S=Shape.make('rect',{x:0,y:0,w:1,h:1});const i1=E.state.histIdx;
+  E.Net.broadcast=()=>{throw new Error('send fail')};
+  threw=false;try{E.Store.commit({op:'add',shape:S})}catch(e){threw=true}finally{E.Net.broadcast=ob}
+  assert.ok(threw,'commit rethrows the send failure (ADR-1171)');
+  assert.ok(E.byId(S.id)&&E.state.histIdx===i1+1,'commit applies + records + flushes before surfacing the error (ADR-1171)');
+  console.log('  ✓ ADR-1171 send-failure parity: bookkeeping completes, error still surfaces (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes("if(op.clock.peer===_pi()){try{Net.broadcast(op)}catch(e){_txFlush();throw e}}"),'commit send failure flushes the convergence queue before surfacing (ADR-1171)');
+assert.ok(html.includes("let _werr=null;try{Net.broadcast(op)}catch(e){_werr=e}")&&html.includes("if(_werr)throw _werr"),'redo send failure runs follow/flush/repaint then rethrows — ADR-1135 parity (ADR-1171)');
+{const _rc=html.slice(html.indexOf('  _recordCommitted(op){'),html.indexOf('  undo(){'));assert.ok(_rc.indexOf('Net.broadcast(op)')>_rc.indexOf('_rdb()'),'_recordCommitted broadcast is the last statement — nothing left to strand (ADR-1171)');}
 pass += 3;
 
 } catch (err) {
