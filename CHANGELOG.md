@@ -1,3 +1,8 @@
+## [1.8.208] - 2026-10-01
+
+### Fixed
+- **round934 / ADR-1184 — 全置換が武装済みズームプレビューを破棄しない stale bitmap 残存を閉塞**: 全置換の共有パージシーム `_pcC` (`_rs`/`clear`/`replace` 双方向/pageDel member kill が全て通過) が `_pinchSnap`/`_pinchVp` を消さなかった。`ptr.down=false` のまま mint する ctrl+wheel プレビュー (180ms 再アーミング) や iOS pinch 中に同頁の全置換が着地すると、`draw()` が早期 return で交換前ビットマップを blit し続けた (stale 表示 + detached 全解像度 canvas 保持)。`_pcC` 内の pair 破棄で全5サイトを一括閉塞 — パージ後 `_lastVp=null` により完全シーンパスで自己修復。4挙動ピン (実リスナ wheel 経路) で固定。
+
 ## [1.8.207] - 2026-10-01
 
 ### Fixed
