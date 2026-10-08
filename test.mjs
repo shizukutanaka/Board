@@ -1408,7 +1408,7 @@ const checks = [
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
-    html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp);")],
+    html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp,r0,")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
     html.includes("case 'upd':{\n      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)")&&html.includes("!noLock(op.before)")],
@@ -16817,7 +16817,7 @@ try {
       // history + broadcast + born stamps.
       assert.ok(html.includes("_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;"),'init resets the deferred-snapshot + sync-req retry machinery');
       assert.ok(html.includes("this._snapIn=null;this._opcIn=null;"),'init resets inbound reassembly slots');
-      assert.ok(html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp);"),'backup restore commits as a replace (history+broadcast+born)');
+      assert.ok(html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp,r0,"),'backup restore commits as a replace (history+broadcast+born)');
       assert.ok(html.includes("const s=this._slimOp(op);this._flushImgOuts();"),'every op broadcast passes _slimOp+img-blob funnel');
       Net.init('room30a');
       Net._snapRetry=2;Net._snapRx=false;Net._snapT=42;Net._snapIn={x:1};Net._opcIn={x:1};state._lastRep={peer:'x',seq:1,ts:1};
@@ -18972,7 +18972,10 @@ pass += 7;
   assert.strictEqual(E.state.history.length,h0+1,'ro→editable import records the replace (was dropped)');
   E.Store.undo();
   assert.ok(!E.byId('imp9'),'ro→editable import swap is undoable');
-  E.Store.redo();
+  assert.strictEqual(E.state.ro,true,'undo restores the pre-swap ro (ADR-1163)');
+  assert.strictEqual(E.Store.redo(),false,'ro-gated: the re-locked doc cannot redo (ADR-1057)');
+  E.state.ro=false;E.Store.redo();
+  assert.strictEqual(E.state.ro,false,'redo re-adopts the editable payload flag (ADR-1163)');
   // (b) ADR-1162: ro session + ro:1 link → REJECTED before the swap — was:
   //     the swap applied silently while repC dropped the op (no undo, live
   //     ops merging into the imported doc, snapshot heal leaking it back).
@@ -19022,6 +19025,17 @@ pass += 7;
     assert.ok(E.byId('impFR'),'writable→ro file swap applies');
     assert.strictEqual(E.state.history.length,h4+1,'ro payload swap commits while writable (was dropped)');
     assert.strictEqual(E.state.ro,true,'ro flag adopts after the commit');
+    // ADR-1163: undo is ro-gated while locked — unlock first, then the swap
+    // reverts and stays unlocked (pre-swap bro=false); redo re-adopts aro=1.
+    E.state.ro=false;   // the 🔒 badge click
+    E.Store.undo();
+    assert.ok(!E.byId('impFR'),'ro payload swap is undoable after unlock');
+    assert.strictEqual(E.state.ro,false,'undo leaves the pre-swap writable state (ADR-1163)');
+    E.Store.redo();
+    assert.strictEqual(E.state.ro,true,'redo re-adopts aro on the doc (ADR-1163)');
+    E.state.ro=false;   // re-unlock for the following cases
+    E.Store.undo();
+    E.Store.redo();   // back to the tip — a mid-history position would redo-chop the next commit
   }finally{if(_hadFR2)globalThis.FileReader=_prevFR2;else delete globalThis.FileReader}
   // (c3) ro doc + ro:1 file → rejected before the swap.
   const _hadFR3=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR3=globalThis.FileReader;
@@ -19058,8 +19072,8 @@ pass += 7;
     assert.strictEqual(await E.Persist.checkBackup(),true,'rejected restore keeps the backup slot');
   }finally{E.Persist.db=_prevDb;E.state.ro=false;E.state.shapes.length=0;E._invalidateGrid()}
 }
-console.log('  ✓ ADR-1069/1162 doc-switch ro adoption (28 asserts)');
-pass += 28;
+console.log('  ✓ ADR-1069/1162/1163 doc-switch ro adoption (34 asserts)');
+pass += 34;
 assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069/1162"),'hash import adopts ro after repC');
 assert.ok(html.includes("state.ro=false;   // ADR-1162"),'swap commits while writable before adopting ro');
 assert.ok(html.includes("ro:state.ro?1:0,shapes:roundShapesForExport"),'.board export carries ro');
@@ -19067,7 +19081,9 @@ assert.ok(html.includes("rs:state.roomSecret,ro:state.ro?1:0,savedAt"),'backup r
 assert.ok((html.match(/state\.ro=d\.ro===1/g)||[]).length>=2,'importBoard+restoreBackup adopt ro');
 assert.ok(html.includes("if(state.ro&&d.ro===1){_roNo();return}   // ADR-1162")&&html.includes("if(state.ro&&data.ro===1){_roNo();clearHash();return false}")&&html.includes("if(state.ro&&d.ro===1){_roNo();return false}   // ADR-1162"),'all three swap paths reject ro→ro at entry');
 assert.ok(html.includes("function _mergeImport(shapes){\n  if(state.ro){_roNo();return}   // ADR-1162"),'merge-import is ro-gated like every sibling');
-pass += 7;
+assert.ok(html.includes("const r0=state.ro;state.ro=false;"),'swap paths capture pre-swap ro for the op (ADR-1163)');
+assert.ok(html.includes("'bro' in op")&&html.includes("'aro' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores ro from the op (ADR-1163)');
+pass += 9;
 
 // ---- ADR-1070: wire-secret lifecycle — SDP codec + `k` intake bound ----
 {

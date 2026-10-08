@@ -1,3 +1,8 @@
+## [1.8.187] - 2026-10-01
+
+### Fixed
+- **round913 / ADR-1163 — replace undo/redo restores the document's ro flag**: `replace` ops recorded every swapped piece of doc state (shapes, wclock, pages, origSel) **except `state.ro`** — an ro doc importing an editable payload (ADR-1069 unlock-adopt) then undoing kept `ro=false` on the pre-import read-only document: the unlock leaked past the undo. `_repC` now records `bro`/`aro` on the op (captured before the ADR-1162 commit-while-writable flip); `_apply` restores `bro` on backward and re-adopts `aro` on own redo only (`op.clock.peer===_pi()` — the wire-slimmed 'replace' never carries either field, so a peer can't push their doc-mode onto you). The re-locked doc's redo is naturally refused by the ADR-1057 gate. +6 behavioural asserts, 2 source pins, 2 recalibrated `_repC` call-site pins.
+
 ## [1.8.186] - 2026-10-01
 
 ### Fixed
