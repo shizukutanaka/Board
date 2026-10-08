@@ -1,3 +1,23 @@
+## [1.8.185] - 2026-10-01
+
+### Fixed
+- **round911 / ADR-1161 — the drop target is the whole window**: `dragover`/`drop` were canvas-only, so a file dropped on the toolbar, stylePanel, page-strip or any other chrome hit the browser default — **navigate away to the file**, closing the app (board persists, but peers/undo/gestures are lost). Listeners hoisted to `window` with three gates: `dragover`+`drop` suppress the nav everywhere; a *fileless* text drop into `input/textarea` stays native (field insertion still works); `_pA()` keeps the presentation view-only (nav blocked, import skipped). File drops now import from anywhere — `_o2w` projects the chrome-side drop point into world coordinates. 4 pins (window registration, chrome-target cascade reach, native field passthrough, pres gate); the 11 existing drop pins redispatched `canvas._L`→`fakeWin._L`.
+
+## [1.8.184] - 2026-10-01
+
+### Fixed
+- **round910 / ADR-1160 — the activation-key contract covers presentation mode**: ADR-1159's button guard sat *below* the `_pA()` branch, so inside a presentation the last reachable control (the `✕ Esc` exit button) was still hijacked — a focused-button Space press hit the pres nav mapping: `_pd` suppressed the button's native click **and** `Presentation.next()` advanced the slide, so Space could never fire `leave()`. (Enter was already consistent — not a pres nav key — and arrow keys aren't activation keys.) The guard is hoisted above `_pA()`: `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` now precedes every routed branch, one line moved, zero new logic. Uniform contract: a focused control owns Enter/Space in every mode. 5 pins (guard position + pres-focused-button Space/Enter stay on frame 0 + off-control non-vacuity); the ADR-1159 ordering pin recalibrated for the hoist.
+
+## [1.8.183] - 2026-10-01
+
+### Fixed
+- **round909 / ADR-1159 — a focused control owns its activation keys**: the key router's early-return covered only `input,textarea` and open dialogs — a focused `<button>` still bubbled Enter/Space to the canvas shortcuts, so native activation (click) **and** the canvas action fired together: Enter `_pd`'d the button's click while `editSelectedShapeKbd()`/`createShapeKbd()` stamped a shape or opened a second editor (and the repeat whitelist re-stamped on hold); Space fired the click **and** armed temp-hand, with the keyup restore silently flipping the tool back. One line after the dialog trap — `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` — closes the gap (no `contenteditable`/`select`/DOM `<a>` exist, so `button` completes the native-activation surface). 6 pins (2 source + 4 behavioural incl. off-control non-vacuity); recalibrated the v1.6.71 pres-guard distance bound for the ~210B insert.
+
+## [1.8.182] - 2026-10-01
+
+### Fixed
+- **round908 / ADR-1158 — the presentation folds the remaining interactive chrome**: `enter()` covered the screen at `z-index:8999` and hid toolbar/topbar/statusbar/minimap, but `#stylePanel` (swatches/colors/ranges → `applyStyleToSelection` = mutation ops + broadcast), `.zoom-badge` (4 live viewport writes vs `_goto` slide-fit) and `#shapeMirror` (`_mirrorGo` → `_ss`+`_fitViewport`) stayed **tabbable** — visual coverage is not reachability. Pointer input was `_pA()`-gated (ADR-0640) and non-nav keys swallowed, but an element focused *at enter time* kept DOM focus and Space/Enter activation still fired mid-slide. `enter()` now folds ctx/stylePanel/zoom-badge/mirror in one block; `leave()` restores them — exactly one reachable control during pres (the exit button). 10 pins (2 source + 8 behavioural).
+
 ## [1.8.181] - 2026-10-01
 
 ### Fixed

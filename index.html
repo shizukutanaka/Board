@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.181';   // ADR-1157
+const V='1.8.185';   // ADR-1161
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4831,9 +4831,15 @@ function _textCascade(s,wp){
   _iv();_oT('textPasted');
   return true;
 }
-_on(canvas,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
-_on(canvas,'drop',e=>{
+// ADR-1161: the drop target is the whole window, not just the canvas — a file
+// dropped on the toolbar/stylePanel/page-strip otherwise hits the browser's
+// default (navigate away to the file, losing the app). Text drops into a
+// field stay native; presentation stays view-only (block the nav, skip import).
+_on(window,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
+_on(window,'drop',e=>{
+  if(!_ln(e.dataTransfer.files)&&e.target?.matches?.('input,textarea'))return;
   _pd(e);
+  if(_pA())return;
   const bf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.board'));
   if(bf){importBoard(bf);return}
   const xf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.excalidraw'));
@@ -5967,6 +5973,9 @@ _on(window,_KD,e=>{
   }
   const meta=_mod(e);
   const k=_lc(e.key);
+  // ADR-1159/1160: a focused control owns its activation keys — Enter/Space on
+  // a button activates the button, not the routed action underneath.
+  if(e.target.matches?.('button')&&(k===_EN||k===' '))return;
   // Presentation mode is view-only (see "no editing"): allow only
   // navigation keys and suppress EVERYTHING else.
   // This guard precedes the editing shortcuts
@@ -10435,6 +10444,13 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'none');
     _dsp(_qs(document,'.statusbar'),'none');
     _qs(document,'.minimap-wrap')?.style.setProperty('display','none');
+    // ADR-1158: the fullscreen canvas only covers these visually — they
+    // stay in the tab order, so a keyboard/SR user could mutate style or
+    // re-fit the viewport mid-slide in a view-only mode. Fold them too.
+    UI.closeCtxMenu();
+    _dsp(_g('stylePanel'),'none');
+    _dsp(_qs(document,'.zoom-badge'),'none');
+    _dsp(_g('shapeMirror'),'none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
     ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024
     // The CSS box just changed to fullscreen but the backing buffer
@@ -10457,6 +10473,9 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'');
     _dsp(_qs(document,'.statusbar'),'');
     _qs(document,'.minimap-wrap')?.style.removeProperty('display');
+    _dsp(_g('stylePanel'),'');
+    _dsp(_qs(document,'.zoom-badge'),'');
+    _dsp(_g('shapeMirror'),'');
     // Mirror enter(): box shrank without a native resize event
     resize();
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ();_ps()}

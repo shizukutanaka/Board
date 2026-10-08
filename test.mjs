@@ -1236,7 +1236,9 @@ const checks = [
   ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();   // ADR-1111\n      _pgAdopt(d.pages,d.curPg);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))));") && /_rs\(valid\.map\(s=>Net\._attachShape\(clone\(s\)\)\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
-  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
+  // ADR-1159: distance bound widened — the button-owns-activation guard legitimately
+  // inserted ~210B between the dialog trap and the repeat gate.
+  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,950}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,desired||2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,_dpr()||1)")],
@@ -15729,9 +15731,9 @@ try {
     fire1('pointerdown',30,30,{shiftKey:true});
     fire1('pointerup',30,30,{shiftKey:true});
     assert.ok(!state.selection.has(SC1.id)&&state.selection.has(SC2.id),'⇧click on a selected shape removes it');
-    // drop of dragged text runs the text cascade (ADR-0518)
+    // drop of dragged text runs the text cascade (ADR-0518); the listener lives on window (ADR-1161)
     reset();
-    fire1('drop',300,300,{dataTransfer:{files:[],getData:k=>k==='text/plain'?'drop hello':''}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:k=>k==='text/plain'?'drop hello':''},clientX:300,clientY:300,preventDefault(){}});
     const dtx=state.shapes[state.shapes.length-1];
     assert.ok(dtx&&dtx.text==='drop hello','text drop creates a text shape at the drop point');
     // rotate knob drag (ADR-0057): knob above top-center → dragKind='rotate'
@@ -16085,15 +16087,15 @@ try {
     // drop: non-file payload → _textCascade (dragover must claim copy effect first) (ADR-0044/0273/0518)
     reset();
     const dt={files:[],getData:()=>null};
-    for(const f of (canvas._L['dragover']||[]).slice(0,1))f({dataTransfer:dt,preventDefault(){}});
+    for(const f of (fakeWin._L['dragover']||[]).slice(0,1))f({dataTransfer:dt,preventDefault(){}});
     assert.strictEqual(dt.dropEffect,'copy','dragover claims the copy drop effect');
-    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'{"v":"1","shapes":[{"id":"dp1","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}'},clientX:400,clientY:300,preventDefault(){}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'{"v":"1","shapes":[{"id":"dp1","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}'},clientX:400,clientY:300,preventDefault(){}});
     assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect','a dropped .board JSON imports its shapes through the real drop listener (ADR-0518)');
     reset();
-    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'a\tb\nc\td'},clientX:400,clientY:300,preventDefault(){}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'a\tb\nc\td'},clientX:400,clientY:300,preventDefault(){}});
     assert.ok(state.shapes.length>=3&&state.shapes.every(x=>x.type==='sticky'),'a dropped TSV builds a sticky grid (ADR-0273)');
     reset();
-    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'hello'},clientX:400,clientY:300,preventDefault(){}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'hello'},clientX:400,clientY:300,preventDefault(){}});
     assert.ok(state.shapes.length===1&&state.shapes[0].type==='text'&&state.shapes[0].text==='hello','a dropped plain text becomes a text shape (ADR-0044)');
     // rendering entity: draw() composite pass through an injected recording ctx (ADR-0641 residual)
     const mkRc=arr=>new Proxy({},{get(t,p){
@@ -16217,7 +16219,7 @@ try {
     try{
       reset();
       const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0,"pg":"import2"}],"pages":[{"id":"import1","name":"First"},{"id":"import2","name":"Second"}],"curPg":"import2"}')};
-      for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+      for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length===1&&state.shapes[0].id==='fb9','a dropped .board file atomically replaces the board via FileReader');
       assert.deepStrictEqual(state.pages.map(p=>p.id),['import1','import2'],'file import adopts all page metadata');
@@ -16225,7 +16227,7 @@ try {
       assert.strictEqual(state.shapes[0].pg,'import2','file import preserves shape page membership');
       reset();
       const efile={name:'e.excalidraw',type:'',size:200,text:()=>Promise.resolve('{"type":"excalidraw","elements":[{"id":"ex9","type":"rectangle","x":5,"y":5,"width":40,"height":30}]}')};
-      for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+      for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length>=1,'a dropped .excalidraw file imports its elements via FileReader (ADR-0043)');
       const _IM=globalThis.Image;
@@ -16233,7 +16235,7 @@ try {
       try{
         reset();
         const ifile={name:'i.png',type:'image/png',size:100};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ifile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ifile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='image'&&state.shapes[0].w>0,'a dropped image file decodes and adds an image shape (ADR-0022)');
         // ADR-0867: local intake shares the wire dataUrl bound exactly —
@@ -16241,12 +16243,12 @@ try {
         // locally yet be rejected by every peer (local-accept/peer-reject).
         reset();
         const big={name:'big.png',type:'image/png',size:100,__dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_001-'data:image/png;base64,'.length)};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[big],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[big],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.strictEqual(state.shapes.length,0,'ADR-0867: >16_000_000 dataUrl rejected at local intake (wire parity)');
         reset();
         const ok={name:'ok.png',type:'image/png',size:100,__dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_000-'data:image/png;base64,'.length)};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ok],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ok],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.strictEqual(state.shapes.length,1,'ADR-0867: exactly-16_000_000 dataUrl still accepted');
       }finally{globalThis.Image=_IM}
@@ -16274,13 +16276,13 @@ try {
       try{
         reset();
         const sfile={name:'d.svg',type:'image/svg+xml',size:80,text:()=>Promise.resolve('<svg viewBox="0 0 100 100"><rect x="10" y="10" width="30" height="20"/></svg>')};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[sfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[sfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect'&&state.shapes[0].w===30,'a dropped .svg file converts markup to board shapes via DOMParser (ADR-0042)');
         reset();
         const dio='<mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="c1" value="Hi" style="rounded=0;" vertex="1" parent="1"><mxGeometry x="10" y="10" width="120" height="60" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>';
         const dfile2={name:'d.drawio',type:'',size:dio.length,text:()=>Promise.resolve(dio)};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile2],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile2],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length>=1&&state.shapes.some(s=>s.type==='rect'),'a dropped .drawio file imports mxCell vertices via DOMParser (ADR-0199)');
       }finally{globalThis.DOMParser=_DP}
@@ -21025,6 +21027,127 @@ pass += 8;
   console.log('  ✓ ADR-1157 find box folds before modal/presentation opens (7 asserts)');
 }
 pass += 7;
+
+// ---- ADR-1158: the presentation leaves only the exit button reachable ----
+{
+  assert.ok(html.includes("UI.closeCtxMenu();\n    _dsp(_g('stylePanel'),'none');\n    _dsp(_qs(document,'.zoom-badge'),'none');\n    _dsp(_g('shapeMirror'),'none');"),'ADR-1158: enter folds menu/panel/zoom/mirror in one block');
+  assert.ok(html.includes("_dsp(_g('stylePanel'),'');\n    _dsp(_qs(document,'.zoom-badge'),'');\n    _dsp(_g('shapeMirror'),'');"),'ADR-1158: leave restores the folded surfaces');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  const f1=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  Store.commit({op:'addMany',shapes:[f1]});
+  const sp=fakeDoc.getElementById('stylePanel');sp.style.display='';
+  const sm=fakeDoc.getElementById('shapeMirror');sm.style.display='';
+  const ctxEl=fakeDoc.getElementById('ctx');ctxEl.dataset.open='true';
+  const _oQS=fakeDoc.querySelector;
+  const zb={style:{display:'',removeProperty(){},setProperty(){}}};
+  fakeDoc.querySelector=s=>s==='.zoom-badge'?zb:_oQS.call(fakeDoc,s);
+  Presentation.enter();
+  assert.ok(Presentation.isActive(),'ADR-1158: presentation entered');
+  assert.strictEqual(sp.style.display,'none','ADR-1158: style panel folded on enter');
+  assert.strictEqual(sm.style.display,'none','ADR-1158: SR mirror folded on enter');
+  assert.strictEqual(zb.style.display,'none','ADR-1158: zoom badge folded on enter');
+  assert.strictEqual(ctxEl.dataset.open,'false','ADR-1158: ctx menu closed on enter');
+  Presentation.leave();
+  assert.strictEqual(sp.style.display,'','ADR-1158: style panel restored on leave');
+  assert.strictEqual(sm.style.display,'','ADR-1158: SR mirror restored on leave');
+  assert.strictEqual(zb.style.display,'','ADR-1158: zoom badge restored on leave');
+  fakeDoc.querySelector=_oQS;
+  ctxEl.dataset.open='false';
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1158 presentation folds style panel/zoom badge/SR mirror (10 asserts)');
+}
+pass += 10;
+
+// ---------- ADR-1159: focused controls own their activation keys ----------
+// The key router's early return covered only input/textarea; a focused
+// <button> still bubbled Enter/Space to the router — _pd then suppressed the
+// native click while the canvas action underneath (editor open, shape stamp,
+// temp-hand) fired instead: activation stolen.
+{
+  assert.ok(html.includes("if(e.target.matches?.('button')&&(k===_EN||k===' '))return"),'button owns Enter/Space');
+  const _g1159=html.indexOf("e.target.matches?.('button')");
+  assert.ok(_g1159>html.indexOf('const k=_lc(e.key);')&&_g1159<html.indexOf("if(_pA()){",_g1159),'guard hoisted ahead of every routed branch (ADR-1160)');
+  // Behavioural: Enter on a focused button stamps no shape; Space arms no temp-hand.
+  const _fk1159=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
+  const btn1159={matches:s=>s==='button'};
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  state.viewport={x:0,y:0,zoom:1};
+  state.tool='rect';
+  _fk1159('Enter',{target:btn1159});
+  assert.strictEqual(state.shapes.length,0,'ADR-1159: Enter on a focused button stamps no shape');
+  state.tool='select';
+  _fk1159(' ',{target:btn1159});
+  assert.notStrictEqual(state.tool,'hand','ADR-1159: Space on a focused button arms no temp-hand');
+  // Non-vacuity: the same keys on a non-button target DO fire the canvas actions.
+  state.tool='rect';
+  _fk1159('Enter');
+  assert.strictEqual(state.shapes.length,1,'ADR-1159: Enter off-control still stamps the tool shape');
+  _fk1159(' ');
+  assert.strictEqual(state.tool,'hand','ADR-1159: Space off-control still arms temp-hand');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.tool='select';
+  console.log('  ✓ ADR-1159 button activation keys excluded from the shortcut router (6 asserts)');
+}
+pass += 6;
+
+// ---------- ADR-1160: the activation-key contract covers presentation mode ----------
+// Under _pA() Space is a NAVIGATION key — a focused exit-button Space press was
+// _pd'd (native click suppressed) and routed to next(): the slide advanced and
+// the button could never be activated. Hoisting the ADR-1159 guard above the
+// pres branch makes the contract uniform: a focused control owns Enter/Space
+// in every mode.
+{
+  const _g1160=html.indexOf("e.target.matches?.('button')");
+  assert.ok(_g1160>0&&_g1160<html.indexOf('// Presentation mode is view-only'),'button guard precedes the presentation branch');
+  const _fk1160=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
+  const btn1160={matches:s=>s==='button'};
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  const pfA=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  const pfB=Shape.make('frame',{x:400,y:0,w:200,h:100});
+  Store.commit({op:'addMany',shapes:[pfA,pfB]});
+  Presentation.enter();
+  assert.ok(Presentation.isActive(),'pres enters with 2 frames');
+  const vx0=state.viewport.x;
+  _fk1160(' ',{target:btn1160});
+  assert.strictEqual(state.viewport.x,vx0,'ADR-1160: Space on the focused exit button does not advance the slide');
+  _fk1160('Enter',{target:btn1160});
+  assert.strictEqual(state.viewport.x,vx0,'ADR-1160: Enter on the focused exit button does not advance the slide');
+  // Non-vacuity: Space off-control still navigates forward.
+  _fk1160(' ');
+  assert.notStrictEqual(state.viewport.x,vx0,'ADR-1160: Space off-control still advances the slide');
+  Presentation.leave();
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  console.log('  ✓ ADR-1160 activation-key contract covers presentation mode (5 asserts)');
+}
+pass += 5;
+
+// ---------- ADR-1161: window-level drop — chrome suppresses navigation, imports still run ----------
+// dragover/drop moved from canvas to window: a file dropped on the toolbar,
+// stylePanel or page-strip otherwise hit the browser default and navigated
+// away from the app. File drops anywhere import; a text drop into a field
+// stays native; _pA() keeps the presentation view-only (nav blocked, import skipped).
+{
+  const _wdo=html.indexOf("_on(window,'dragover'");
+  assert.ok(_wdo>0&&html.indexOf("_on(canvas,'dragover'")===-1&&html.indexOf("_on(window,'drop'")>_wdo&&html.indexOf("_on(canvas,'drop'")===-1,'drag/drop listeners live on window, not canvas');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  // A drop on chrome (target ≠ canvas/input) still reaches the text cascade.
+  for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'drop text'},clientX:400,clientY:300,preventDefault(){},target:{matches:()=>false}});
+  assert.ok(state.shapes.length===1&&state.shapes[0].text==='drop text','a drop on chrome reaches the cascade');
+  // A text drop into a field stays native — no _pd, no cascade.
+  let pd0=false;
+  for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'x'},clientX:400,clientY:300,preventDefault(){pd0=true},target:{matches:s=>s.includes('input')}});
+  assert.ok(!pd0&&state.shapes.length===1,'a text drop into an input stays native');
+  // View-only: a drop during the presentation suppresses the nav but imports nothing.
+  const pfA=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  Store.commit({op:'add',shape:pfA});
+  Presentation.enter();
+  let pd1=false;
+  for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'pres drop'},clientX:400,clientY:300,preventDefault(){pd1=true},target:{matches:()=>false}});
+  assert.ok(pd1&&state.shapes.length===2,'pres-mode drop blocks navigation without importing');
+  Presentation.leave();
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  console.log('  ✓ ADR-1161 window-level drop target (4 asserts)');
+}
+pass += 4;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
