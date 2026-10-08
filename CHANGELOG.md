@@ -1,3 +1,11 @@
+## [1.8.140] - 2026-10-01
+
+### Fixed
+- **round866 / ADR-1116 — backward restore loops restamp `_born` with receiver parity**: the `del`/`clear`/`pageDel` backward member loops stamped the existence clock only inside the `!byId` gate, while every peer forward path (`addMany`, `pageAdd` member loop, `replace`) stamps it unconditionally per non-tombed member. A member re-born after its kill — alive at undo time — kept the older born locally while peers restamped the undo clock: a `del` redelivered in the (bornLocal, ut) window killed the shape on the undoer only. All three sites now `delete wd._del` + `_bT` on every non-tombed member, alive or restored (byte-identical to the `addMany` forward structure); `_bT` is null-safe for clock-less defensive applies.
+
+### Tests
+- 8 behavioural pins: del-undo ≡ addMany forward member records (restamped born, wiped tomb); clear-undo parity; pageDel-undo member + page-id stamps; a del in the old (born,ut) gap can no longer split the sides.
+
 ## [1.8.139] - 2026-10-01
 
 ### Fixed

@@ -1142,6 +1142,7 @@ Board/
 │   └── ADR-1113-undo-wire-parity.md  # undo-wire × backward parity 監査 clean — inverse は全て wire-legal (delta move は _slimOp 救済)、_lwwSkip は HLC dead-gate
 │   └── ADR-1114-hlc-floor-foreign-clock.md  # 外部時計の全受容経路が `_fTs` で HLC floor を進める — snapshot 系埋込時計 (dels/wc/pages/rep/nameTs) が envelope を迂回していた残穴閉塞
 │   └── ADR-1115-hlc-floor-rehydration.md  # 永続化因果マーカー (d.rep/d.nts) も復元時に `_fTs` で floor fold — pages:null 復元で rep が迂回し自書込みが stale 棄却される残穴閉塞
+│   └── ADR-1116-backward-born-restamp-parity.md  # del/clear/pageDel backward が `_bT` を `!byId` 内でのみスタンプ — undo 時点で alive のメンバーが旧 born を保持し窓内 del で片側発散 → addMany fwd と同じ無条件スタンプに統一
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

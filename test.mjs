@@ -19680,6 +19680,41 @@ pass += 9;
 }
 pass += 4;
 
+// ---- ADR-1116: the three backward restore loops stamped _bT only inside the
+// !byId gate, while every receiver forward path (add/addMany/pageAdd member
+// loop, replace) stamps it unconditionally per non-tombed member. A member
+// re-born after its kill — alive at undo time — kept the older born locally
+// while peers restamped the undo clock: a del in the (bornLocal, ut) window
+// killed it on one side only. Backward now stamps _bT + wipes _del on every
+// non-tombed member, alive or restored — identical to the receiver forward.
+{
+  const bx=id=>({id,type:'rect',x:0,y:0,w:10,h:10,z:1});
+  const seed=id=>{state.roomId='roomOld';Net.init('roomX');state.shapes=[bx(id)];state.wclock={};state.wclock[id]={_del:{peer:'q',seq:1,ts:5},_born:{peer:'q',seq:2,ts:10}};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid()};
+  const ut={peer:'u',seq:1,ts:100};
+  // del-undo == the peers' addMany forward: a live member restamps the undo clock
+  seed('bx1');Store._apply({op:'del',shapes:[bx('bx1')],clock:ut},false);
+  const loc=state.wclock.bx1;
+  seed('bx1');Store.applyRemote({op:'addMany',shapes:[bx('bx1')],clock:ut});
+  const rcv=state.wclock.bx1;
+  assert.deepStrictEqual(loc._born,rcv._born,'ADR-1116: del-undo restamps the undo clock on a live member (was: kept older born)');
+  assert.strictEqual(loc._born.ts,100,'ADR-1116: restamped born = the undo clock');
+  assert.ok(!loc._del&&!rcv._del,'ADR-1116: the superseded tomb wipes on both sides');
+  // clear-undo == addMany forward (its undo-wire form): same parity
+  seed('bx2');Store._apply({op:'clear',shapes:[bx('bx2')],clock:ut},false);
+  assert.strictEqual(state.wclock.bx2._born.ts,100,'ADR-1116: clear-undo restamps on a live member');
+  assert.ok(!state.wclock.bx2._del,'ADR-1116: clear-undo wipes the superseded tomb');
+  // pageDel-undo: member restamps + the page id stamps
+  seed('bx3');Store._apply({op:'pageDel',id:'px9',name:'P',i:0,shapes:[bx('bx3')],clock:ut},false);
+  assert.strictEqual(state.wclock.bx3._born.ts,100,'ADR-1116: pageDel-undo restamps live members like addMany');
+  assert.strictEqual(state.wclock.px9._born.ts,100,'ADR-1116: the restored page id stamps the undo clock');
+  // a del in the old (born,ut) gap loses on the restamped born
+  Store.applyRemote({op:'del',shapes:[bx('bx3')],clock:{peer:'z',seq:1,ts:50}});
+  assert.ok(byId('bx3'),'ADR-1116: a del older than the restamped born can no longer split the sides');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
+  console.log('  ✓ ADR-1116 backward _born restamp parity (8 asserts)');
+}
+pass += 8;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
