@@ -374,7 +374,7 @@ const checks = [
   ['selection export items in ctx menu', html.includes("['ctxExportSelPNG','',()=>exportSelection('png')]") && html.includes("['ctxCopySelPNG','',()=>exportSelection('copy')]") && html.includes("['ctxExportSelSVG','',()=>exportSelection('svg')]")],
   ['selection export i18n ja+en', html.includes("ctxExportSelPNG:'選択をPNG書き出し'") && html.includes("ctxExportSelSVG:'Export selection to SVG'")],
   // v1.7.111: ADR-0053 text overlay follows pan/zoom
-  ['text overlay tracked for viewport follow', html.includes("_teTa=ta;_teVp=''") && html.includes("_teTa=null;_rm(ta);")],
+  ['text overlay tracked for viewport follow', html.includes("_teTa=ta;_teVp=''") && html.includes("_teTa=null;_foldOv(ta);")],
   ['_teFollow per-frame, viewport-signature gated', html.includes("_teFollow();     // ADR-0053") && html.includes("positionTextEditor(_teTa,s)") && html.includes("sig=v.x+','+v.y+','+v.zoom")],
   // v1.7.112: ADR-0054 no micro-pan at zoom bounds
   ['zoomAt pure no-op at zoom bounds', html.includes("if(nz===v.zoom)return;") && html.includes("const nz=clampZoom(v.zoom*Math.exp(delta));")],
@@ -769,11 +769,11 @@ const checks = [
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
   ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f)&&!_hd(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
-  ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967/0995)', html.includes("if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
-  ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967/0995)', html.includes("if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
+  ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967/0995/1153)', html.includes("if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_foldOv(ta);_iv();return}")],
+  ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967/0995/1153)', html.includes("if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_foldOv(inp);_iv();return}")],
   ['sticky chain guards remote-deleted source (ADR-0558/0995)', html.includes("s.type!=='sticky'||_lk(s))return")],
-  ['text overlay closes when edited shape removed/hidden/locked/off-page/ro-adopted (ADR-0559/0569/0572/0574/0709/1103)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}")],
-  ['label overlay closes when labelled shape removed/hidden/locked/off-page/ro-adopted (ADR-0559/0569/0572/0709/1103)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)||state.ro){_rm(_lblTa.inp);_lblTa=null;return}")],
+  ['text overlay closes when edited shape removed/hidden/locked/off-page/ro-adopted (ADR-0559/0569/0572/0574/0709/1103/1153)', html.includes("if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_foldOv(_teTa);_teTa=null;state.editing=null;_iv();return}")],
+  ['label overlay closes when labelled shape removed/hidden/locked/off-page/ro-adopted (ADR-0559/0569/0572/0709/1103/1153)', html.includes("if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)||state.ro){_foldOv(_lblTa.inp);_lblTa=null;return}")],
   ['peer selection outlines skip hidden shapes (ADR-0576)', html.includes("const s=byId(id);if(!s||_hd(s)||!_pgOk(s))continue")],
   ['fragIn ignores duplicate seq slots (ADR-0578)', html.includes("if(!sn.p[seq]){sn.p[seq]=msg.data;sn.g++;sn.b=(sn.b||0)+_ln(msg.data);sn.t=_now()}")],
   ['_dcQ requeue queue is capped at 4096 (ADR-0578)', html.includes("if(_ln(q)<4096&&(this._dcQB||0)+_ln(m)<=33554432)")],
@@ -20862,6 +20862,52 @@ pass += 6;
   console.log('  ✓ ADR-1152 find box Esc single-owner (4 asserts)');
 }
 pass += 4;
+
+// ---- ADR-1153: editor overlays join the focus contract ----
+{
+  assert.ok(html.includes("const _foldOv=el=>{const had=_aE()===el"),'ADR-1153: folds route through the invoker contract');
+  assert.strictEqual((html.match(/_edPrev=_aE\(\);   \/\/ ADR-1153/g)||[]).length,2,'ADR-1153: both editors capture the invoker on open');
+  const kids=[];const _ceA=fakeDoc.createElement;
+  fakeDoc.createElement=tag=>{const el=_ceA(tag);el._L={};el.addEventListener=(t,f)=>{(el._L[t]||=[]).push(f)};el.removeEventListener=()=>{};el.blur=()=>{fakeDoc.activeElement=fakeDoc.body;(el._L.blur||[]).forEach(f=>f())};return el};
+  const _abA=fakeDoc.body.appendChild;fakeDoc.body.appendChild=el=>{kids.push(el)};
+  const ob=Net.broadcast;Net.broadcast=()=>{};
+  const of=canvas.focus;let cf=0;canvas.focus=()=>{cf++};
+  try{
+    const TE=Shape.make('text',{x:0,y:0,w:50,h:20,text:'t0'});TE.id='g1';
+    Store.commit({op:'add',shape:TE});
+    const inv={f:0,focus(){inv.f++},isConnected:true};
+    fakeDoc.activeElement=inv;
+    openTextEditor(byId('g1'),false);
+    const ta=kids[kids.length-1];ta.value='t1';fakeDoc.activeElement=ta;
+    ta.blur();   // real order: focus already fell to <body> when blur fires
+    assert.strictEqual(inv.f,1,'ADR-1153: blur fold hands focus back to the invoker');
+    assert.strictEqual(_getTeTa(),null,'ADR-1153: the fold clears the editor slot');
+    fakeDoc.activeElement=fakeDoc.body;
+    openTextEditor(byId('g1'),false);
+    const ta2=kids[kids.length-1];ta2.value='t2';fakeDoc.activeElement=ta2;
+    ta2.blur();
+    assert.strictEqual(cf,1,'ADR-1153: a body invoker falls back to canvas');
+    fakeDoc.activeElement=inv;
+    openTextEditor(byId('g1'),false);
+    const ta3=kids[kids.length-1];ta3.value='t3';
+    const btn={focus(){btn.f=(btn.f||0)+1},isConnected:true};
+    fakeDoc.activeElement=btn;
+    (ta3._L.blur||[]).forEach(f=>f());   // blur that moved to a real element
+    assert.ok(!btn.f&&inv.f===1,'ADR-1153: a real focus target is never stolen');
+    const LB=Shape.make('rect',{x:0,y:60,w:50,h:40,label:'l0'});LB.id='g2';
+    Store.commit({op:'add',shape:LB});
+    state.selection=new Set(['g2']);
+    fakeDoc.activeElement=inv;
+    editSelectedShapeKbd();
+    const inp=kids[kids.length-1];fakeDoc.activeElement=inp;
+    (inp._L.keydown||[]).forEach(f=>f({key:'Escape',isComposing:false,preventDefault(){}}));
+    assert.strictEqual(inv.f,2,'ADR-1153: label Esc restores the invoker (removal while focused)');
+  }finally{fakeDoc.createElement=_ceA;fakeDoc.body.appendChild=_abA;Net.broadcast=ob;canvas.focus=of;}
+  fakeDoc.activeElement=null;
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.pages=null;state.curPg=null;state.editing=null;
+  console.log('  ✓ ADR-1153 editor fold focus contract (7 asserts)');
+}
+pass += 7;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

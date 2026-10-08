@@ -1179,6 +1179,7 @@ Board/
 │   ├── ADR-1150-ctx-menu-focus-contract.md  # ctx メニューのフォーカス契約 — closed→open で呼出元捕捉、contains ゲートでメニュー保持時のみ復元 (fn が別要素へ移す ctxSearch は据置)、7ピンで固定
 │   ├── ADR-1151-find-box-focus-contract.md  # 検索ボックスのフォーカス契約 — Esc は blur ではなく畳む (ゴースト overlay 解消)、専用 `_sqPrev` スロットで invoker 復元、6ピンで固定
 │   ├── ADR-1152-find-box-esc-single-owner.md  # 検索ボックス Esc fold の単一 owner 化 — element 側 fold と window 側 toggleSq の競合 (閉じて即再オープンする回帰) を解消、close で `sq.value` クリア + ⌘Enter 経路 `_sqPrev=null`、4ピンで固定
+│   ├── ADR-1153-editor-fold-focus-contract.md  # text/label エディタのフォーカス契約加入 — 全7 fold 経路が `_foldOv` 経由で invoker へフォーカス返却 (<body> 落下を解消)、実要素への blur は奪わない、7ピンで固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
