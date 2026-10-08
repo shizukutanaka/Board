@@ -1192,6 +1192,7 @@ Board/
 │   ├── ADR-1163-replace-undo-restores-ro.md  # `replace` op が doc 状態のうち `state.ro` だけを記録していなかった残穴 (ro→editable import の undo で unlock が漏洩) を、`bro`/`aro` の op 記録 + backward 復元/own-redo 再再採用で閉塞、34+9ピンで固定
 │   ├── ADR-1164-replace-undo-restores-viewport.md  # `replace` op が doc スカラーのうち `state.viewport` を記録していなかった残穴 (import undo で旧盤に戻ってもカメラが採用 doc のビューに留まる) を、`bvp`/`avp` 記録 + backward 復元/own-redo 再着地で閉塞、38+11ピンで固定
 │   ├── ADR-1165-delta-snapshot-intake-contract.md  # 'snap:' delta チャネルの dels/ops/rep 受入契約 — dels bounded-id+validClock+_tAlive/locked skip+_pgDel2 parity、ops 'add' 限定+envelope peer 結合+per-prop LWW、_wAdopt existence スタンプ、stale-rep wholesale 棄却、sender は生きた tomb のみ広告 (監査 clean、13+3ピン)
+│   ├── ADR-1166-dup-chain-delta-lifecycle.md  # smart-duplicate チェーンのデルタ・ライフサイクル — ro-revert された nudge が座標を戻しつつ dupDelta だけ増やす幻影ベクトル (両 feed サイトを !state.ro ゲート化) + armed-set move の undo が delta を戻さない非対称 (op.dd snapshot で backward 復元/own-redo 再 feed、dd は _slimOp で wire から剥がす undo-domain) を閉塞、8+3ピンで固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

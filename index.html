@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.189';   // ADR-1165
+const V='1.8.190';   // ADR-1166
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1762,6 +1762,7 @@ const Store={
             else{_sT2(sh,op.dx*d,op.dy*d);op.moved.push(id)}}
         }
         if(!forward)_selR(op);
+        if(op.dd&&op.clock&&op.clock.peer===_pi()&&_dd()&&op.ids.every(id=>state.dupIds.has(id)))state.dupDelta={x:op.dd.x+(forward?op.dx:0),y:op.dd.y+(forward?op.dy:0)};   // ADR-1166: undo/redo round-trips the chain delta
         break;}
       case 'clear':{
         if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.measure=null;state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}
@@ -5335,8 +5336,9 @@ function nudgeSelection(dx,dy){
   if(!_ln(ids))return;
   const orig={};   // ADR-0965
   for(const id of ids){const sh=byId(id);if(sh){orig[id]=clone(sh);_sT2(sh,dx,dy)}}
-  _nugPush({op:'move',ids,dx,dy,orig});
-  if(_dd()&&ids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}     // ADR-0080
+  const _mO={op:'move',ids,dx,dy,orig},_fD=_dd()&&ids.every(id=>state.dupIds.has(id));   // ADR-0080/1166
+  if(_fD)_mO.dd={x:_dd().x,y:_dd().y};_nugPush(_mO);   // snapshot the pre-move delta for undo parity
+  if(_fD&&!state.ro){_dd().x+=dx;_dd().y+=dy}   // ADR-1166: ro-reverted moves never feed the chain
   _iv();
 }
 // Shared by live drag (doMove) and commit (endSelect) so they agree exactly.
@@ -5384,8 +5386,9 @@ function endSelect(wp,shift,alt){
     _gRL(ptr.dragStartShapes);   // ADR-0621/0965
     const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)});
     if(_hp(dx,dy)>0.5&&_ln(mids)){
-      _rcOp({op:'move',ids:mids,dx,dy});
-      if(_dd()&&mids.every(id=>state.dupIds.has(id))){_dd().x+=dx;_dd().y+=dy}   // ADR-0080
+      const _mO={op:'move',ids:mids,dx,dy},_fD=_dd()&&mids.every(id=>state.dupIds.has(id));   // ADR-0080/1166
+      if(_fD)_mO.dd={x:_dd().x,y:_dd().y};_rcOp(_mO);
+      if(_fD&&!state.ro){_dd().x+=dx;_dd().y+=dy}
     }
   }else if(_dk('marquee')&&_mq()){
     const m=_mq();
@@ -8238,7 +8241,7 @@ const Net={
     if(_iA(op.shapes)&&op.op==='addMany'){const{origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0625/0721
     if(_iA(op.shapes)&&(op.op==='del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op;return{...r,shapes:this._slimShapes(op.shapes)}}   // ADR-0445/0625
     if(op.op==='replace')return{op:'replace',after:this._slimShapes(op.after||[]),afterWc:op.afterWc,clock:op.clock,pages:op.pages,curPg:op.curPg};   // ADR-0646/0720: pages + landing page ride the wire
-    const{origSel:_o2,moved:_m2,orig:_o3,...rest}=op;   // ADR-0965: orig is restore-domain, never wire
+    const{origSel:_o2,moved:_m2,orig:_o3,dd:_d4,...rest}=op;   // ADR-0965/1166: orig/dd are restore-domain, never wire
     if(op.op==='move'&&_iA(op.ids)&&_iN(op.dx)&&_iN(op.dy)){   // ADR-0729
       const after=[],before=[];
       for(const id of op.moved||op.ids){const s=byId(id);if(!s)continue;

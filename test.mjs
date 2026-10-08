@@ -283,9 +283,9 @@ const checks = [
   ["snapshot carries rep marker + stale-snapshot skip (ADR-0617)", html.includes("rep:state._lastRep") && html.includes("clockNewer(state._lastRep,msg.rep))break;")],
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_idOK(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
-  ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_nugPush({op:'move',ids,dx,dy,orig})")],
+  ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_mO={op:'move',ids,dx,dy,orig}")],
   ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
-  ["_slimOp strips undo-only fields from wire ops (ADR-0625/0965)", html.includes("const{origSel:_o2,moved:_m2,orig:_o3,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
+  ["_slimOp strips undo-only fields from wire ops (ADR-0625/0965)", html.includes("const{origSel:_o2,moved:_m2,orig:_o3,dd:_d4,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
   ["'clear' rides the wire as empty 'replace' + sender marker parity (ADR-0626)", html.includes("if(op.op==='clear')return{op:'replace',after:[],afterWc:{},clock:op.clock};") && html.includes("if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[]")],
@@ -19154,6 +19154,34 @@ assert.ok(html.includes("_idOK(id)&&validClock(c)")&&html.includes("if(s.locked|
 assert.ok(html.includes("!_bN(id,w._del)&&validClock(w._del)&&clockNewer(w._del,c)"),'sender advertises only live tombs to the asker horizon (ADR-1055/1165)');
 assert.ok(html.includes("for(const s of valid)_wAdopt(s.id,wm.get(s.id))"),'empty-board adopt stamps carried existence clocks (ADR-0927/1165)');
 pass += 3;
+
+// ---- ADR-1166: dup-chain delta lifecycle — dd snapshot + undo/ro parity ----
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+  const A=Shape.make('rect',{x:0,y:0,w:50,h:50});
+  Store.commit({op:'add',shape:A});
+  state.selection=new Set([A.id]);
+  doDuplicate();                                     // arm: copy at +20,+20 → dupDelta={20,20}
+  const bId=[...state.selection][0];
+  assert.ok(state.dupDelta&&state.dupDelta.x===20&&state.dupDelta.y===20,'chain armed at the default offset');
+  nudgeSelection(30,10);_nugEnd();                   // armed-set move → feeds + records dd={20,20}
+  const mOp=state.history.at(-1);
+  assert.ok(state.dupDelta.x===50&&state.dupDelta.y===30,'armed-set nudge feeds the chain delta (ADR-0080)');
+  assert.ok(mOp.op==='move'&&mOp.dd&&mOp.dd.x===20&&mOp.dd.y===20,'a feeding move snapshots the pre-move delta');
+  Store.undo();
+  assert.ok(state.dupDelta.x===20&&state.dupDelta.y===20,'undo restores the recorded delta');
+  Store.redo();
+  assert.ok(state.dupDelta.x===50&&state.dupDelta.y===30,'redo re-feeds the delta');
+  const bx=byId(bId).x;
+  state.ro=true;nudgeSelection(3,0);
+  assert.ok(byId(bId).x===bx&&state.dupDelta.x===50&&state.dupDelta.y===30,'ro-reverted nudge leaves position AND delta');
+  state.ro=false;
+  const slim=Net._slimOp({op:'move',ids:[bId],dx:1,dy:1,dd:{x:1,y:1},before:[],after:[]});
+  assert.ok(!('dd' in slim),'dd is undo-domain — stripped from the wire op');
+  state.dupIds=new Set();state.dupDelta=null;
+  console.log('  ✓ ADR-1166 dup-chain delta lifecycle (8 asserts)');
+}
+pass += 8;
 
 // ---- ADR-1070: wire-secret lifecycle — SDP codec + `k` intake bound ----
 {
