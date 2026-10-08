@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.147';   // ADR-1123
+const V='1.8.148';   // ADR-1124
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1943,13 +1943,9 @@ function _lwwSkip(id,key,op){
 function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
 const _tmE=(w,op)=>!!(w&&w._del&&clockNewer(w._del,op.clock||{})&&!(w._born&&clockNewer(w._born,w._del)));   // ADR-1096
 function _tmb(id,op){return _tmE(_wc()[id],op)}   // ADR-0922/0927: newer tomb outranks restore
-// ADR-1123: text props merge 3-way on remote-wins — the winning op replays
-// its disjoint hunks into local text, so concurrent edits in different
-// regions both survive (W19); overlapping hunks still lose wholesale to the
-// remote prop clock (LWW parity). A merge that keeps local content emits an
-// 'upd' carrying the union — its `before` is the remote's text so every
-// peer's own disjoint diff lands cleanly; clocks order the last emit, which
-// becomes the deterministic end state.
+// ADR-1123: text props merge 3-way on remote-wins — disjoint hunks union, overlapping
+// lose wholesale (LWW parity). A kept-local merge emits an 'upd' carrying the union with
+// `before` = the remote's text, so every peer's disjoint diff lands cleanly; last emit wins.
 const _cpl=(a,b)=>{const n=_min(_ln(a),_ln(b));let i=0;while(i<n&&a[i]===b[i])i++;return i},
 _csl=(a,b)=>{const n=_min(_ln(a),_ln(b));let i=0;while(i<n&&a[_ln(a)-1-i]===b[_ln(b)-1-i])i++;return i},
 _mT3=(l,b,r)=>{
@@ -1961,7 +1957,8 @@ _mT3=(l,b,r)=>{
   return r;
 };
 let _txE=null;
-function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;for(const e of q)Store.commit({op:'upd',id:e.id,before:{[e.k]:e.b},after:{[e.k]:e.a}})}}
+function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;const g=_mP();for(const e of q){let p=g.get(e.id);if(!p)g.set(e.id,p={b:{},a:{}});if(e.b!==_ud)p.b[e.k]=e.b;p.a[e.k]=e.a}for(const[id,p]of g)Store.commit({op:'upd',id,before:p.b,after:p.a})}}
+const _emOK=(k,v)=>k!=='img'&&k!=='dataUrl'&&k!=='type'&&k!=='locked'&&k!=='id'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k[0]!=='_'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&validPatch({[k]:v});   // ADR-1124
 // Bound connectors: s.a/s.b (shape id) derive from the bound shape's edge
 // at render/hit/export so the connector follows. Stored = fallback.
 // Where a ray from shape centre toward (fx,fy) exits the shape's true edge.
@@ -8439,9 +8436,7 @@ const Net={
     }
     return msg;
   },
-  // ADR-0058: merge one snapshot add-op. Unknown shape → plain add;
-  // known shape → per-property LWW so concurrent edits on both
-  // peers converge instead of split-braining (loser reports 'skip').
+  // ADR-0058: merge one snapshot add-op — unknown → add; known → per-property LWW.
   _mergeSnapshotOp(op){
     op=this._attachOp(op,1);                          // ADR-0069/1066
     if(!op||op.op!=='add'||!op.shape)return 'skip';   // snapshot ops are adds only
@@ -8450,25 +8445,24 @@ const Net={
     const rw=(op.wc&&_iO(op.wc))?op.wc:null;
     if(!rw)return 'skip';
     const lw=_wc()[ex.id]||(_wc()[ex.id]=_wM());
-    let dirty=false,duNew=false,imgNew=false;
+    let dirty=false,duNew=false,imgNew=false;const em=[];
     for(const k in rw){
       const rc=rw[k];
       if(!validClock(rc))continue;
       _fTs(rc.ts);   // ADR-1114
       if(k==='_born'||k==='_del'){if(!lw[k]||clockNewer(rc,lw[k])){lw[k]=clone(rc);_ps()}continue}   // ADR-0927: existence clocks merge too
       // ADR-0372
-      const v=op.shape[k];
+      const v=op.shape[k],lc=lw[k];
+      if(lc&&!clockNewer(rc,lc)){if(_emOK(k,ex[k])&&_JS(ex[k])!==_JS(v))_pu(em,{k,b:(v===_ud||validPatch({[k]:v}))?v:_ud,a:ex[k]});continue}   // ADR-1124: local-newer divergent — the responder can't see it
       if(v===_ud||k==='id'||k==='pg'||k[0]==='_'||k==='__proto__'||k==='constructor'||k==='prototype'||!validPatch({[k]:v}))continue;   // ADR-0919
       if(k==='type'&&!_typOK(v,null,ex))continue;   // ADR-0990
-      const lc=lw[k];
-      if(!lc||clockNewer(rc,lc)){ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k]);if(k==='dataUrl')duNew=true;else if(k==='img'&&_iS(v))imgNew=true}   // ADR-0969/1065
+      {ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k]);if(k==='dataUrl')duNew=true;else if(k==='img'&&_iS(v))imgNew=true}   // ADR-0969/1065
     }
-    // ADR-0745/0746: drop parked img refs the merge didn't adopt — a late blob
-    // would still clobber the surviving dataUrl.
+    for(const k in lw)if(!(k in rw)&&_emOK(k,ex[k])&&validClock(lw[k])){const bv=op.shape[k];if(_JS(ex[k])!==_JS(bv))_pu(em,{k,b:(bv===_ud||validPatch({[k]:bv}))?bv:_ud,a:ex[k]})}   // ADR-1124
+    if(_ln(em)){for(const e of em)_pu(_txE||(_txE=[]),{id:op.shape.id,k:e.k,b:e.b,a:e.a});_txFlush()}   // ADR-1124
+    // ADR-0745/0746: drop parked img refs the merge didn't adopt (a late blob would clobber dataUrl)
     if(_iS(op.shape.img)&&ex.img!==op.shape.img&&this._imgPending.get(ex.id)?.k===op.shape.img)this._imgPending.delete(ex.id);
-    // ADR-1065: bytes beat refs — adopted dataUrl kills any surviving img ref
-    // (a stale ref would clobber dataUrl on a coincidental blob arrival). An
-    // adopted ref parks for imgq heal even when a stale dataUrl survives.
+    // ADR-1065: bytes beat refs — adopted dataUrl kills surviving refs; an adopted ref parks for imgq heal.
     if(duNew&&_iS(ex.img)){this._imgPending.delete(ex.id);delete ex.img}
     else if(imgNew){if(_sw(ex.img,'@'))ex.img=ex.img.slice(1);_park(this._imgPending,ex.id,ex.img)}
     if(dirty){
@@ -8479,28 +8473,22 @@ const Net={
     }
     return 'keep';
   },
-  // Throttled: hello/sync-req are attacker-con
-  // board twice — unthrottled, a hostile peer
-  // amplifier. Honest peers only need one snapshot at join time.
+  // Throttled: forged hello/sync-req floods would amplify re-serialization; honest peers need one snapshot at join.
   _lastSnapAt:0,_snapT:0,
   _sendSnapshot(req){
     const now=_now(),w=1000-(now-this._lastSnapAt);
-    // ADR-0452: a dropped throttled hello/sync-req left a 2-peer joiner empty; a
-    // single deferred resend at the window edge instead.
+    // ADR-0452: deferred resend — a dropped throttled hello/sync-req left a 2-peer joiner empty.
     if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot(req)},w);return}
     this._lastSnapAt=now;
     this._send(this._snapshotMsg(req));
   },
-  // ADR-1055: our causal horizon for sync-req — per-id newest clock — so a
-  // rejoining peer gets only the delta, not the whole board. Over-cap → null
-  // (full snapshot beats a truncated horizon).
+  // ADR-1055: causal horizon for sync-req — per-id newest clock (delta sync); over-cap → null (full snapshot).
   _syncReqWc(){
     const m={};
     for(const[id,w]of _oe(_wc())){let mx=null;for(const k in w){const c=w[k];if(validClock(c)&&(!mx||clockNewer(c,mx)))mx=c}if(mx)m[id]=mx}
     return _ln(_ok(m))<=SHARE_MAX_SHAPES?m:null;
   },
-  // Sanitize the asker's claimed horizon {id: clock}; any malformed entry →
-  // null → full snapshot (a lying asker only starves itself).
+  // Sanitize the asker's horizon {id: clock}; malformed → null → full snapshot (a lying asker starves itself).
   _reqWc(msg){
     const r=msg.wc;if(!_iO(r))return null;
     const ks=_ok(r);if(_ln(ks)>SHARE_MAX_SHAPES)return null;
