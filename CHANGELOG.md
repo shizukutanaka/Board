@@ -1,3 +1,8 @@
+## [1.8.170] - 2026-10-01
+
+### Test+Docs
+- **round896 / ADR-1146 — frame-membership × page parity audit complete, contract pinned**: the page-scope sweep over every surface that enumerates frame children or group members. Verified all already-gated: `withFrameChildren` (`_pgOk` at the member scan — an off-page shape geometrically inside the frame never joins the drag/nudge/copy set; hidden members still do since membership is geometric), `_frameOf` (`_pgOk` + `_lk`), `selectFrameContents` (`_sv` + `_pgOk`), `_grpMapGet` halo (`!_hd` + `_pgOk` — a groupId spanning pages draws no cross-page halo), `_ss` chokepoint (`_sv` + `_pgOk` — off-page ids can never enter selection, making the intentionally unfiltered `_grpOf` safe by construction), `_snapIndex`/`pickTop`/marquee/`_bindAt`/Tab/`_sqMatches`/`_shV` exports. Cross-page membership is reachable only via remote ops (heal/unpage/rehome); every consumer gates it, so the transient state stays inert until re-paging. Deferred (documented): dblclick group-descend gates on `grp.every(_hasS)` — a cross-page groupId makes descend dead and falls through to label edit; acceptable since reachable members are already deepest. 8 behavioural pins.
+
 ## [1.8.169] - 2026-10-01
 
 ### Fixed
