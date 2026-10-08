@@ -1,3 +1,8 @@
+## [1.8.151] - 2026-10-01
+
+### Changed
+- **round877 / ADR-1127 — proto-key × keyed-map audit clean pass, contract pinned**: audited every wire-carried key against JS-reserved names (`__proto__`/`constructor`/`prototype`) across all intake paths and every id-keyed store. Clean on both sides — intake rejects reserved keys at `validPatch`/`_cleanVal` (recursive, op patches + connClears + snapshot shapes), the snapshot merge re-checks `rw`-carried keys at the value gate, `_wK`/`_wR`/`_wAdopt`/`_wTb` sanitize every wclock restore (wire `wc`, IDB `d.wc`), `_emOK` refuses them on the convergence-emit path — and every store is a `Map` (`_idIndex`, img stores) or a null-proto record (`state.wclock` + all `_wM()` rebuilds), so a reserved *shape id* is inert data, never a prototype write. 9 behavioural pins freeze the contract against regressions (a future `{}`-for-`_wM()` swap or an `Object.assign` onto `wclock` would silently reopen pollution — the class ADR-0788/0975 closed). No runtime code change; `_wD`/`_wAdopt`/`_wM` added to the test export surface only.
+
 ## [1.8.150] - 2026-10-01
 
 ### Fixed

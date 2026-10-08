@@ -1153,6 +1153,7 @@ Board/
 │   └── ADR-1124-snapshot-merge-emit.md  # snapshot merge が joiner-newer 発散 prop を伝搬 — 一方向チャネルで永久 stale 化していた残穴を、remote 値を `before` とする収束 `upd` emit (`_emOK` + lw-sweep) で閉塞
 │   └── ADR-1125-op-drop-emit.md  # op 経路の同型残穴 — `_lwwDrop` がローカル勝ち prop を黙って drop し送信側が永久 stale 化 → drop 枝から `_txE`/`_txFlush` 収束 `upd` emit (全 prop 全滅の早期 return でも flush)、emit が prop 時計を正当再スタンプする双方向収束契約
 │   └── ADR-1126-structural-drop-emit.md  # 構造 prop 側の同型残穴 — group/ungroup (`groupId`)・zorder (`frac`) の drop を専用 op チャネルで emit (upd 不可)。emit は undo 外 headless commit `_txC` (⌘Z が収束値を stale 値へ戻す実害を解消)
+│   └── ADR-1127-proto-key-keyed-map.md  # proto キー監査 clean 完走 — 全 intake で __proto__/constructor/prototype 拒否 (validPatch・merge ゲート・_wK・_emOK)、全 id キー化 store は Map/null-proto なので JS 予約 id は不活性データ。契約をピン固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
