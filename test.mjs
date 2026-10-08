@@ -298,7 +298,7 @@ const checks = [
   ["gesture cancel purges touch/pinch state (ADR-0636)", html.includes("_clearTouchState();   // ADR-0636")],
   ["kbd editor cancels in-flight gesture (ADR-0637)", html.includes("if(ptr.down)_cancelPointerGesture();   // ADR-0637")],
   ["presentation announces enter/goto/exit to SR (ADR-0639)", html.includes("_ann(`${t('presEnter')}") && html.includes("_ann(t('presExit'))") && html.includes("_ann(`${_frames[_idx].label||t('frame')}")],
-  ["presentation _goto re-resolves frames by id (ADR-0765)", html.includes("_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))")],
+  ["presentation _goto re-resolves frames by id (ADR-0765)", html.includes("_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f)&&!_hd(f))")],
   ["gesture orig-restores are geometry-scoped via _geoR (ADR-0766)", html.includes("const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])}") && !html.includes("_oa(sh,clone(orig))") && !html.includes("_oa(sh,clone(ptr.") && !html.includes("_oa(rsh,clone(ptr.")],
   ["presentation gates dblclick/ctx/wheel/pinch (ADR-0640)", html.includes("_on(canvas,'dblclick',e=>{\n  if(_pA())return;") && html.includes("if(_pA())return;   // ADR-0640: no editing menu") && html.includes("if(_pA())return;   // ADR-0640: pan/zoom behind") && html.includes("_ln(pts)<2||_pA()") && html.includes("_pd(e);if(_pA())return;   // ADR-0640")],
   ['applyRemote validates remote add shape', html.includes("case 'add':    return validShape(op.shape)")],
@@ -767,7 +767,7 @@ const checks = [
   // v1.7.580 (ADR-0552): unhandled ctx-menu keys are swallowed, not bubbled
   ['ctx menu swallows unhandled keys (ADR-0552)', html.includes("e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}")],
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
-  ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
+  ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f)&&!_hd(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
   ['text editor blur guards remote-deleted/locked shape (ADR-0556/0967/0995)', html.includes("if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}")],
   ['label editor commit guards remote-deleted/locked shape (ADR-0557/0967/0995)', html.includes("if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}")],
@@ -20595,6 +20595,40 @@ pass += 7;
   console.log('  ✓ ADR-1142 presence cursor coordinate bound (7 asserts)');
 }
 pass += 7;
+
+// ---- ADR-1143: presentation frame list skips hidden frames (hidden parity) ----
+{
+  assert.ok(html.includes("_frm(s)&&_pgOk(s)&&!_hd(s)"),'ADR-1143: _getFrames skips hidden frames');
+  assert.ok(html.includes("f&&_pgOk(f)&&!_hd(f)"),'ADR-1143: _goto re-resolve skips hidden frames');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  const pf1=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  const pf2=Shape.make('frame',{x:400,y:0,w:200,h:100});
+  pf2.visible=0;
+  Store.commit({op:'addMany',shapes:[pf1,pf2]});
+  Presentation.enter();
+  assert.ok(Presentation.isActive(),'ADR-1143: enters with 1 visible frame');
+  const pex=100-800/7.2;   // _zoomToFrame(pf1): cx=100, zoom=3.6, x=cx-vW/(2*zoom)
+  assert.ok(Math.abs(state.viewport.x-pex)<0.001,`ADR-1143: hidden frame skipped, lands on the visible one (x≈${pex.toFixed(2)})`);
+  Presentation.leave();
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+  const pf3=Shape.make('frame',{x:0,y:0,w:200,h:100});pf3.visible=0;
+  Store.commit({op:'addMany',shapes:[pf3]});
+  Presentation.enter();
+  assert.ok(!Presentation.isActive(),'ADR-1143: an all-hidden board cannot start a presentation');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
+  const pf4=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  const pf5=Shape.make('frame',{x:400,y:0,w:200,h:100});
+  Store.commit({op:'addMany',shapes:[pf4,pf5]});
+  Presentation.enter();
+  assert.ok(Presentation.isActive(),'ADR-1143: enters with 2 visible frames');
+  byId(pf5.id).visible=0;
+  Presentation.next();
+  assert.ok(Math.abs(state.viewport.x-pex)<0.001,'ADR-1143: a mid-pres hide drops the frame, clamps to the visible one');
+  Presentation.leave();
+  state.shapes=[];_invalidateGrid();
+  console.log('  ✓ ADR-1143 presentation hidden-frame parity (8 asserts)');
+}
+pass += 8;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

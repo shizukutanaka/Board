@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.166';   // ADR-1142
+const V='1.8.167';   // ADR-1143
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -10331,7 +10331,7 @@ const Presentation=(()=>{
 
   function _getFrames(){
     return [..._sh()]
-      .filter(s=>_frm(s)&&_pgOk(s))
+      .filter(s=>_frm(s)&&_pgOk(s)&&!_hd(s))   // ADR-1143: hidden frames are not slides
       .sort((a,b)=>a.x-b.x||(a.y-b.y));  // left→right, then top→bottom
   }
 
@@ -10415,7 +10415,7 @@ const Presentation=(()=>{
 
   function _goto(i){
     // ADR-0554: drop frames deleted mid-presentation
-    _frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f));if(!_ln(_frames)){leave();return}   // ADR-0677/0765
+    _frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f)&&!_hd(f));if(!_ln(_frames)){leave();return}   // ADR-0677/0765/1143
     _idx=_max(0,_min(_ln(_frames)-1,i));
     _zoomToFrame(_frames[_idx]);
     const c=_g('presCounter');
