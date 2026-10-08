@@ -20230,7 +20230,7 @@ pass += 10;
   assert.ok(html.includes("objectStoreNames.contains(DB_IMG_STORE)"),'ADR-1119: imgs store guarded on upgrade (v1→v2)');
   assert.ok(html.split("state.wclock=_wM()").length-1>=3,'ADR-1119: clean tomb slate precedes every clk-less _pgAdopt');
   assert.ok(html.includes("for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null"),'ADR-1119: sender stamps adopted pages\' _born like receivers');
-  assert.ok(html.includes("_pgAdopt(d.pages,d.curPg,_pgClk(d))"),'ADR-1119: Persist.load passes the rep clock');
+  assert.ok(html.includes("_pgAdopt(d.pages,d.curPg,_pgClk(d),1)"),'ADR-1119: Persist.load passes the rep clock');
   assert.ok(html.includes("pages:op.beforePages,curPg:op.beforeCurPg"),'ADR-1119: undo-wire swaps the page sets');
   assert.ok(html.includes("rs:state.roomSecret"),'ADR-1119: room secret persists on the doc records');
   assert.ok(html.includes("wc:_wc()"),'ADR-1119: doc record persists the tomb map');
@@ -21343,6 +21343,90 @@ pass += 5;
   state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
   console.log('  ✓ ADR-1161 window-level drop target (4 asserts)');
 }
+pass += 4;
+
+// ---------- ADR-1168: swap restore-domain boundary — doc scalars round-trip, causal markers never regress ----------
+// Completeness pin for the ADR-1162..1167 series: every doc-scoped scalar a
+// swap adopts is op-carried and restored on undo; everything else (causal
+// markers, dedup ledger, session auth, gesture chain) is deliberately outside.
+{
+  fakeWin.location.hash='';   // the world constructor's own main() would otherwise consume a leftover #b= hash mid-test
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));   // let the constructor's main() read the cleared hash and settle
+  const _zM=async o=>{const cs=new CompressionStream('deflate-raw');const w=cs.writable.getWriter();
+    w.write(new TextEncoder().encode(JSON.stringify(o)));w.close();
+    const buf=new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    return '#b='+encodeURIComponent('z:'+btoa(String.fromCharCode(...buf)))};
+  const _rM=(id,x)=>({id,type:'rect',x,y:0,w:10,h:10,z:1,stroke:'#000',fill:null,size:2,opacity:1});
+  // (a) every doc-scoped scalar round-trips through the recorded op
+  E.state.shapes=[];E._invalidateGrid();
+  E.state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];E.state.curPg='pA';
+  E.state.viewport.x=5;E.state.viewport.y=6;E.state.viewport.zoom=1.5;
+  E.state.docName='Mine';
+  E.state.dupIds=new Set(['dx']);E.state.dupDelta={x:7,y:8};
+  fakeWin.location.hash=await _zM({v:1,shapes:[_rM('impM',0)],pages:[{id:'pZ',name:'Z'}],curPg:'pZ',name:'Foreign',viewport:{x:100,y:200,zoom:2}});
+  assert.strictEqual(await E.Share.importFromHash(),true,'swap applies');
+  assert.strictEqual(E.state.curPg,'pZ','swap adopts the payload page set');
+  const rep0=E.state._lastRep,s0=E.state.seq;
+  E.Store.undo();
+  assert.strictEqual(E.state.curPg,'pA','undo restores the pre-swap page + landing');
+  assert.ok(E.state.pages.length===2&&E.state.pages[0].id==='pA','undo restores the pre-swap page list');
+  assert.strictEqual(E.state.viewport.x,5,'undo restores the pre-swap camera');
+  assert.strictEqual(E.state.docName,'Mine','undo restores the pre-swap name');
+  // (b) ordering state only ever advances — undo restamps fresh clocks
+  //     (op.clock mint at Store.undo), never rolls markers back.
+  assert.ok(clockNewer(E.state._lastRep,rep0),'undo advances _lastRep past the swap clock (never regresses)');
+  assert.ok(E.state.seq>s0,'undo consumes fresh seq (monotone per launch)');
+  assert.ok(E.state.seenOps.size>0,'the dedup ledger survives the swap — delayed echoes still dedup');
+  // (c) gesture state is outside the doc domain: the armed dup chain keeps
+  //     its delta (its ids are dead — sel⊆dupIds can never fire it).
+  assert.ok(E.state.dupDelta&&E.state.dupDelta.x===7,'the dup chain delta is not swapped');
+  E.Store.redo();
+  assert.strictEqual(E.state.curPg,'pZ','redo re-adopts the payload page');
+  assert.strictEqual(E.state.docName,'Foreign','redo re-adopts the name');
+  // (d) roomSecret is session-scoped auth, not doc content: a .board cannot
+  //     move it, and undo leaves it alone.
+  E.state.roomSecret='CUR';
+  const _hadFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR=globalThis.FileReader;
+  try{
+    globalThis.FileReader=class{readAsText(){this.result=JSON.stringify({v:1,shapes:[_rM('impX',0)],rs:'OTHER',docName:'D2'});this.onload&&this.onload()}};
+    E.state.shapes=[];E._invalidateGrid();
+    E.importBoard({name:'x.board'});
+    assert.strictEqual(E.state.roomSecret,'CUR','.board cannot move the session auth key');
+    E.Store.undo();
+    assert.strictEqual(E.state.roomSecret,'CUR','undo leaves the auth key alone');
+  }finally{if(_hadFR)globalThis.FileReader=_prevFR;else delete globalThis.FileReader}
+  // (e) backup restore adopts the record's rs — and undo must NOT regress it
+  //     (reverting would flip the MAC key mid-session).
+  fakeWin.location.hash='';   // same constructor-import guard as above
+  const E2=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _prevDb=E2.Persist.db;E2.Persist.db=makeFakeIdb();
+  try{
+    E2.state.roomSecret='K1';
+    await E2.Persist.saveBackup([_rM('bkM',1)],{x:0,y:0,zoom:1},'B');
+    E2.state.roomSecret='K2';E2.state.shapes=[];E2._invalidateGrid();
+    assert.strictEqual(await E2.Persist.restoreBackup(),true,'backup restores');
+    assert.strictEqual(E2.state.roomSecret,'K1','restore reseeds the dead origin key (ADR-1133)');
+    E2.Store.undo();
+    assert.strictEqual(E2.state.roomSecret,'K1','undo does not regress the adopted auth key');
+  }finally{E2.Persist.db=_prevDb}
+  console.log('  ✓ ADR-1168 swap restore-domain boundary (17 asserts)');
+}
+pass += 17;
+assert.ok(html.includes("op.clock={peer:_pi(),seq:++state.seq,ts:_ut}")&&html.includes("if(w.op==='replace')state._lastRep=w.clock"),'undo restamps fresh clocks — markers only advance (ADR-0717/0615/1168)');
+assert.ok(html.includes(",bro,aro,bvp,bnm)=>"),'the _repC signature carries the whole restore domain (ADR-1168)');
+assert.ok(html.includes("if(!forward)_selR(op)"),'undo restores the pre-swap selection (ADR-1168)');
+assert.ok(html.includes("und?!_tmE(w,{clock:clk}):!w._del")&&html.includes("op.beforeCurPg,op.clock,1)"),'swap applies veto only a tomb newer than the op — undo/redo/wire all restore (ADR-1168)');
 pass += 4;
 
 } catch (err) {
