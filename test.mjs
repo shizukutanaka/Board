@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush } = api;
+          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -20290,6 +20290,39 @@ pass += 8;
   console.log('  ✓ ADR-1131 dropped-key before parity (10 asserts)');
 }
 pass += 10;
+
+// ADR-1132 — the three tomb helpers share one dominance relation: a _born newer
+// than _del keeps the shape alive on every path; a _del newer than an arriving
+// op's clock gates it. Missing fields degenerate correctly and _bT only ever
+// upgrades _born. Verified this round also: _attachOp covers every shape-bearing
+// op (pageAdd members attach at apply-site), _placeCopies remaps every structural
+// field (id/frac/groupId/a/b/pg), the MAC canon binds msg.peer (data is excluded
+// but compensated by the _imgHash content check), origSel never crosses the wire
+// (_slimOp strips it) so remote _selR is a no-op, and _shCap gates every remote
+// push (the 'replace' member install is intake-bounded).
+{
+  state.wclock=_wM();_invalidateGrid();
+  const C=t=>({ts:t,peer:'zz',seq:0});
+  const opAt=t=>({op:'upd',id:'x',clock:C(t)});
+  state.wclock.x={_del:C(5)};
+  assert.strictEqual(_tmE(state.wclock.x,opAt(3)),true,'ADR-1132: fresher tomb gates a stale op');
+  assert.strictEqual(_tmE(state.wclock.x,opAt(9)),false,'ADR-1132: stale tomb cannot gate a fresher op');
+  state.wclock.x._born=C(7);
+  assert.strictEqual(_tmE(state.wclock.x,opAt(3)),false,'ADR-1132: born outranks del — the op applies');
+  assert.strictEqual(_bN('x',C(5)),true,'ADR-1132: born-newer gate fires');
+  assert.strictEqual(_bN('x',C(9)),false,'ADR-1132: born-newer gate releases');
+  assert.strictEqual(_tAlive('x'),false,'ADR-1132: an outranked tomb is alive for adopt');
+  delete state.wclock.x._born;
+  assert.strictEqual(_tAlive('x'),true,'ADR-1132: a bare tomb is dead for adopt');
+  assert.strictEqual(_tAlive('x',{_born:C(9)}),false,'ADR-1132: a carried born resurrects the tomb');
+  assert.strictEqual(_tAlive('y'),false,'ADR-1132: an unknown id is not dead');
+  _bT('z',C(3));assert.strictEqual(state.wclock.z._born.ts,3,'ADR-1132: _bT stamps the first born clock');
+  _bT('z',C(9));assert.strictEqual(state.wclock.z._born.ts,9,'ADR-1132: _bT upgrades _born to the newer clock');
+  _bT('z',C(1));assert.strictEqual(state.wclock.z._born.ts,9,'ADR-1132: _bT never downgrades _born');
+  state.wclock=_wM();_invalidateGrid();
+  console.log('  ✓ ADR-1132 existence-clock helper equivalence (12 asserts)');
+}
+pass += 12;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

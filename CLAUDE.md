@@ -1158,6 +1158,7 @@ Board/
 │   └── ADR-1129-recordcommit-eviction-undo-redo-atomicity.md  # _recordCommitted 最後の dedup 無防備サイト (pre-record throw でキー滞留→再配送を永久棄却) を catch→delete→rethrow で閉塞 + undo/redo の histIdx を apply 成功後へ移動 (undo は _pgFollow throw で二重 revert、redo は apply throw で op スキップの非対称を対称化)
 │   └── ADR-1130-best-effort-flush-drain.md  # _txFlush の drain 中 _txC throw が残収束キューを静黙放棄 (one-shot・再試行なし→発散 prop が永久 stale) → best-effort drain + 先頭エラー再throw (ADR-1128 個別 evict 契約は維持)
 │   └── ADR-1131-dropped-key-before-parity.md  # _lwwDrop が after のみフィルタで before を不対称残留 → drop キーの before も除去 (op は適用差分のみを記述; group/ungroup parity) + remote op は history 非登録・_vPages が [null] 拒否の契約ピン
+│   └── ADR-1132-existence-clock-helper-equivalence.md  # tomb3系統 (_tmE/_tmb・_bN・_tAlive) 監査 clean 完走 — 同一支配関係 (_born>_del で全経路 alive、_del>到着時計で gate、_bT は単調 upgrade) を12ピンで固定。併せて _attachOp 網羅・_placeCopies 全 remap・MAC peer 束縛・origSel 非搬送・_shCap 網羅も検証済み
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
