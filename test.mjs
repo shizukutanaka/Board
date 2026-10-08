@@ -1223,7 +1223,7 @@ const checks = [
   ['rotated resize works in local frame + world re-pin', html.includes("sp=_rotPt(wp.x,wp.y,cx0,cy0,-orig.rotate);") && html.includes("sh.x+=tgt.x-cur.x;sh.y+=tgt.y-cur.y;")],
   ['selection outline traces rotated box', html.includes("if(single&&single.rotate&&single.w!=null){")],
   // v1.6.70: keyboard resize (Alt+arrow)
-  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("case 'beautify':{const noLock=") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
+  ['resize op registered (apply, validate, remote)', html.includes("case 'resize':\n      case 'align':\n      case 'beautify':{") && html.includes("const noLock=p=>!('locked' in p);") && html.includes("'style','resize','replace','pageAdd','pageDel','pageName','beautify'])")],
   ['Alt+arrow keyboard-resizes box shapes', html.includes("_nugPush({op:'resize',before,after});") && html.includes("sh.w=_max(4,sh.w+dw);sh.h=_max(4,sh.h+dh);")],
   // v1.6.71: image import error handling
   ['imgErr i18n key in both locales', html.includes("imgErr:'画像を読み込めませんでした'") && html.includes("imgErr:'Image failed to load'")],
@@ -1402,14 +1402,14 @@ const checks = [
     html.includes("_keepSel(origSel);")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
-    html.includes("case 'beautify':{const noLock=p=>!('locked' in p);")],
+    html.includes("const noLock=p=>!('locked' in p);")&&html.includes("op.after.every(noLock)&&op.before.every(noLock)")],
   // v1.7.26: _apply replace backward restores origSel; importBoard/importFromHash attach it
   ['_apply replace backward restores origSel; import callers attach origSel + afterWc to op',
     html.includes("if(!forward)_selR(op);") &&
     html.includes("_repC(before,beforeWc,origSel,_bpg,_bcp);")],
   // v1.7.28: validRemotePayload for upd must block locked key (parity with style/resize/align)
   ['remote upd op cannot set locked (noLock guard extended to upd)',
-    html.includes("case 'upd':{const noLock=p=>!('locked' in p);\n      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)")],
+    html.includes("case 'upd':{\n      if(!_iS(op.id)||_ln(op.id)>64||!validPatch(op.after)||!noLock(op.after)")&&html.includes("!noLock(op.before)")],
   // v1.7.30: _apply add backward restores origSel; createShapeKbd attaches origSel
   ['_apply add backward restores origSel; createShapeKbd attaches origSel',
     html.includes("_selR(op);") &&
@@ -19714,6 +19714,132 @@ pass += 4;
   console.log('  ✓ ADR-1116 backward _born restamp parity (8 asserts)');
 }
 pass += 8;
+
+// ---- ADR-1117: wire pageName carries the restored nts/ntp — nts was _tsOK-
+// bounded (ADR-0791) but ntp landed verbatim into p.ntp → persisted, gossiped
+// via msg.pages, and read as the 'peer' in clockNewer equal-ts rename
+// arbitration: a highest-codepoint string wins every tie. ntp is now bounded
+// like _vPages' ntp (string ≤64) at the validator AND at apply (the _tsOK
+// recheck's sibling — covers ops that bypass validRemotePayload).
+{
+  const seed=()=>{state.roomId='roomOld';Net.init('roomX');state.shapes=[];state.wclock={};state.pages=[{id:'p1',name:'A',nts:10,ntp:'a',bts:5,btp:'a'}];state.curPg='p1';state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid()};
+  seed();
+  Store.applyRemote({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:'z'.repeat(200)});
+  assert.strictEqual(state.pages[0].name,'A','ADR-1117: oversized ntp rejects the whole op');
+  assert.strictEqual(state.pages[0].nts,10,'ADR-1117: the rejected op leaves the name clock untouched');
+  seed();
+  Store.applyRemote({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:{x:1}});
+  assert.strictEqual(state.pages[0].name,'A','ADR-1117: non-string ntp rejects the op');
+  seed();
+  Store.applyRemote({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:'z'});
+  assert.strictEqual(state.pages[0].name,'B','ADR-1117: valid nts+ntp rename lands');
+  assert.strictEqual(state.pages[0].ntp,'z','ADR-1117: the carried ntp is adopted on the page record');
+  seed();
+  Store._apply({op:'pageName',id:'p1',after:'B',clock:{peer:'q',seq:1,ts:50},nts:60,ntp:7},true);
+  assert.strictEqual(state.pages[0].ntp,'q','ADR-1117: apply-side guard drops a non-string ntp (validator-bypass path)');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
+  console.log('  ✓ ADR-1117 pageName ntp bound (6 asserts)');
+}
+pass += 6;
+
+// ---- ADR-1118: op-clock seq contract — every local mint stamps
+// {peer:_pi(),seq:++state.seq,ts:nowTs()} via _fck (commit/redo) or the
+// inline twins (undo/undo-wire/direct broadcasts). peerId carries a
+// per-launch incarnation suffix (ADR-0459) so the 'peer:seq' seenOps key
+// stays unique though state.seq resets on reload. 'snap:' seqs ride
+// snapshot-embedded adds at ts:0 — dedup-key-only, never arbitrate
+// (clockNewer compares ts first). The seq tie-break is intra-peer only;
+// mixed string/number compares false both ways → deterministic not-newer.
+{
+  const seed=()=>{state.roomId='roomOld';Net.init('roomX');state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;state.seq=0;_invalidateGrid()};
+  seed();
+  Store.commit({op:'add',shape:{id:'a1',type:'rect',x:0,y:0,w:10,h:10,stroke:'#000',fill:'none',size:2,opacity:1}});
+  Store.commit({op:'add',shape:{id:'a2',type:'rect',x:5,y:0,w:10,h:10,stroke:'#000',fill:'none',size:2,opacity:1}});
+  assert.strictEqual(state.history[0].clock.seq,1,'ADR-1118: first commit mints seq 1');
+  assert.strictEqual(state.history[1].clock.seq,2,'ADR-1118: second commit mints seq 2 — one shared counter');
+  assert.strictEqual(state.history[0].clock.peer,state.peerId,'ADR-1118: mint binds the incarnation peer id');
+  assert.ok(html.includes("peerId:PEER_ID+'.'+uid().slice(0,6)"),'ADR-1118: peerId carries the per-launch suffix (dedup keys launch-unique)');
+  Store.undo();
+  assert.strictEqual(state.history[1].clock.seq,3,'ADR-1118: undo restamps the op with a fresh seq');
+  assert.ok(state.seenOps.has(state.peerId+':1')&&state.seenOps.has(state.peerId+':2'),'ADR-1118: dedup key is peer:seq');
+  assert.ok(html.includes("_iS(c.seq)&&c.seq&&_ln(c.seq)<=80")&&html.includes("seq:'snap:'+s.id"),'ADR-1118: snap-tag clock is wire-legal');
+  assert.ok(!clockNewer({ts:0,peer:'p',seq:'snap:x'},{ts:1,peer:'p',seq:9}),'ADR-1118: snap clock (ts:0) never wins');
+  assert.ok(clockNewer({ts:5,peer:'p',seq:9},{ts:5,peer:'p',seq:3}),'ADR-1118: intra-peer seq tie-break orders');
+  assert.ok(!clockNewer({ts:5,peer:'p',seq:'snap:x'},{ts:5,peer:'p',seq:3})&&!clockNewer({ts:5,peer:'p',seq:3},{ts:5,peer:'p',seq:'snap:x'}),'ADR-1118: mixed-type seq compare is deterministic not-newer');
+  seed();
+  console.log('  ✓ ADR-1118 op-clock seq contract (10 asserts)');
+}
+pass += 10;
+
+// ADR-1119: doc-switch × IDB-migration page-clock audit — clean pass, contract pinned.
+// The three clk-less _pgAdopt sites (local .board import, share-link import, backup
+// restore) are each preceded by `state.wclock=_wM()` (clean tomb slate) and followed
+// by `_repC` → `_recordCommitted`, which stamps _bT for adopted pages with the same
+// carried bts / op.clock receivers' _pgAdopt uses. The IDB upgrade guards both
+// stores with contains() so v1→v2 is safe from any earlier version, and the
+// 'replace' undo-wire swaps the page sets (pages→beforePages).
+{
+  assert.ok(html.includes("!d.objectStoreNames.contains(DB_STORE))d.createObjectStore(DB_STORE)"),'ADR-1119: docs store guarded on upgrade');
+  assert.ok(html.includes("objectStoreNames.contains(DB_IMG_STORE)"),'ADR-1119: imgs store guarded on upgrade (v1→v2)');
+  assert.ok(html.split("state.wclock=_wM()").length-1>=3,'ADR-1119: clean tomb slate precedes every clk-less _pgAdopt');
+  assert.ok(html.includes("for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null"),'ADR-1119: sender stamps adopted pages\' _born like receivers');
+  assert.ok(html.includes("_pgAdopt(d.pages,d.curPg,_pgClk(d))"),'ADR-1119: Persist.load passes the rep clock');
+  assert.ok(html.includes("pages:op.beforePages,curPg:op.beforeCurPg"),'ADR-1119: undo-wire swaps the page sets');
+  assert.ok(html.includes("rs:state.roomSecret"),'ADR-1119: room secret persists on the doc records');
+  assert.ok(html.includes("wc:_wc()"),'ADR-1119: doc record persists the tomb map');
+  console.log('  ✓ ADR-1119 doc-switch × IDB-migration page clocks (8 asserts)');
+}
+pass += 8;
+
+// ADR-1120: stored-op × live-state aliasing audit — clean pass, contract pinned.
+{
+  assert.ok(html.includes("function clone(o){return _JP(_JS(o))}"),'ADR-1120: clone is deep — no nested aliasing into history');
+  assert.ok(!html.includes("state.wclock=op"),'ADR-1120: the tomb map is never adopted verbatim');
+  assert.ok(!html.includes("state.pages=op"),'ADR-1120: the page set is never adopted verbatim');
+  assert.ok(html.includes("state.pages=keep&&_ln(keep)?clone(keep):null"),'ADR-1120: page adoption deep-clones');
+  assert.ok(html.includes("n[k]=clone(w[k])")&&html.includes("w[k]=clone(rc)"),'ADR-1120: clock restores merge per-key clones');
+  assert.ok(html.includes("op.wc[sh.id]=clone(_wc()[sh.id])")&&html.includes("op.wc[id]=clone(_wc()[id])"),'ADR-1120: op wc snapshots clone each record');
+  assert.ok(html.split("shapes:clone(").length-1>=3,'ADR-1120: del commits store cloned shapes');
+  assert.ok(html.split("_attachShape(clone(").length-1>=5,'ADR-1120: every install clones before attach');
+  console.log('  ✓ ADR-1120 stored-op × live-state aliasing (8 asserts)');
+}
+pass += 8;
+
+// ADR-1121: global op-log history boundary audit — clean pass, contract pinned.
+{
+  assert.ok(html.includes("const _hi=()=>state.history")&&html.includes("const _hx=()=>state.histIdx"),'ADR-1121: one shared op log + cursor');
+  assert.ok(html.includes("const MAX_HISTORY=500"),'ADR-1121: bounded history');
+  assert.ok(html.split("_hi().length=_hx()+1").length-1===3,'ADR-1121: every push path chops the redo branch');
+  assert.ok(!html.includes("state.history="),'ADR-1121: the log is append/shift only — never reassigned');
+  assert.ok(html.split("if(op.clock.peer===_pi())Net.broadcast(op)").length-1>=2,'ADR-1121: remote ops are recorded, never echoed');
+  assert.ok(html.includes("histIdx:-1"),'ADR-1121: cursor starts before the first op');
+  assert.ok(html.includes("op.clock={peer:_pi(),seq:++state.seq,ts:_ut}")&&html.includes("w.clock={peer:_pi(),seq:++state.seq,ts:_ut}"),'ADR-1121: undo + undo-wire restamp fresh own clocks');
+  assert.ok(html.includes("_fck(op)"),'ADR-1121: redo re-mints a newer clock');
+  assert.ok(html.includes("_hi()[_hx()].shape=clone(s)"),'ADR-1121: text surgery patches a cloned shape');
+  console.log('  ✓ ADR-1121 global op-log history boundary (9 asserts)');
+}
+pass += 9;
+// ADR-1122: 'locked' is a dedicated-op prop (align dir:'lock' only) — forged
+// locked keys in upd baselines / move patches are rejected at intake: an
+// upd before.locked would land on the undoer's board while peers' noLock
+// rejects the inverse (divergence); a move after.locked would stamp a phantom
+// lock arbitration clock via _stampWrites (also divergence).
+{
+  const ck={peer:'p9',seq:1,ts:1};
+  const r=Shape.make('rect',{id:'rL',x:0,y:0,w:10,h:10});state.shapes=[r];state.seenOps=new Set();_invalidateGrid();
+  assert.strictEqual(validRemotePayload({op:'upd',id:'rL',after:{x:1},before:{x:0,locked:true}}),false,'ADR-1122: upd before.locked rejected');
+  assert.strictEqual(validRemotePayload({op:'upd',id:'rL',after:{x:1},before:{x:0}}),true,'ADR-1122: legit upd accepted');
+  const mv=(a,b)=>({op:'move',ids:['rL'],dx:1,dy:0,after:a,before:b,clock:ck});
+  assert.strictEqual(validRemotePayload(mv([{id:'rL',x:1,locked:true}],[{id:'rL',x:0}])),false,'ADR-1122: move after.locked rejected');
+  assert.strictEqual(validRemotePayload(mv([{id:'rL',x:1}],[{id:'rL',x:0,locked:true}])),false,'ADR-1122: move before.locked rejected');
+  assert.strictEqual(validRemotePayload(mv([{id:'rL',x:1}],[{id:'rL',x:0}])),true,'ADR-1122: legit move accepted');
+  Net._onRecv({k:'op',peer:'p9',op:mv([{id:'rL',x:9,locked:false}],[{id:'rL',x:0}])},false);
+  assert.strictEqual(r.x,0,'ADR-1122: forged move dropped at intake — shape unmoved');
+  assert.ok(!state.wclock['rL']||!state.wclock['rL'].locked,'ADR-1122: no phantom locked clock stamped');
+  state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ locked keys gated on upd/move patch baselines (ADR-1122)');
+}
+pass += 7;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 

@@ -1,3 +1,36 @@
+## [1.8.146] - 2026-10-01
+
+### Fixed
+- **round872 / ADR-1122 — 'locked' gated on every patch baseline**: `upd`'s `before` baseline and `move`'s `before`/`after` patches lacked the `noLock` guard that siblings already enforce. A forged `upd` `before.locked` landed on the victim's undo (local lock + revert) while every peer's `noLock(after)` rejected the inverse op — divergence. A forged `move` `after.locked` stamped a phantom `locked` arbitration clock through `_stampWrites`, silently corrupting every later legit lock op — divergence. `noLock` is now hoisted to `validRemotePayload` top-level and both ops gate `locked` on `before` *and* `after`. 7 behavioural pins.
+
+## [1.8.145] - 2026-10-01
+
+### Tests
+- **round871 / ADR-1121 — global op-log history boundary audit (docs+pin)**: `state.history` is a single op log shared by `commit` and `applyRemote` — both push after chopping the redo branch (`_hi().length=_hx()+1`), so undo means "undo the last applied op" and can never replay old-doc ops across a `'replace'` swap delimiter. The array is never reassigned (`push`/`shift`/`length=` only), `MAX_HISTORY=500` shift-compensates `histIdx`, and both push sites gate outbound on `clock.peer===_pi()` so remote ops are recorded but never echoed. Undo/redo/undo-wire all restamp fresh own clocks; text-editor history surgery stays local-only. 9 source pins.
+
+## [1.8.144] - 2026-10-01
+
+### Tests
+- **round870 / ADR-1120 — stored-op × live-state aliasing audit (docs+pin)**: `Store.commit` payloads (`shapes`, `before`/`after`, `pages`, `wc`) share no references with live state — `clone` is deep (`_JP(_JS)`); `state.wclock=`/`state.pages=` are never adopted verbatim (`_pgAdopt` clones `keep`); `_wR`/`_wAdopt` merge per-key cloned clocks; both `op.wc` snapshot sites clone each record; every backward install pushes `_attachShape(clone(s))`; every `del` commit stores `shapes:clone(…)`; clock objects are never mutated in place so `_wTb`'s carried refs are safe. 8 source pins.
+
+## [1.8.143] - 2026-10-01
+
+### Tests
+- **round869 / ADR-1119 — doc-switch × IDB-migration page-clock audit (docs+pin)**: the three clk-less `_pgAdopt` sites (`.board` import, `#b=` share-link import, `:prev` backup restore) each precede the adopt with `state.wclock=_wM()` and record a `'replace'` op whose `_recordCommitted` stamps `_bT` for adopted pages (sender parity with receivers' `_pgAdopt`). `Persist.load` hands `_pgClk(d)` (rep marker) to the adopt; `_undoWire('replace')` swaps `pages`→`beforePages`. IDB upgrade guards both stores with `contains()` so v1→v2 is safe from any earlier version; all `load` restores are field-gated. 8 source pins.
+
+## [1.8.142] - 2026-10-01
+
+### Tests
+- **round868 / ADR-1118 — op-clock seq contract audit (docs+pin)**: every emitted op clock mints `{peer:_pi(), seq:++state.seq, ts:nowTs()}` — one monotonic counter per launch. `state.seq` is intentionally not persisted: the ADR-0459 per-launch peerId incarnation suffix makes `peer:seq` dedup keys launch-unique, so a relaunched tab reusing seqs cannot collide with keys peers already recorded. Snapshot-embedded adds carry `seq:'snap:'+id` at `ts:0` — dedup-key-only, never arbitrate; the intra-peer seq tie-break is a total order (mixed string/number compares false both ways). 10 pins: seq consumption per commit, undo restamp freshness, dedup key composition, peerId suffix source pin, snap-clock legality + non-winning, intra-peer seq order, mixed-type determinism.
+
+## [1.8.141] - 2026-10-01
+
+### Fixed
+- **round867 / ADR-1117 — bound the carried `ntp` on wire `pageName`**: the undo-wire rename carries the restored name clock as `nts`/`ntp` (ADR-0727); `nts` was `_tsOK`-bounded at intake + apply, but `ntp` landed verbatim — any non-null value reached `p.ntp`, where it persists, gossips via `msg.pages`, and is read as the `peer` in `clockNewer`'s equal-ts tie-break (`a.peer > b.peer`). A MAC-authenticated peer shipping `ntp:'\uffff'…` wins every subsequent equal-ts rename (durable rename-pinning); a non-string `ntp` skews arbitration silently. `ntp` is now bounded like `_vPages`' (`_iS` + ≤64) at the validator AND at apply (the `_tsOK` recheck's sibling, covering validator-bypassing applies).
+
+### Tests
+- 6 behavioural pins: oversized / non-string `ntp` rejects the whole op; valid `nts`+`ntp` lands both; the apply-side guard drops a non-string `ntp` without clobbering the `clock.peer` write.
+
 ## [1.8.140] - 2026-10-01
 
 ### Fixed

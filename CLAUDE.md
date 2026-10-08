@@ -1143,6 +1143,12 @@ Board/
 │   └── ADR-1114-hlc-floor-foreign-clock.md  # 外部時計の全受容経路が `_fTs` で HLC floor を進める — snapshot 系埋込時計 (dels/wc/pages/rep/nameTs) が envelope を迂回していた残穴閉塞
 │   └── ADR-1115-hlc-floor-rehydration.md  # 永続化因果マーカー (d.rep/d.nts) も復元時に `_fTs` で floor fold — pages:null 復元で rep が迂回し自書込みが stale 棄却される残穴閉塞
 │   └── ADR-1116-backward-born-restamp-parity.md  # del/clear/pageDel backward が `_bT` を `!byId` 内でのみスタンプ — undo 時点で alive のメンバーが旧 born を保持し窓内 del で片側発散 → addMany fwd と同じ無条件スタンプに統一
+│   └── ADR-1117-pagename-carried-ntp-bound.md  # wire `pageName` の `ntp` が無検証着地 — 巨大/非文字列の ntp が改名 LWW の tie-break を腐敗 → `_vPages` 同型の ≤64 文字列束で閉塞 (validator + apply 二層)
+│   └── ADR-1118-op-clock-seq-contract.md  # op 採番 `{peer:_pi(),seq:++state.seq,ts:nowTs()}` の一カウンタ契約 — seq 非永続は incarnation-suffix peerId で dedup キーを launch-unique に (監査 clean、docs+pin)
+│   └── ADR-1119-doc-switch-idb-page-clocks.md  # clk-less `_pgAdopt` (import/共有リンク/バックアップ復元) は `_wM()` 清掃 + `_repC` で `_bT` 送信側パリティ、IDB v1→v2 は contains() 冪等 (監査 clean、docs+pin)
+│   └── ADR-1120-stored-op-aliasing.md  # 履歴 op と live 状態の参照共有監査 — wclock/pages/shapes は全経路で `clone` 切断、verbatim 代入なし (監査 clean、docs+pin)
+│   └── ADR-1121-global-op-log-history.md  # 履歴境界監査 — 単一 op-log (ローカル+リモート同一 push)、redo chop、MAX_HISTORY=500、undo/redo 全 restamp、echo なし (監査 clean、docs+pin)
+│   └── ADR-1122-nolock-baseline-coverage.md  # `locked` を全 patch ベースラインでゲート — 偽造 `upd` before.locked が undo でローカルのみ着地 (inverse は peers 棄却)、偽造 `move` after.locked が _stampWrites 経由で仲裁時計汚染 → `noLock` ホイスト + before/after 両側ゲートで閉塞
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
