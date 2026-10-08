@@ -1,3 +1,113 @@
+## [1.8.212] - 2026-10-01
+
+### Fixed
+- **round938 / ADR-1188 — `restoreBackup` の imgs-store 読取失敗でバックアップが永久にリストア不能だった ADR-1187 同型残穴を閉塞**: バックアップの図形リストは正常に読めていても、imgs ストアの `getAll`/`getAllKeys` 失敗で `restoreBackup()` 全体が reject → `backupRestoreFailed` を返す。slot は残るが再試行も同一点で落ちるため、imgs ストアが恒久的に壊れているとバックアップは永遠に復元不能。ADR-1187 と同じ隔離パターン: attach を nested try で包み、失敗時は図形をそのまま採用し `_attachShape` が ref を `_imgPending` へ駐留 → imgq heal へ送る。3挙動ピン (fake IDB で backup doc 返却+imgs 拒否 → restore 成功・図形生存・ref 駐留) で固定。
+
+## [1.8.211] - 2026-10-01
+
+### Fixed
+- **round937 / ADR-1187 — `Persist.load` の imgs-store 読取失敗が doc 全体のロードを沈めていた残穴を閉塞**: `load()` は doc read 成功後、imgs ストアの `getAll`/`getAllKeys` を無防備なまま `await` していたため、imgs ストア読取だけが失敗 (store 破損・tx abort) しても `load()` 全体が reject — 図形ゼロで立ち上がり、次回 `save()` が復旧可能な doc を空盤面で上書きするデータ喪失経路。img attach を nested try で隔離: 失敗時は図形をそのまま採用し、`Net._attachShape` (ADR-0840) が ref 保持 img を `Net._imgPending` へ留めて imgq heal へ送る — load 正常系・失敗系いずれでも「有効な図形リストは沈めない」契約。3挙動ピン (fake IDB で getAll/getAllKeys 拒否 → 図形生存・ref 駐留・無損失) で固定。
+
+## [1.8.210] - 2026-10-01
+
+### Fixed
+- **round936 / ADR-1186 — `save()` の `_md(!1)` が mid-save 変異の dirty を clobber していた残穴を閉塞**: `save()` は `await txDone` 成功後に `_md(!1)` を書いていたため、非同期書込み中に `schedule()` 経由で立った `_md(!0)` + arm 済み `_saveT` が `txDone` で clear され、`beforeunload` (プロンプト+即時 save) と `flushIfHidden` (即時 save) の両カバーが ~500ms 偽値を読む窓があった。`_md(!1)` を書込み開始時へ移し、失敗時は catch で `_md(!0)` 復元 — dirty が常時「未書込み変更あり」の真値を返す。3挙動ピン (fake IDB 経由の mid-save 生存・失敗復元・正常 clear) で固定。
+
+## [1.8.209] - 2026-10-01
+
+### Fixed
+- **round935 / ADR-1185 — オーバーレイ chrome 上の `_curSp` 陳腐化が幽霊カーソルを送出していた残穴を閉塞**: `_curSp` は canvas `pointermove` のみがスタンプするが、minimap/ツールバー/パネル/編集 overlay は canvas ボックス内の兄弟要素のため `pointerleave` が発火せず、ポインタが chrome 上にある間 `_curSp` が最後の canvas 点で凍結。`frame()` の `sendCursorMoved` がその陳腐点を新 viewport で再導出し、minimap スクラブ毎フレーム・chrome hover 中のズーム/頁送りのたびにピアへ幽霊カーソルジャンプを送出していた。document レベル `pointermove` で `e.target!==canvas` 時に `_curSp` を null 化 (broadcast せず、pointer capture 中のドラッグは存続)。4挙動ピン (実リスナ経路) で固定。
+
+## [1.8.208] - 2026-10-01
+
+### Fixed
+- **round934 / ADR-1184 — 全置換が武装済みズームプレビューを破棄しない stale bitmap 残存を閉塞**: 全置換の共有パージシーム `_pcC` (`_rs`/`clear`/`replace` 双方向/pageDel member kill が全て通過) が `_pinchSnap`/`_pinchVp` を消さなかった。`ptr.down=false` のまま mint する ctrl+wheel プレビュー (180ms 再アーミング) や iOS pinch 中に同頁の全置換が着地すると、`draw()` が早期 return で交換前ビットマップを blit し続けた (stale 表示 + detached 全解像度 canvas 保持)。`_pcC` 内の pair 破棄で全5サイトを一括閉塞 — パージ後 `_lastVp=null` により完全シーンパスで自己修復。4挙動ピン (実リスナ wheel 経路) で固定。
+
+## [1.8.207] - 2026-10-01
+
+### Fixed
+- **round933 / ADR-1183 — exportPDF の popup-blocked blob URL 漏洩を閉塞**: `fin` コールバックが `window.open` の成否確認前に `_oURL(bl)` で blob URL を生成していたため、popup がブロックされた早期 return で revoke されずリーク (ADR-0813 同型)。URL 生成を `w2` ガード後へ移動する純粋な並べ替えで閉塞 (raw 増加ゼロ)。全 `_oURL` サイト (6 ダウンロード export は `_rO` 済み、画像は dataUrl モデル) とブート順序・履歴漏斗・`_oa` callsite の監査も完走 clean。6挙動ピン + `window.open` harness trampoline で固定。
+
+## [1.8.206] - 2026-10-01
+
+### Test
+- **round932 / ADR-1182 — peer lifecycle contract の監査完走 + ピン**: `bye`(`_pk` 経由・両 transport)・TTL reap (`rtc:` 免除は dc.onclose 管理のため)・ルーム切替 purge + `_pCt` 再ベースライン・armed `_selT`/`_curT` のルーム横断 announce セマンティクスを監査し clean 完走。9挙動+2ソース=11ピンで固定 (docs+pin ラウンド)。
+
+## [1.8.205] - 2026-10-01
+
+### Test
+- **round931 / ADR-1181 — presence 受信側契約の監査完走 + ピン**: peer row の生成・採用・描画経路を監査し clean 完走 (ADR-1177..1180 の send-side 閉塞の対称面)。契約を13ピンで固定 — BC 未知ピアの cursor が行を mint しない / ping で生成 / pg ≤64 截断 / 非配列 ids 拒否 / 死 id+非 wire id の intake フィルタ / 過長・自己・偽造 `rtc:` peer 拒否 (MAC より先) / viaRtc 行復活 / `h:1`→null / `_s0(,4096)` キャップ / 両 presence kind の pg bound。修正なし (docs+pin ラウンド)。
+
+## [1.8.204] - 2026-10-01
+
+### Fixed
+- **round930 / ADR-1180 — hide clears precede the peers gate**: `sendCursorHide` reset `_curSp`/`_curT`/`_lastCurKey` *after* the `_pr().size===0` early return — hiding with no peers present left the tracking point, the armed resend timer, and the dedup key alive. A peer joining afterwards heard one stale world cursor through `sendCursorMoved` even though the pointer had left (an `h:1` was never sent and shouldn't have been — there was nobody to tell, but the *state* should still reset). The three-field clear now runs before the peers gate; the `h:1` broadcast itself still correctly requires recipients. Pinned by 3 behavioural + 1 source asserts.
+
+## [1.8.203] - 2026-10-01
+
+### Fixed
+- **round929 / ADR-1179 — cursor presence completeness**: the cursor send had three residual staleness holes of the same family ADR-1177/1178 closed for selection. (a) **Trailing-edge drop**: `sendCursor` discarded every move inside the throttle window with no trailing resend — when the pointer stopped inside a window, the resting position never reached peers until the next physical move (possibly never). Throttled skips now arm a `_curT` resend that re-derives the world point at fire time (mirrors `_selT`). (b) **Viewport drift**: pan/zoom/fit/minimap move the world point under a still pointer silently — no presence emit until the next physical move. Every canvas pointermove now records the last screen point `_curSp`, and the frame hook calls `Net.sendCursorMoved()` — any viewport change invalidates a frame, re-derives `s2w(_curSp)`, and emits only when the derived point differs from the last emitted one (`_lastCurKey` dedup over `x|y|pg`). (c) **Lifecycle parity**: the dedup key resets on `sendCursorHide` (with `_curSp`/`_curT` — a hidden cursor can't be resurrected by a stray timer), on `Net.init` room switch (self-latecomer re-announce), and on `_touchPeer` latecomer join (the joiner hears a resting cursor once instead of waiting for a move). `_curSp` is intentionally not cleared on room switch (a screen point stays valid across rooms/viewports) nor during pinch (`_nP()>=2` gates the emit, matching the send gate). Pinned by 11 behavioural + 4 source asserts.
+
+## [1.8.202] - 2026-10-01
+
+### Fixed
+- **round928 / ADR-1178 — presence send state resets on room switch**: `Net.init` swept the receive-side state (seenOps, snapshot/img/frag queues, old-room peer rows) but left the *send-side* presence bookkeeping untouched — `_lastSelSent` still held the key the old room had already seen, so after joining a room where the user was the latecomer, `sendSelectionIfChanged` dedup-dropped the re-announcement and the room's existing peers never saw the user's selection until the set next changed (potentially never). The selection dedup key and the selection/cursor throttle clocks now reset alongside the rest of init's presence state (the self-latecomer case of ADR-0011's `_touchPeer` reset); the next frame re-announces the current selection once. `_selT` is left armed — it re-evaluates the key at fire time and self-corrects. Pinned by 4 behavioural + 1 source asserts.
+
+## [1.8.201] - 2026-10-01
+
+### Fixed
+- **round927 / ADR-1177 — selection presence rides the cursor throttle**: `sendSelectionIfChanged` is invoked every frame by the render-loop hook, and its dedup key only collapses *unchanged* selections — during a marquee drag the id set mutates per frame, so the full selection-id array went out ~16–60 times/second, the last unthrottled presence send (`sendCursor` has had `CURSOR_THROTTLE_MS` since ADR-0010). The send now mirrors the cursor gate: a changed key inside the window arms one trailing `_selT` resend instead of broadcasting (the dedup key stays pending, so the settled selection lands within `CURSOR_THROTTLE_MS` — latest-wins, nothing lost), and `_touchPeer` clears `_lastSelAt` too so a latecomer's forced resend reaches the new peer immediately rather than after a window it never observed. Pinned by 5 behavioural + 2 source asserts; ADR-0011/1031 latecomer literals recalibrated.
+
+## [1.8.200] - 2026-10-01
+
+### Changed
+- **round926 / ADR-1176 — member-pg intake funnel audit (clean)**: a census of every `s.pg` write site confirms the funnel is closed — all six assignment sites either resolve to a page that exists at write time (local births stamp `state.curPg`, `_pgHome`, `_pgDup`, `_pgDel2`'s `firstId` rehome, pageAdd's `c2.pg=op.id`, drawio's per-diagram stamp) or scrub `s.pg` (pages-null tails → `_pgOk` fallback), and everything outside the census routes through `_pgHeal`/`_pgHealS`. The last unpinned fork — a cap-blocked op-carried member when the 64-page cap forbids the `'?'` stub — now has a behavioural pin (scrub + rehome to `pages[0]`, no stub). Pinned by 4 behavioural + 2 source asserts (the census count itself).
+
+## [1.8.199] - 2026-10-01
+
+### Fixed
+- **round925 / ADR-1175 — unhealable member rehome**: both `'?'`-stub producers (`_pgHealS` set-heal and the `applyRemote` op-intake loop) ran the same gate `s.pg && !_pgById && _stubOk && <64` and did nothing when the stub couldn't be produced — a member carrying a tomb-dead or cap-blocked `pg` kept the dead id, `_pgOk` fails on every page → invisible, unreachable, silent. ADR-1174's cap-drop makes the case load-bearing: a snapshot that fills the 64-page cap drops local pages AND forbids the stub that could save their members. New shared `_pgHeal(s)` forks the decision — stub when producible (unknown-no-tomb `pg` is evidence the page is merely in flight), else scrub `s.pg` so the member rehomes to `pages[0]` via the `_pgOk` fallback, identical to `_pgDel2`'s member rehoming on page deletion. `applyRemote` delegates its inline stub loop to the shared rule (same rehome arm, free). Convergent: same input page set → same local decision on every peer; `pg` re-arbitrates as a normal prop. Tomb-dead ids still get no stub (ADR-1137 intact — the member rehomes without reviving the page). Pinned by 3 behavioural + 3 recalibrated source asserts.
+
+## [1.8.198] - 2026-10-01
+
+### Fixed
+- **round924 / ADR-1174 — snapshot union-heal `curPg` re-derivation**: the snapshot page union (already-paged board, `_iA(msg.pages)` merge branch) built `np` under the 64-page cap without re-deriving the view — an incoming set that fills the cap drops every local-only page including `curPg`'s, leaving `curPg` pointing at a dead id. `_pgOk` then fails for **all** members (pg-less ones fall back to `pages[0].id` ≠ stale id) → whole board invisible with data intact, no toast, no crash; `_pgHealS` can't repair it (`np=64` blocks the `'?'` stub, and the dead page's members keep `pg=dead-id` regardless). The union branch now re-derives the view exactly like `_pgAdopt`/`_pgDel2` — `switchPage(np[0].id)` when `curPg` no longer resolves (gesture fold + cursorHide + selection revalidate + SR announce + persist), `curPg=null` defensively for an empty `np` (unreachable: local leftovers always supply ≥1 — stated, not assumed). Pinned by 4 behavioural + 1 source assert.
+
+## [1.8.197] - 2026-10-01
+
+### Fixed
+- **round923 / ADR-1173 — intake page-homing**: the three single-page external-file intakes (`.drawio` single-diagram tail, `.svg`, `.excalidraw`) committed bare `addMany` ops — pg-less members attribute to `pages[0]` via `_pgOk`'s fallback, so on a multi-page board with `curPg≠first` the import landed invisibly yet still toasted success (ADR-1072 sibling), while a payload-carried foreign `pg` stayed live (phantom-page vector). New `_pgHome` helper stamps `s.pg=state.curPg` (or deletes a carried `pg` on a page-less board) at all four local intake seams — the three file importers plus `_placeCopies`, whose identical inline stamp folded into the shared rule. One seam now states the contract: a locally introduced shape homes on the viewed page, or on none. Pinned by 3 behavioural + 3 source asserts; 2 stale literals recalibrated.
+
+## [1.8.196] - 2026-10-01
+
+### Fixed
+- **round922 / ADR-1172 — ad-hoc send-failure parity**: the two remaining unguarded `Net.broadcast` sites were the companion `addMany` sends riding alongside `pageAdd` commits — `_pgDup`'s throw stranded `switchPage` (the duplicate page + members committed locally but the view never followed), and the multi-page `.drawio` paste loop's throw abandoned every later page plus `switchPage`/selection/viewport/docName/repaint (a silent half-import). Both now collect the first send error and rethrow after the bookkeeping lands — ADR-1171 parity. Every `Net.broadcast` site is now try-guarded or terminal; the send-failure contract class is closed. Pinned by 4 behavioural + 3 source asserts (incl. an 8-site census).
+
+## [1.8.195] - 2026-10-01
+
+### Fixed
+- **round921 / ADR-1171 — send-failure bookkeeping parity**: ADR-1135 gave undo's inverse-wire loop best-effort sends (collect `_werr`, run `_pgFollow`/`_txFlush`/`_rdb`, rethrow), but the same class survived at the two other propagation sites — redo's unguarded `Net.broadcast` could strand `_pgFollow`/`_txFlush`/`_rdb` after `histIdx++` had already consumed the op (local re-applied, peers never told, follow-up skipped → silent divergence), and commit's could strand `_txFlush` (armed convergence queue drains late, out of order). Both now complete bookkeeping before surfacing the error; `_recordCommitted`'s send was already terminal and `_txC` sends last in its try — no change. Pinned by 4 behavioural + 3 source asserts.
+
+## [1.8.194] - 2026-10-01
+
+### Fixed
+- **round920 / ADR-1170 — undo-domain purity: history is a local-only op log**: audit of the undo-target selection seam resolved clean — `state.history` is written by exactly two producers (`commit` + `_recordCommitted`, both local funnels running dedup → redo-chop → `_hi().push(op)` → `histIdx++` → outbound-only re-broadcast), while `applyRemote` applies/dedups/stamps clocks but never pushes, so ⌘Z/⌘Y always replay a self-authored op whose `before` is a local snapshot and peer edits stay reversible only through the undo-wire protocol (a peer's own ⌘Z emits inverses). Remote arrivals between locals leave `histIdx` untouched: undo walks the last LOCAL op across the interleave and a redo branch is never chopped by remote traffic. A regression here (recording remote ops "for auditability") would silently flip ⌘Z to global undo — any user could revert a peer's op and re-broadcast the inverse — so the local-only contract is now pinned with 6 behavioural asserts + 3 source pins.
+
+## [1.8.193] - 2026-10-01
+
+### Fixed
+- **round919 / ADR-1169 — gesture × wholesale-swap contract pinned**: audit of the post-swap ephemeral-state seam resolved clean — `_pgAdopt` cancels a live gesture only when the adopted landing page differs (`nc!==oc`), which reads as a hole for `pages:null` swaps (`null===null` → gesture survives) but is the intended half of the contract: a same-page swap isn't a context switch, `_bT` marks every swapped-in remote-born id into `ptr.reborn` so the restore-merge paths (`_gR1`/`_gR2`/`_gRst`/`_gRL`/`_nugLock`) skip them (ADR-0984), and every commit path re-resolves ids against live shapes at emit (`mids` filter, `byId(orig.id)`) so swap-dropped ids never reach history or the wire. A premature "always-cancel" edit broke the ADR-0984 pin — cancelled gestures lose `ptr.reborn` and the restore-merge can't tell keep-survivors from swapped-in ids; the correct statement is the two-case contract now pinned with 4 behavioural asserts + 2 source pins.
+
+## [1.8.192] - 2026-10-01
+
+### Fixed
+- **round918 / ADR-1168 — swap undo/redo restores pages without birth clocks**: undoing a doc-switch import dropped every recorded page whose record lacked `bts` (pre-ADR-1110 persisted docs, clock-less adoptions, hash imports): `Store.undo` re-mints `op.clock` at T2, the backward apply tombs the swapped-in pages then calls `_pgAdopt(beforePages,…)` — whose keep filter arbitrated *carried birth vs tomb only*, so `bts==null` entries lost to the swap's own tomb T1 and `state.pages`/`curPg` went null, converged on peers via the undo wire. Redo had the same hole (recorded `op.pages` can carry bts-less adopted pages, vetoed by the undo's own T2 tombs). The shape-side gate `_tmE` already arbitrates *tomb vs op clock* (a tomb only vetoes when newer than the op); pages now get the same rule via a new `und` flag on `_pgAdopt` — `und` = doc-swap apply (both 'replace' directions + backup restore), snapshot union-heal keeps the strict bts-only arbitration. 17 behavioural asserts + 4 source pins.
+
+## [1.8.191] - 2026-10-01
+
+### Fixed
+- **round917 / ADR-1167 — docName joins the swap's restore domain**: undoing a doc-switch import (.board file, share link, backup restore) restored shapes, pages, ro and the camera — but left the *adopted* document name behind, and a silent local restore would have diverged from peers anyway since docName is a shared LWW channel (`_nameTs`/`_namePeer`/`_nameWin`). The three swap sites now capture `bnm=_dn()` pre-adoption alongside `bvp`, and `_repC` records `anm=_dn()` post-adoption (the `avp` idiom). On undo `_apply` runs `_setDocName(op.bnm)` and re-broadcasts via `_bName()` so peers converge on the restored name; on own redo only (`op.clock.peer===_pi()`) it re-adopts `anm`. The `_slimOp` 'replace' whitelist keeps `bnm`/`anm` off the wire — undo-domain data still never transports. 5 behavioural asserts + 2 source pins; the ADR-1164 signature pin recalibrated to the new `bvp,bnm` call shape.
+
 ## [1.8.190] - 2026-10-01
 
 ### Fixed

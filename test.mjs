@@ -1151,7 +1151,7 @@ const checks = [
     html.includes("case 'selection':") && html.includes('sendSelectionIfChanged(){')
     && html.includes('function drawPeerSelections(c)') && html.includes('Net.sendSelectionIfChanged();')],
   ['ADR-0011 latecomer resend: _touchPeer resets _lastSelSent',
-    html.includes('this._lastSelSent=null;_iv();')],
+    html.includes('this._lastSelSent=null;this._lastSelAt=0;_iv();')],
   // v1.7.63 robustness audit
   ['SW: navigations are network-first (cache-first pinned users to the first cached version forever)',
     swjs.includes("e.request.mode==='navigate'")
@@ -1308,7 +1308,7 @@ const checks = [
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_shWB()),name:_dn()")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
-  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat")],
+  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // RTC peers are lifecycle-managed")],
   ['dc.onclose removes the rtc peer', html.includes("if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}")],
@@ -1343,7 +1343,7 @@ const checks = [
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
   ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!_ln(sel))return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
-  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built))_cmt({op:'addMany',shapes:built})")],
+  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
   ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
@@ -1708,6 +1708,7 @@ const fakeWin = {
   indexedDB: { open: () => ({ addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null }) },
   URL: { createObjectURL: () => 'blob:x', revokeObjectURL(){} },
   Blob, confirm: () => false, alert(){}, prompt: () => null,
+  open:(...a)=>(fakeWin._openFn?fakeWin._openFn(...a):null),
   getComputedStyle: () => ({ getPropertyValue: () => '#fff' }),
   BroadcastChannel: class { onmessage=null; postMessage(){} close(){} },
   screen: { orientation: { addEventListener(){} } },
@@ -6210,7 +6211,7 @@ try {
       state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}'),'_pgAdopt hides cursor + re-validates selection + announces on page move (ADR-0690/0749/0750)');
-      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110/1137)');
+      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)){if(_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110/1137)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
       {
@@ -7801,25 +7802,26 @@ try {
       A.state.peers.clear();B.state.peers.clear();
       A.state.peers.set('peerB',{color:'#111',lastSeen:Date.now()});
       B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
-      A.Net._lastSelSent='';
+      A.Net._lastSelSent='';A.Net._lastSelAt=0;
       const _bs=B.state.shapes.length;for(const id of['s1','s2','s3','s4','sX','ok','ok2'])B.state.shapes.push({id,type:'rect'});   // ADR-1080: sel ids must resolve
 
       // (a) BC path: A's selection reaches B, keyed by A's real peerId; deselect propagates
+      // (_lastSelAt reset between steps = the throttle window having elapsed, ADR-1177)
       A.state.selection=new Set(['s1','s2']);
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s1','s2'],'ADR-0011a: selection ids propagate A→B via the BC path, keyed by real peerId');
-      A.state.selection=new Set();
+      A.state.selection=new Set();A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,[],'ADR-0011a: deselecting propagates as an empty ids array (clears the highlight)');
 
       // (b) change detection: an unchanged selection is NOT resent. Prove it by planting
       // a sentinel in B's record — a resend would overwrite it.
-      A.state.selection=new Set(['s3']);
+      A.state.selection=new Set(['s3']);A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       B.state.peers.get('peerA').sel=['sentinel'];
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['sentinel'],'ADR-0011b: an unchanged selection is not resent (frame-boundary no-op)');
-      A.state.selection=new Set(['s3','s4']);
+      A.state.selection=new Set(['s3','s4']);A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011b: a changed selection is resent');
 
@@ -7831,7 +7833,7 @@ try {
       A.Net._touchPeer('peerC');
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011c: a new peer joining forces one selection rebroadcast');
-      A.state.peers.delete('peerC');
+      A.state.peers.delete('peerC');clearTimeout(A.Net._selT);A.Net._selT=null;
 
       // (d) viaRtc routing: same _rtcPeerId pitfall as ADR-0010c
       B.state.peers.clear();
@@ -8725,7 +8727,7 @@ try {
     // they raced with (convergent but unfair/unintuitive). nowTs() keeps every
     // stamped clock on the HLC floor.
     assert.ok(!/ts:_now\(\)\}/.test(html),'ADR-0739: no op-clock object stamped with raw _now()');
-    assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length>=4,'ADR-0739: all clock-stamp sites go through nowTs()');
+    assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length===2,'ADR-0739: every stamped clock goes through nowTs() — the _fck mint + _pgClk fallback');
     console.log('  ✓ ADR-0739: clock stamps use the HLC floor everywhere');
 
     // ADR-0740: dead wire fields — hello/ping carried {seq:state.seq} no receiver
@@ -11374,6 +11376,67 @@ try {
     assert.ok(_tk&&/(Canvas is empty|キャンバスが空)/.test(_tk.m),"exportPDF toasts the 'empty' message, not a silent return");
     console.log('  ✓ ADR-1101 exportPDF empty-page toast parity (2 asserts)');
     pass += 2;
+  }
+
+  // ADR-1183: exportPDF mints the blob URL only after the print window is
+  // confirmed — a popup-blocked path used to leak the object URL.
+  {
+    const _emSave=UI.toast;let _tk=null;UI.toast=(m,k)=>{_tk={m,k}};
+    const _ou=fakeWin.URL.createObjectURL;let _oN=0;
+    fakeWin.URL.createObjectURL=b=>{_oN++;return 'blob:t'};
+    state.shapes.length=0;_invalidateGrid();
+    const hs=api.Shape.make('rect',{x:0,y:0,w:10,h:10});
+    api.Store.commit({op:'add',shape:hs});
+    fakeWin._openFn=null;
+    let _err=null;
+    try{api.exportPDF()}catch(e){_err=e}
+    assert.ok(!_err,'exportPDF does not throw on a blocked popup');
+    assert.strictEqual(_oN,0,'a blocked popup mints no blob URL');
+    assert.ok(_tk&&_tk.k==='warn','a blocked popup still toasts popupBlocked');
+    const w2doc={wrote:0,write(){this.wrote++},close(){}};
+    fakeWin._openFn=()=>({document:w2doc});
+    _tk=null;_err=null;
+    try{api.exportPDF()}catch(e){_err=e}
+    assert.ok(!_err,'exportPDF does not throw when the popup opens');
+    assert.strictEqual(_oN,1,'an open popup mints exactly one blob URL');
+    assert.strictEqual(w2doc.wrote,1,'the print document was written');
+    fakeWin._openFn=null;fakeWin.URL.createObjectURL=_ou;UI.toast=_emSave;
+    state.shapes.length=0;_invalidateGrid();
+    console.log('  ✓ ADR-1183 exportPDF blob-URL lifecycle (6 asserts)');
+    pass += 6;
+  }
+
+  // ADR-1184: an armed zoom preview is derived state of the OLD board — a
+  // wholesale swap landing while _pinchSnap is armed (ctrl+wheel's trailing
+  // window, or an iOS gesture where ptr.down stays false) used to keep
+  // blitting stale pixels for the whole preview window. _pcC — the purge
+  // every wholesale path runs — now drops the armed preview too.
+  {
+    state.shapes.length=0;_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.pages=null;state.curPg=null;state.ro=false;
+    state.viewport={x:0,y:0,zoom:1};ptr.down=false;
+    const hs=api.Shape.make('rect',{x:370,y:270,w:60,h:40});   // near the cursor so zoom keeps it in view
+    api.Store.commit({op:'add',shape:hs});
+    assert.strictEqual(state.shapes.length,1,'precondition: the rect committed');
+    for(const f of canvas._L['wheel']||[])f({offsetX:400,offsetY:300,ctrlKey:true,deltaY:-100,deltaX:0,deltaMode:0,preventDefault(){},stopPropagation(){}});
+    let _tot=0,_blit=0;
+    const _rc=new Proxy({},{get(t,p){
+      if(p==='measureText')return()=>({width:10});
+      if(p in t)return t[p];
+      return()=>{_tot++;if(p==='drawImage')_blit++};
+    },set(t,p,v){t[p]=v;return true}});
+    const _pc0=api._setCtx(_rc);
+    try{api.draw()}finally{api._setCtx(_pc0)}
+    assert.strictEqual(_blit,1,'armed preview blits exactly the snapshot, early-returning the scene pass (tot='+_tot+')');
+    _pcC();   // the seam every wholesale-swap path runs (_rs/replace/clear/pageDel)
+    _tot=0;_blit=0;
+    api._setCtx(_rc);
+    try{api.draw()}finally{api._setCtx(_pc0)}
+    assert.strictEqual(_blit,0,'after _pcC the stale snapshot no longer blits');
+    assert.ok(_tot>5,'after _pcC draw() runs the real scene pass again (tot='+_tot+')');
+    state.shapes.length=0;_invalidateGrid();
+    console.log('  ✓ ADR-1184 wholesale swap drops the armed zoom preview (4 asserts)');
+    pass += 4;
   }
 
   // v1.6.94: _esc single-quote encoding — must fail before fix, pass after
@@ -16163,14 +16226,15 @@ try {
       const i2=_snapIndex('resize','["a,b"]',s=>s.id==='a,b');
       assert.ok(i2.xs.length>i1.xs.length,'ADR-0860: distinct snap-index keys hit distinct exclusion sets');
       Net._onRecv({k:'hello',peer:'sig-t'},false);
-      Net._lastSelSent='';
+      Net._lastSelSent='';Net._lastSelAt=0;
       state.selection.add('a');state.selection.add('b');
       Net.sendSelectionIfChanged();
       const k1=Net._lastSelSent;
       state.selection.clear();state.selection.add('a,b');
-      Net.sendSelectionIfChanged();
+      Net._lastSelAt=0;Net.sendSelectionIfChanged();
       assert.notEqual(Net._lastSelSent,k1,'ADR-0860: presence dedup key distinguishes {a,b} from {"a,b"} — resend happens');
       assert.ok(k1.indexOf('"a","b"')>=0,'ADR-0860: presence dedup key is the _JS-encoded sorted id set');
+      clearTimeout(Net._selT);Net._selT=null;
       state.selection.clear();
       const elA=[{id:'a',name:'b,c\x1fd'}],elB=[{id:'a',name:'b'},{id:'c',name:'d'}];
       assert.equal(elA.map(p=>p.id+'\x1f'+p.name).join(),elB.map(p=>p.id+'\x1f'+p.name).join(),'ADR-0860: crafted vs real page sets collided under the old join sig');
@@ -16294,7 +16358,7 @@ try {
     const PSEL=Shape.make('rect',{x:0,y:0,w:10,h:10});
     Store.commit({op:'add',shape:PSEL});
     state.selection.add(PSEL.id);
-    Net._lastSelSent=null;
+    Net._lastSelSent=null;Net._lastSelAt=0;
     Net.sendSelectionIfChanged();
     assert.ok(sent3.some(m=>m&&m.k==='selection'&&Array.isArray(m.ids)&&m.ids.includes(PSEL.id)),'selection change broadcasts a selection op to peers (ADR-0011)');
     sent3.length=0;
@@ -16794,7 +16858,7 @@ try {
       assert.ok(html.includes("_lwwOp(op){return op.op==='upd'||op.op==='style'||op.op==='resize'||op.op==='align'||op.op==='group'||op.op==='ungroup'||op.op==='zorder'||op.op==='move'||op.op==='beautify'}"),'single _lwwOp gate shared by drop+stamp');
       assert.ok(html.includes("key==='pg'||key==='frac'||key==='groupId'||key[0]==='_'"),'structural keys stay outside per-prop LWW stamping');
       assert.ok(html.includes("this._stampWrites(w);try{Net.broadcast(w)}"),'undo stamps the inverse wire ops');
-      assert.ok(html.includes("this._stampWrites(op);Net.broadcast(op)"),'redo stamps the restamped op');
+      assert.ok(html.includes("this._stampWrites(op);let _werr=null;try{Net.broadcast(op)}"),'redo stamps the restamped op');
       state.shapes.length=0;state.seenOps=new Set();state.wclock={};_invalidateGrid();
       const r29=Shape.make('rect',{x:0,y:0,w:10,h:10});state.shapes=[r29];
       Net._onRecv({k:'op',peer:'p9',op:{op:'upd',id:r29.id,after:{x:5},before:{x:0},clock:{peer:'p9',seq:1,ts:100}}},false);
@@ -16834,7 +16898,7 @@ try {
       // dedup keys must self-correct across a room switch; a newly-seen peer
       // forces a resend; the pg rides the selection key; init rebases _pCt.
       assert.ok(html.includes("const key=_JS(ids.sort())+'|'+(state.curPg||'')"),'selection presence key carries the viewed page');
-      assert.ok(html.includes("this._lastSelSent=null;_iv();"),'a newly-seen peer forces a selection resend');
+      assert.ok(html.includes("this._lastSelSent=null;this._lastSelAt=0;_iv();"),'a newly-seen peer forces a selection resend');
       assert.ok(html.includes("this._pCt=_pr().size"),'init rebases the presence-count baseline');
       assert.ok(html.includes("if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return"),'cursor send is throttle-gated');
       Net._lastSelSent='stale';
@@ -16846,6 +16910,192 @@ try {
       assert.ok(selSent>=1,'selection presence emitted after peer touch');
       Net._bcast=_ob;Net._lastSelSent='';state.selection.delete('sel780');state.peers.delete('p780x');
       console.log('  ✓ presence-channel signature lifecycle (ADR-1031)');
+    }
+    {
+      // ADR-1177: selection presence rides the cursor throttle — a marquee drag
+      // mutates the set every rendered frame, so each frame emitted the full
+      // id list (~16-60/s). Throttled skips arm a trailing resend so the
+      // settled selection lands within one window; a latecomer resend clears
+      // the window so the new peer hears the selection immediately.
+      assert.ok(html.includes("if(now-this._lastSelAt<CURSOR_THROTTLE_MS)"),'selection presence is throttle-gated (ADR-1177)');
+      assert.ok(html.includes("this._selT=_stO(()=>{this._selT=null;this.sendSelectionIfChanged()},CURSOR_THROTTLE_MS)"),'throttled selection change arms a trailing resend');
+      Net._lastSelSent='';Net._lastSelAt=0;Net._selT=null;
+      const _ob2=Net._bcast;let selN=0;Net._bcast=m=>{if(m&&m.k==='selection')selN++;return _ob2.call(Net,m)};
+      state.peers.set('p1177x',{color:'#123',lastSeen:Date.now()});
+      state.selection.add('selA');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,1,'first selection change sends immediately');
+      state.selection.add('selB');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,1,'mid-drag change inside the window coalesces');
+      assert.ok(Net._selT,'trailing resend armed for the skipped change');
+      Net._lastSelAt=0;
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,2,'the settled selection lands after the window');
+      Net._bcast=_ob2;Net._lastSelSent='';Net._lastSelAt=0;clearTimeout(Net._selT);Net._selT=null;
+      state.selection.delete('selA');state.selection.delete('selB');state.peers.delete('p1177x');
+      console.log('  ✓ selection presence throttle contract (ADR-1177)');
+    }
+    {
+      // ADR-1178: Net.init resets send-side presence state — the joiner is
+      // itself a latecomer, so after a room switch the local selection must
+      // re-announce once or the room's existing peers never hear it.
+      assert.ok(html.includes("this._lastSelSent='';this._lastSelAt=0;this._lastCursorSend=0;"),'presence send state resets at init (ADR-1178)');
+      Net._lastSelSent='"stale"';Net._lastSelAt=9;Net._lastCursorSend=7;
+      state.roomId='roomA';
+      Net.init('roomB');
+      assert.strictEqual(Net._lastSelSent,'','dedup key reset at room switch');
+      assert.strictEqual(Net._lastSelAt,0,'selection send clock reset at room switch');
+      assert.strictEqual(Net._lastCursorSend,0,'cursor send clock reset at room switch');
+      const _ob3=Net._bcast;let selN2=0;Net._bcast=m=>{if(m&&m.k==='selection')selN2++;return _ob3.call(Net,m)};
+      state.peers.set('p1178x',{color:'#123',lastSeen:Date.now()});
+      state.selection.add('selR');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN2,1,'selection re-announces in the new room');
+      Net._bcast=_ob3;Net._lastSelSent='';Net._lastSelAt=0;clearTimeout(Net._selT);Net._selT=null;
+      state.selection.delete('selR');state.peers.delete('p1178x');state.roomId=DOC_KEY;
+      clearInterval(Net._presenceTimer);
+      if(Net.bc&&Net.bc.close)try{Net.bc.close();Net.bc=null}catch(_){}
+      console.log('  ✓ room switch resets presence send state (ADR-1178)');
+    }
+    {
+      // ADR-1179: cursor send completeness — three staleness holes of the same
+      // family 1177/1178 closed for selection: (a) trailing-edge drops left the
+      // resting position forever unsent (skips now arm _curT, re-deriving the
+      // world point at fire time), (b) viewport drift moved the world point
+      // under a still pointer with no emit (frame() runs sendCursorMoved, keyed
+      // on the last emitted point), (c) latecomers never heard a resting cursor
+      // (_touchPeer/init/hide all clear _lastCurKey).
+      assert.ok(html.includes("sendCursorMoved(){if(this._curSp&&_nP()<2)this.sendCursor(_s2(this._curSp))}"),'sendCursorMoved re-derives the world point (ADR-1179)');
+      assert.ok(html.includes("this._curT=_stO(()=>{this._curT=null;this.sendCursorMoved()},CURSOR_THROTTLE_MS)"),'a throttled cursor send arms a trailing resend (ADR-1179)');
+      assert.ok(html.includes("Net._curSp=sp;"),'pointermove records the last screen point (ADR-1179)');
+      assert.ok(html.includes("this._lastCursorSend=0;this._curSp=null;this._lastCurKey=null;_cT(this._curT);this._curT=null;"),'hide clears the tracked point, dedup key, and armed resend (ADR-1179)');
+      Net._curSp=null;Net._curT=null;Net._lastCurKey=null;
+      const _ob4=Net._bcast;let curN=0,lastCur=null;Net._bcast=m=>{if(m&&m.k==='cursor'){curN++;lastCur=m}return _ob4.call(Net,m)};
+      state.peers.set('p1179x',{color:'#123',lastSeen:Date.now()});
+      const _vx0=state.viewport.x;
+      Net._curSp={x:10,y:10};
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,1,'moved-check emits when the derived point differs');
+      const _cx0=lastCur.x;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,1,'an unchanged derived point dedups — no resend');
+      state.viewport.x+=100;
+      Net._lastCursorSend=0;   // simulate the throttle window having elapsed
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,2,'viewport drift re-emits the re-derived point');
+      assert.notStrictEqual(lastCur.x,_cx0,'the drifted emit carries the new world x');
+      Net._lastCursorSend=Date.now();
+      state.viewport.x+=50;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,2,'a change inside the throttle window coalesces');
+      assert.ok(Net._curT,'trailing resend armed for the skipped cursor');
+      Net._lastCursorSend=0;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,3,'the resting position lands after the window');
+      Net._touchPeer('p1179y');
+      Net._lastCursorSend=0;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,4,'latecomer join clears the dedup key → one resend');
+      Net.sendCursorHide();
+      assert.strictEqual(Net._curSp,null,'hide clears the tracked screen point');
+      assert.strictEqual(curN,5,'cursorHide itself emits (h:1)');
+      state.viewport.x-=150;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,5,'no re-emit after hide until a real move re-arms');
+      Net._bcast=_ob4;Net._curSp=null;Net._lastCurKey=null;clearTimeout(Net._curT);Net._curT=null;
+      state.peers.delete('p1179x');state.peers.delete('p1179y');state.viewport.x=_vx0;
+      console.log('  ✓ cursor presence completeness (ADR-1179)');
+      pass += 15;
+    }
+    {
+      // ADR-1180: the hide's state clears precede the peers gate — hiding with
+      // nobody present still disarms _curSp/_curT/_lastCurKey so a latecomer
+      // can't hear a stale cursor afterwards.
+      const _hSeg=html.slice(html.indexOf('sendCursorHide(){'),html.indexOf("h:1,pg:state.curPg"));
+      assert.ok(_hSeg.indexOf('_curSp=null')<_hSeg.indexOf('_pr().size===0'),'hide clears precede the peers gate (ADR-1180)');
+      const _pBak=new Map(state.peers);state.peers.clear();
+      Net._curSp={x:5,y:5};Net._lastCurKey='k1180';Net._curT=1;   // sentinel — _cT tolerates any value
+      Net.sendCursorHide();
+      assert.strictEqual(Net._curSp,null,'hide with no peers clears the tracked point');
+      assert.strictEqual(Net._curT,null,'hide with no peers disarms the resend');
+      assert.strictEqual(Net._lastCurKey,null,'hide with no peers clears the dedup key');
+      state.peers=_pBak;
+      console.log('  ✓ hide clears precede the peers gate (ADR-1180)');
+      pass += 4;
+    }
+    {
+      // ADR-1181: presence receive-side contract — the peer row is minted only
+      // on ping (BC) or RTC arrival, never by an unauthenticated BC presence
+      // msg; pg payloads truncate at 64; dead ids are filtered at intake AND
+      // render; over-length/self/'rtc:'-forged envelope peers drop pre-MAC.
+      const _pBak2=new Map(state.peers);const _rtcBak=Net._rtcPeerId;
+      state.peers.clear();
+      Net._onRecv({k:'cursor',peer:'ghost1181',x:1,y:1},false);
+      assert.ok(!state.peers.has('ghost1181'),'a BC cursor for an unknown peer mints no row');
+      Net._onRecv({k:'ping',peer:'p1181'},false);
+      assert.ok(state.peers.has('p1181'),'ping mints the peer row');
+      Net._onRecv({k:'cursor',peer:'p1181',x:5,y:6,pg:'x'.repeat(80)},false);
+      assert.deepStrictEqual(state.peers.get('p1181').cursor,{x:5,y:6},'cursor lands for a known peer');
+      assert.strictEqual(state.peers.get('p1181').pg.length,64,'pg truncates at 64 on intake');
+      Net._onRecv({k:'selection',peer:'p1181',ids:'not-an-array'},false);
+      assert.strictEqual(state.peers.get('p1181').sel,undefined,'non-array sel ids rejected');
+      const _l1181='a'.repeat(200);
+      state.shapes.push({id:'live1181',type:'rect'});
+      Net._onRecv({k:'selection',peer:'p1181',ids:['live1181','dead1181',_l1181]},false);
+      assert.deepStrictEqual(state.peers.get('p1181').sel,['live1181'],'dead + non-wire ids filtered at intake');
+      Net._onRecv({k:'cursor',peer:'q'.repeat(200),x:1,y:1},false);
+      assert.ok(!state.peers.has('q'.repeat(200)),'an over-length envelope peer is rejected');
+      Net._onRecv({k:'cursor',peer:state.peerId,x:1,y:1},false);
+      assert.ok(!state.peers.has(state.peerId),'self-echo mints no row');
+      Net._onRecv({k:'cursor',peer:'rtc:forged1181',x:1,y:1},false);
+      assert.ok(!state.peers.has('rtc:forged1181'),'a BC-forged rtc: peer is rejected');
+      Net._rtcPeerId='rtc:z1181';
+      Net._onRecv({k:'cursor',peer:'unknownPeer',x:2,y:3},true);
+      assert.ok(state.peers.has('rtc:z1181'),'viaRtc presence resurrects the link row');
+      assert.deepStrictEqual(state.peers.get('rtc:z1181').cursor,{x:2,y:3},'the RTC cursor lands on the link row');
+      Net._onRecv({k:'cursor',peer:'p1181',x:9,y:9,h:1},false);
+      assert.strictEqual(state.peers.get('p1181').cursor,null,'h:1 clears the peer cursor');
+      assert.ok(html.includes("p.sel=_s0(ids.filter(byId),4096)"),'sel caps at 4096 live-resolved ids');
+      assert.strictEqual(html.split("const npg=_iS(msg.pg)?_s0(msg.pg,64):null").length-1,2,'both presence kinds bound pg at 64');
+      state.peers=_pBak2;Net._rtcPeerId=_rtcBak;
+      state.shapes=state.shapes.filter(s=>s.id!=='live1181');
+      console.log('  ✓ presence receive-side contract (ADR-1181)');
+      pass += 13;
+    }
+    {
+      // ADR-1182: peer lifecycle contract — 'bye' resolves through _pk (both
+      // transports), reap is TTL-based and skips 'rtc:' rows (their lifecycle
+      // is dc.onclose), Net.init purges BC rows and re-baselines _pCt, and the
+      // armed trailing timers (_selT/_curT) carry over only accurate content.
+      const _pBak3=new Map(state.peers);const _rtcBak3=Net._rtcPeerId;const _ctBak=Net._pCt;
+      state.peers.clear();
+      Net._onRecv({k:'ping',peer:'b1182'},false);
+      assert.ok(state.peers.has('b1182'),'row minted for the bye test');
+      Net._onRecv({k:'bye',peer:'b1182'},false);
+      assert.ok(!state.peers.has('b1182'),'a BC bye deletes the peer row');
+      Net._onRecv({k:'bye',peer:'ghostBye'},false);
+      assert.strictEqual(state.peers.size,0,'a bye for an unknown peer is a no-op');
+      Net._rtcPeerId='rtc:b1182';
+      Net._onRecv({k:'cursor',peer:'x',x:1,y:1},true);
+      assert.ok(state.peers.has('rtc:b1182'),'rtc row minted for the bye test');
+      Net._onRecv({k:'bye',peer:'x'},true);
+      assert.ok(!state.peers.has('rtc:b1182'),'an RTC bye resolves through _pk and deletes the link row');
+      state.peers.set('oldB',{color:'#000',lastSeen:_now()-20000});
+      state.peers.set('rtc:oldR',{color:'#000',lastSeen:_now()-99999});
+      Net._reapPeers();
+      assert.ok(!state.peers.has('oldB'),'a stale BC row is reaped');
+      assert.ok(state.peers.has('rtc:oldR'),'a stale rtc: row is exempt from TTL reap');
+      assert.ok(html.includes("if(_sw(id,'rtc:'))continue;"),'rtc peers skip the TTL reap');
+      state.peers.set('bcGone',{color:'#000',lastSeen:_now()});
+      Net._pCt=9;
+      Net.init('room1182');
+      assert.ok(!state.peers.has('bcGone'),'room switch purges BC peer rows');
+      assert.strictEqual(Net._pCt,state.peers.size,'init re-baselines the join/leave count');
+      assert.ok(html.includes("this._pCt=_pr().size;_ivO();"),'_pCt reset pinned at init');
+      state.peers=_pBak3;Net._rtcPeerId=_rtcBak3;Net._pCt=_ctBak;
+      console.log('  ✓ peer lifecycle contract (ADR-1182)');
+      pass += 11;
     }
     {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
@@ -19087,9 +19337,41 @@ assert.ok(html.includes("if(state.ro&&d.ro===1){_roNo();return}   // ADR-1162")&
 assert.ok(html.includes("function _mergeImport(shapes){\n  if(state.ro){_roNo();return}   // ADR-1162"),'merge-import is ro-gated like every sibling');
 assert.ok(html.includes("const r0=state.ro;state.ro=false;"),'swap paths capture pre-swap ro for the op (ADR-1163)');
 assert.ok(html.includes("'bro' in op")&&html.includes("'aro' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores ro from the op (ADR-1163)');
-assert.ok(html.includes(",bvp=clone(_vp());")&&(html.match(/d\.ro===1,bvp\)/g)||[]).length>=2&&html.includes("data.ro===1,bvp)"),'swap paths record the pre-swap camera on the op (ADR-1164)');
+assert.ok(html.includes(",bvp=clone(_vp()),bnm=_dn();")&&(html.match(/d\.ro===1,bvp,bnm\)/g)||[]).length>=2&&html.includes("data.ro===1,bvp,bnm)"),'swap paths record the pre-swap camera on the op (ADR-1164/1167)');
 assert.ok(html.includes("'bvp' in op")&&html.includes("'avp' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores the camera from the op (ADR-1164)');
 pass += 11;
+
+// ---- ADR-1167: docName joins the swap's restore domain ----
+{
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _zN=async o=>{const cs=new CompressionStream('deflate-raw');const w=cs.writable.getWriter();
+    w.write(new TextEncoder().encode(JSON.stringify(o)));w.close();
+    const buf=new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    return '#b='+encodeURIComponent('z:'+btoa(String.fromCharCode(...buf)))};
+  const _rN=(id,x)=>({id,type:'rect',x,y:0,w:10,h:10,z:1,stroke:'#000',fill:null,size:2,opacity:1});
+  E.state.docName='Mine';
+  const names=[];const _ob=E.Net._bcast;
+  E.Net._bcast=m=>{if(m&&m.k==='name')names.push(m.name);return _ob.call(E.Net,m)};
+  fakeWin.location.hash=await _zN({v:1,shapes:[_rN('impN',0)],name:'Foreign'});
+  assert.strictEqual(await E.Share.importFromHash(),true,'named import applies');
+  assert.strictEqual(E.state.docName,'Foreign','swap adopts the payload doc name');
+  E.Store.undo();
+  assert.strictEqual(E.state.docName,'Mine','undo restores the pre-swap doc name (was: foreign name lingers)');
+  E.Store.redo();
+  assert.strictEqual(E.state.docName,'Foreign','redo re-adopts the imported doc name');
+  assert.ok(names.includes('Mine')&&names.includes('Foreign'),'undo/redo re-broadcast the name — peers converge');
+  E.Net._bcast=_ob;
+  console.log('  ✓ ADR-1167 docName swap-restore contract (5 asserts)');
+  pass += 5;
+}
+assert.ok(html.includes(",bnm=_dn();")&&html.includes(",bvp,bnm)"),'swap paths capture the pre-swap doc name (ADR-1167)');
+assert.ok(html.includes("'bnm' in op")&&html.includes("'anm' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores the doc name (ADR-1167)');
+pass += 2;
 
 // ---- ADR-1165: delta-snapshot intake — dels/ops/rep gates ----
 {
@@ -19247,7 +19529,7 @@ pass += 1;
   state.pages=null;state.curPg=null;state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();state.dupIds=new Set();_invalidateGrid();
   pass += 3;
 }
-assert.ok(html.includes("else delete sh.pg;"),"_placeCopies drops a foreign pg on a page-less doc");
+assert.ok(html.includes("else delete s.pg}}"),"pg scrub lives in the shared _pgHome helper (ADR-1173)");
 pass += 1;
 
 {
@@ -20198,7 +20480,7 @@ pass += 10;
   assert.ok(html.includes("objectStoreNames.contains(DB_IMG_STORE)"),'ADR-1119: imgs store guarded on upgrade (v1→v2)');
   assert.ok(html.split("state.wclock=_wM()").length-1>=3,'ADR-1119: clean tomb slate precedes every clk-less _pgAdopt');
   assert.ok(html.includes("for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null"),'ADR-1119: sender stamps adopted pages\' _born like receivers');
-  assert.ok(html.includes("_pgAdopt(d.pages,d.curPg,_pgClk(d))"),'ADR-1119: Persist.load passes the rep clock');
+  assert.ok(html.includes("_pgAdopt(d.pages,d.curPg,_pgClk(d),1)"),'ADR-1119: Persist.load passes the rep clock');
   assert.ok(html.includes("pages:op.beforePages,curPg:op.beforeCurPg"),'ADR-1119: undo-wire swaps the page sets');
   assert.ok(html.includes("rs:state.roomSecret"),'ADR-1119: room secret persists on the doc records');
   assert.ok(html.includes("wc:_wc()"),'ADR-1119: doc record persists the tomb map');
@@ -20226,7 +20508,7 @@ pass += 8;
   assert.ok(html.includes("const MAX_HISTORY=500"),'ADR-1121: bounded history');
   assert.ok(html.split("_hi().length=_hx()+1").length-1===3,'ADR-1121: every push path chops the redo branch');
   assert.ok(!html.includes("state.history="),'ADR-1121: the log is append/shift only — never reassigned');
-  assert.ok(html.split("if(op.clock.peer===_pi())Net.broadcast(op)").length-1>=2,'ADR-1121: remote ops are recorded, never echoed');
+  assert.ok(html.split("if(op.clock.peer===_pi())").length-1===2,'ADR-1121: remote ops are recorded, never echoed');
   assert.ok(html.includes("histIdx:-1"),'ADR-1121: cursor starts before the first op');
   assert.ok(html.includes("op.clock={peer:_pi(),seq:++state.seq,ts:_ut}")&&html.includes("w.clock={peer:_pi(),seq:++state.seq,ts:_ut}"),'ADR-1121: undo + undo-wire restamp fresh own clocks');
   assert.ok(html.includes("_fck(op)"),'ADR-1121: redo re-mints a newer clock');
@@ -20277,7 +20559,7 @@ pass += 7;
   assert.ok(!ops.some(o=>o.op==='upd'&&o.id==='t1'),'ADR-1123: no union emit when nothing survives');
   Net.broadcast=_ob;
   assert.ok(html.includes('_mT3='),'ADR-1123: 3-way text merger exists');
-  assert.ok(html.split('_txFlush();').length-1===5,'ADR-1123/1125: emit flush on every commit path (commit/applyRemote+drop-return/undo/redo)');
+  assert.ok(html.split('_txFlush();').length-1===6,'ADR-1123/1125/1171: emit flush on every commit path + the commit send-failure arm');
   assert.ok((html.match(/_mT3\(sh\[_tk\]/g)||[]).length===2,'ADR-1123: merge hooks at the upd + patch-list apply sites');
   state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
   console.log('  \u2713 ADR-1123 disjoint text merge + convergence emit (9 asserts)');
@@ -20596,7 +20878,7 @@ pass += 11;
   assert.ok(threw&&threw.message==='net-fail','ADR-1135: the first send error surfaces after cleanup');
   assert.ok(html.includes("try{Net.broadcast(w)}catch(e){if(!_werr)_werr=e}"),'ADR-1135: per-op send is guarded');
   assert.ok(html.includes("Net.broadcast(w)}catch(e){if(!_werr)_werr=e}}   // ADR-1135: best-effort — a mid-loop send failure must not strand the rest\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the undo wire ops');
-  assert.ok(html.includes("Net.broadcast(op);   // ADR-0615\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the redo broadcast');
+  assert.ok(html.includes("{_werr=e}   // ADR-0615/1171\n    _pgFollow(op);"),'ADR-1135: _pgFollow runs after the redo broadcast');
   assert.ok(html.includes("if(_werr)throw _werr;"),'ADR-1135: first error rethrown after flush');
   state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();state.history=[];state.histIdx=-1;_invalidateGrid();
   console.log('  ✓ ADR-1135 undo-wire send exception tolerance (7 asserts)');
@@ -20628,13 +20910,14 @@ pass += 7;
 // _stubOk; both stub producers now gate on it.
 {
   assert.ok(html.includes("const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)}"),'ADR-1137: shared tomb-dead stub predicate');
-  assert.ok(html.includes("!_pgById(o.pg)&&_stubOk(o.pg)"),'ADR-1137: op-intake heal gates on the tomb');
-  assert.ok(html.includes("!_pgById(s.pg)&&_stubOk(s.pg)"),'ADR-1137: _pgHealS shares the gate');
+  assert.ok(html.includes("if(o)_pgHeal(o)"),'ADR-1137: op-intake heal shares the tomb gate (ADR-1175)');
+  assert.ok(html.includes("for(const s of _sh())_pgHeal(s)"),'ADR-1137: _pgHealS shares the gate');
   state.pages=[{id:'p1',name:'a',nts:0}];state.curPg='p1';
   const mkP=(id,pg)=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.pg=pg;return s};
   state.wclock['pd']={_del:{peer:'zz',seq:1,ts:1}};
   Store.applyRemote({op:'add',shape:mkP('sX','pd'),clock:{peer:'zz',seq:2,ts:2}});
   assert.ok(!_pgById('pd'),'ADR-1137: tomb-dead pg gets no stub');
+  assert.ok(!byId('sX').pg,'ADR-1175: unhealable member rehomes (pg scrubbed) instead of dead-pg invisibility');
   state.wclock['pb']={_del:{peer:'zz',seq:1,ts:1},_born:{peer:'zz',seq:3,ts:3}};
   Store.applyRemote({op:'add',shape:mkP('sY','pb'),clock:{peer:'zz',seq:4,ts:4}});
   assert.ok(_pgById('pb'),'ADR-1137: a born-newer page id still heals');
@@ -21312,6 +21595,433 @@ pass += 5;
   console.log('  ✓ ADR-1161 window-level drop target (4 asserts)');
 }
 pass += 4;
+
+// ---------- ADR-1168: swap restore-domain boundary — doc scalars round-trip, causal markers never regress ----------
+// Completeness pin for the ADR-1162..1167 series: every doc-scoped scalar a
+// swap adopts is op-carried and restored on undo; everything else (causal
+// markers, dedup ledger, session auth, gesture chain) is deliberately outside.
+{
+  fakeWin.location.hash='';   // the world constructor's own main() would otherwise consume a leftover #b= hash mid-test
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));   // let the constructor's main() read the cleared hash and settle
+  const _zM=async o=>{const cs=new CompressionStream('deflate-raw');const w=cs.writable.getWriter();
+    w.write(new TextEncoder().encode(JSON.stringify(o)));w.close();
+    const buf=new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    return '#b='+encodeURIComponent('z:'+btoa(String.fromCharCode(...buf)))};
+  const _rM=(id,x)=>({id,type:'rect',x,y:0,w:10,h:10,z:1,stroke:'#000',fill:null,size:2,opacity:1});
+  // (a) every doc-scoped scalar round-trips through the recorded op
+  E.state.shapes=[];E._invalidateGrid();
+  E.state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];E.state.curPg='pA';
+  E.state.viewport.x=5;E.state.viewport.y=6;E.state.viewport.zoom=1.5;
+  E.state.docName='Mine';
+  E.state.dupIds=new Set(['dx']);E.state.dupDelta={x:7,y:8};
+  fakeWin.location.hash=await _zM({v:1,shapes:[_rM('impM',0)],pages:[{id:'pZ',name:'Z'}],curPg:'pZ',name:'Foreign',viewport:{x:100,y:200,zoom:2}});
+  assert.strictEqual(await E.Share.importFromHash(),true,'swap applies');
+  assert.strictEqual(E.state.curPg,'pZ','swap adopts the payload page set');
+  const rep0=E.state._lastRep,s0=E.state.seq;
+  E.Store.undo();
+  assert.strictEqual(E.state.curPg,'pA','undo restores the pre-swap page + landing');
+  assert.ok(E.state.pages.length===2&&E.state.pages[0].id==='pA','undo restores the pre-swap page list');
+  assert.strictEqual(E.state.viewport.x,5,'undo restores the pre-swap camera');
+  assert.strictEqual(E.state.docName,'Mine','undo restores the pre-swap name');
+  // (b) ordering state only ever advances — undo restamps fresh clocks
+  //     (op.clock mint at Store.undo), never rolls markers back.
+  assert.ok(clockNewer(E.state._lastRep,rep0),'undo advances _lastRep past the swap clock (never regresses)');
+  assert.ok(E.state.seq>s0,'undo consumes fresh seq (monotone per launch)');
+  assert.ok(E.state.seenOps.size>0,'the dedup ledger survives the swap — delayed echoes still dedup');
+  // (c) gesture state is outside the doc domain: the armed dup chain keeps
+  //     its delta (its ids are dead — sel⊆dupIds can never fire it).
+  assert.ok(E.state.dupDelta&&E.state.dupDelta.x===7,'the dup chain delta is not swapped');
+  E.Store.redo();
+  assert.strictEqual(E.state.curPg,'pZ','redo re-adopts the payload page');
+  assert.strictEqual(E.state.docName,'Foreign','redo re-adopts the name');
+  // (d) roomSecret is session-scoped auth, not doc content: a .board cannot
+  //     move it, and undo leaves it alone.
+  E.state.roomSecret='CUR';
+  const _hadFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR=globalThis.FileReader;
+  try{
+    globalThis.FileReader=class{readAsText(){this.result=JSON.stringify({v:1,shapes:[_rM('impX',0)],rs:'OTHER',docName:'D2'});this.onload&&this.onload()}};
+    E.state.shapes=[];E._invalidateGrid();
+    E.importBoard({name:'x.board'});
+    assert.strictEqual(E.state.roomSecret,'CUR','.board cannot move the session auth key');
+    E.Store.undo();
+    assert.strictEqual(E.state.roomSecret,'CUR','undo leaves the auth key alone');
+  }finally{if(_hadFR)globalThis.FileReader=_prevFR;else delete globalThis.FileReader}
+  // (e) backup restore adopts the record's rs — and undo must NOT regress it
+  //     (reverting would flip the MAC key mid-session).
+  fakeWin.location.hash='';   // same constructor-import guard as above
+  const E2=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _prevDb=E2.Persist.db;E2.Persist.db=makeFakeIdb();
+  try{
+    E2.state.roomSecret='K1';
+    await E2.Persist.saveBackup([_rM('bkM',1)],{x:0,y:0,zoom:1},'B');
+    E2.state.roomSecret='K2';E2.state.shapes=[];E2._invalidateGrid();
+    assert.strictEqual(await E2.Persist.restoreBackup(),true,'backup restores');
+    assert.strictEqual(E2.state.roomSecret,'K1','restore reseeds the dead origin key (ADR-1133)');
+    E2.Store.undo();
+    assert.strictEqual(E2.state.roomSecret,'K1','undo does not regress the adopted auth key');
+  }finally{E2.Persist.db=_prevDb}
+  console.log('  ✓ ADR-1168 swap restore-domain boundary (17 asserts)');
+}
+pass += 17;
+assert.ok(html.includes("op.clock={peer:_pi(),seq:++state.seq,ts:_ut}")&&html.includes("if(w.op==='replace')state._lastRep=w.clock"),'undo restamps fresh clocks — markers only advance (ADR-0717/0615/1168)');
+assert.ok(html.includes(",bro,aro,bvp,bnm)=>"),'the _repC signature carries the whole restore domain (ADR-1168)');
+assert.ok(html.includes("if(!forward)_selR(op)"),'undo restores the pre-swap selection (ADR-1168)');
+assert.ok(html.includes("und?!_tmE(w,{clock:clk}):!w._del")&&html.includes("op.beforeCurPg,op.clock,1)"),'swap applies veto only a tomb newer than the op — undo/redo/wire all restore (ADR-1168)');
+pass += 4;
+
+// ---------- ADR-1169: gesture × wholesale-swap contract — survive same-page, cancel on page move ----------
+// _pgAdopt cancels only when the adopted landing page differs: a pages-null
+// swap (single-page doc) lands nc===oc===null and the gesture survives by
+// design — ptr.reborn marks gate the restore-merge (ADR-0984) and every commit
+// path re-resolves ids against live shapes, so dead ids are filtered at emit.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  // (a) remote path: pages-null -> pages-null swap with an armed move gesture
+  const Z=Shape.make('rect',{x:0,y:0,w:10,h:10}),W=Shape.make('ellipse',{x:1,y:1,w:5,h:5});
+  E.Store.commit({op:'add',shape:Z});
+  E.state.pages=null;E.state.curPg=null;
+  E.ptr.down=true;E.ptr.dragKind='move';E.ptr.dragStartShapes=new Map([[Z.id,JSON.parse(JSON.stringify(Z))]]);
+  E.Store.applyRemote({op:'replace',after:[W],afterWc:{},clock:{peer:'peerG',seq:1,ts:E.state._lastTs+1}});
+  assert.ok(E.ptr.down===true&&E.ptr.dragKind==='move','pages-null swap keeps the gesture armed — no page move happened (ADR-1169)');
+  assert.ok(E.ptr.reborn!=null&&E.ptr.reborn.has(W.id),'swapped-in id marked reborn so cancel/restore skips it (ADR-0984)');
+  assert.ok(!E.state.shapes.some(s=>s.id===Z.id)&&E.byId(Z.id)==null,'dropped dragged id unresolvable — commit paths filter it at emit');
+  // (b) local commit path shares the apply body — same contract
+  E.ptr.down=true;E.ptr.dragKind='move';E.ptr.dragStartShapes=new Map([[W.id,JSON.parse(JSON.stringify(W))]]);
+  E.Store.commit({op:'replace',before:E.state.shapes.map(s=>({...s})),after:[{...W,x:9}]});
+  assert.ok(E.ptr.down===true,'local replace commit keeps the gesture armed too (ADR-1169)');
+  E.abortGesture();
+  console.log('  ✓ ADR-1169 gesture×swap contract: survive same-page, filter dead ids (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes("if(nc!==oc){_cancelPointerGesture();_cxO()}"),"_pgAdopt cancels only on a landing-page change — merge-path adoption (ADR-0664/1169)");
+assert.ok(html.includes("const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)})"),'the move commit re-resolves ids — dead/reborn-absent ids filtered at emit (ADR-1169)');
+pass += 2;
+
+// ---------- ADR-1170: undo-domain purity — history records only self-authored ops ----------
+// state.history is a local-only op log: the sole producers are commit and
+// _recordCommitted (both local funnels). applyRemote applies/dedups/stamps
+// clocks but never pushes — so ⌘Z/⌘Y always replay a self-authored op whose
+// stored `before` is a local snapshot, never a receiver-reinterpreted remote
+// one. Remote arrivals between locals leave the op pointer untouched: undo
+// walks the last LOCAL op, and a redo branch survives ops mid-branch.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const A=Shape.make('rect',{x:0,y:0,w:10,h:10}),B=Shape.make('rect',{x:20,y:0,w:10,h:10}),R=Shape.make('rect',{x:40,y:0,w:10,h:10});
+  E.Store.commit({op:'add',shape:A});
+  const h0=E.state.history.length,i0=E.state.histIdx;
+  E.Store.applyRemote({op:'add',shape:R,clock:{peer:'peerR',seq:1,ts:E.state._lastTs+1}});
+  assert.ok(E.byId(R.id)&&E.state.history.length===h0&&E.state.histIdx===i0,'remote op applies but never touches history/histIdx (ADR-1170)');
+  E.Store.commit({op:'add',shape:B});
+  E.Store.applyRemote({op:'upd',id:R.id,before:{x:40},after:{x:50},clock:{peer:'peerR',seq:2,ts:E.state._lastTs+2}});
+  assert.ok(E.state.history.every(o=>o.clock.peer===E.state.peerId),'every recorded op is self-authored (ADR-1170)');
+  E.Store.undo();
+  assert.ok(!E.byId(B.id)&&E.byId(R.id),'undo walks the last LOCAL op across the remote interleave (ADR-1170)');
+  E.Store.applyRemote({op:'replace',after:[{...A,id:'swapIn'}],clock:{peer:'peerR',seq:3,ts:E.state._lastTs+3}});
+  assert.ok(E.state.history[E.state.histIdx]&&E.state.history[E.state.histIdx].op==='add','remote replace stays out of history (ADR-1170)');
+  E.Store.redo();
+  assert.ok(E.byId(B.id),'redo still applies after remote ops mid-branch — arrivals never chop it (ADR-1170)');
+  console.log('  ✓ ADR-1170 undo-domain purity: local-only op log across remote interleave (6 asserts)');
+}
+pass += 6;
+assert.ok(html.split('_hi().push(op)').length-1===2,'exactly two history producers — commit + _recordCommitted, both local funnels (ADR-1170)');
+{const _ar=html.slice(html.indexOf('  applyRemote(op){'),html.indexOf('  _lwwOp(op)'));assert.ok(!_ar.includes('_hi(')&&!_ar.includes('histIdx'),'applyRemote contains no history write (ADR-1170)');}
+assert.ok(html.split('if(op.clock.peer===_pi())').length-1===2,'both record funnels re-broadcast only own-clock ops (ADR-1170)');
+pass += 3;
+
+// ---------- ADR-1171: send-failure bookkeeping parity — propagation sends strand nothing ----------
+// ADR-1135 gave undo's wire loop best-effort sends: a broadcast throw collects
+// and rethrows after _pgFollow/_txFlush/_rdb. The same class lived at the two
+// other propagation sites: redo's send could strand _pgFollow/_txFlush/_rdb
+// (local re-applied + pointer advanced, peers never told, follow-up skipped)
+// and commit's could strand _txFlush (convergence queue stays armed, draining
+// out of order later). Both now run bookkeeping before surfacing the error;
+// _recordCommitted's send is already its last statement.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const ob=E.Net.broadcast;
+  // (a) redo: send throw still runs bookkeeping, then rethrows
+  E.state.pages=[{id:'p1',name:'P1',nts:0}];E.state.curPg='p1';
+  E.state.history=[{op:'pageAdd',id:'p9',name:'P9',clock:{peer:E.state.peerId,seq:1,ts:E.state._lastTs+1}}];E.state.histIdx=-1;
+  E.Net.broadcast=()=>{throw new Error('send fail')};
+  let threw=false;try{E.Store.redo()}catch(e){threw=true}finally{E.Net.broadcast=ob}
+  assert.ok(threw,'redo rethrows the send failure (ADR-1171)');
+  assert.ok(E.state.histIdx===0&&E.state.curPg==='p9','send failure strands no bookkeeping — pointer advanced + page follow landed (ADR-1171)');
+  // (b) commit: apply + record + flush complete before the send error surfaces
+  const S=Shape.make('rect',{x:0,y:0,w:1,h:1});const i1=E.state.histIdx;
+  E.Net.broadcast=()=>{throw new Error('send fail')};
+  threw=false;try{E.Store.commit({op:'add',shape:S})}catch(e){threw=true}finally{E.Net.broadcast=ob}
+  assert.ok(threw,'commit rethrows the send failure (ADR-1171)');
+  assert.ok(E.byId(S.id)&&E.state.histIdx===i1+1,'commit applies + records + flushes before surfacing the error (ADR-1171)');
+  console.log('  ✓ ADR-1171 send-failure parity: bookkeeping completes, error still surfaces (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes("if(op.clock.peer===_pi()){try{Net.broadcast(op)}catch(e){_txFlush();throw e}}"),'commit send failure flushes the convergence queue before surfacing (ADR-1171)');
+assert.ok(html.includes("let _werr=null;try{Net.broadcast(op)}catch(e){_werr=e}")&&html.includes("if(_werr)throw _werr"),'redo send failure runs follow/flush/repaint then rethrows — ADR-1135 parity (ADR-1171)');
+{const _rc=html.slice(html.indexOf('  _recordCommitted(op){'),html.indexOf('  undo(){'));assert.ok(_rc.indexOf('Net.broadcast(op)')>_rc.indexOf('_rdb()'),'_recordCommitted broadcast is the last statement — nothing left to strand (ADR-1171)');}
+pass += 3;
+
+// ---------- ADR-1172: ad-hoc companion sends strand nothing — bookkeeping first, error after ----------
+// The two remaining unguarded Net.broadcast sites were the companion addMany
+// sends riding alongside pageAdd commits: _pgDup's throw could strand
+// switchPage (duplicate exists, view never follows) and the multi-page drawio
+// paste loop's throw abandoned every later page plus switchPage/selection/
+// viewport/docName/repaint — a silent half-import. Both now collect the first
+// send error and rethrow after the bookkeeping lands; every broadcast site is
+// try-guarded or terminal.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const ob=E.Net.broadcast;
+  E.state.pages=[{id:'p1',name:'P1',nts:0}];E.state.curPg='p1';
+  E.state.shapes.push(Shape.make('rect',{x:0,y:0,w:10,h:10}));
+  // fail only the companion addMany — the pageAdd commit itself still lands
+  E.Net.broadcast=o=>{if(o&&o.op==='addMany')throw new Error('send fail')};
+  let threw=null;try{E._pgDup()}catch(e){threw=e}finally{E.Net.broadcast=ob}
+  const dupId=E.state.pages[E.state.pages.length-1].id;
+  assert.ok(threw&&threw.message==='send fail','_pgDup rethrows the companion-send failure (ADR-1172)');
+  assert.ok(E.state.pages.length===2&&E.state.curPg===dupId,'switchPage lands on the duplicate before the error surfaces (ADR-1172)');
+  assert.ok(E.state.shapes.filter(s=>s.pg===dupId).length===1,'dup members installed by the pageAdd commit (ADR-1172)');
+  let calls=0;E.Net.broadcast=o=>{if(o&&o.op==='addMany')calls++};
+  threw=null;try{E._pgDup()}catch(e){threw=e}finally{E.Net.broadcast=ob}
+  assert.ok(!threw&&calls===1&&E.state.pages.length===3,'companion send intact on the success path (ADR-1172)');
+  console.log('  ✓ ADR-1172 ad-hoc send-failure parity: page ops land, error surfaces (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes("{_werr=e}   // ADR-0650/0739/1172\n  switchPage(id);"),'_pgDup switchPage lands before the error surfaces (ADR-1172)');
+assert.ok(html.includes("{if(!_werr)_werr=e}   // ADR-1172"),'multi-page paste companion send is best-effort (ADR-1172)');
+assert.ok(html.split("Net.broadcast(").length-1===8&&html.split("try{Net.broadcast(").length-1===5,'every Net.broadcast site is try-guarded or terminal — _txC outer-try + 2 terminal (ADR-1172)');
+pass += 3;
+
+// ---------- ADR-1173: single-page external intakes home on the viewed page ----------
+// pg-less intake attributes to pages[0] via _pgOk's fallback — invisible on a
+// multi-page board when curPg≠first page (ADR-1072 sibling). _pgHome stamps
+// s.pg=state.curPg (or scrubs a foreign pg) at every local intake: the
+// _placeCopies funnel plus the three external-file single-page paths (drawio
+// tail / svg / excalidraw).
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const doc='{"type":"excalidraw","version":2,"elements":[{"type":"rectangle","id":"r1","x":0,"y":0,"width":10,"height":10}]}';
+  E.state.pages=[{id:'p1',name:'P1',nts:0},{id:'p2',name:'P2',nts:0}];E.state.curPg='p2';
+  assert.ok(E.importExcText(doc)===true,'exc import commits on a paged board (ADR-1173)');
+  const s=E.state.shapes[E.state.shapes.length-1];
+  assert.ok(s&&s.pg==='p2'&&E._pgOk(s),'exc members home on the viewed page — not pages[0] (ADR-1173)');
+  E.state.pages=null;E.state.curPg=null;
+  assert.ok(E.importExcText(doc)===true,'exc import commits on a page-less board');
+  const s2=E.state.shapes[E.state.shapes.length-1];
+  assert.ok(s2&&s2.pg===undefined,'page-less intake scrubs any foreign pg (ADR-1173)');
+  console.log('  ✓ ADR-1173 intake page-homing: members land on the viewed page (3 asserts)');
+}
+pass += 3;
+assert.ok(html.includes("_pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}}"),'_pgHome stamps curPg / scrubs foreign pg (ADR-1173)');
+assert.ok(html.split('_pgHome(shapes)').length-1===3,'drawio/svg/exc single-page intakes all home via _pgHome (ADR-1173)');
+assert.ok(html.includes("{_pgHome(built);_cmt({op:'addMany',shapes:built})}"),'_placeCopies homes via _pgHome (ADR-1173)');
+pass += 3;
+
+// ---- ADR-1174: snapshot union re-derives a cap-dropped curPg ----
+{
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _snap=m=>{m.mac=E.Net._mac(m);E.Net._onRecv(m,false)};
+  E.state.pages=[{id:'lp1',name:'L1',nts:0},{id:'lp2',name:'L2',nts:0}];E.state.curPg='lp2';
+  E.state.shapes=[{id:'s1',type:'rect',x:0,y:0,w:10,h:10,pg:'lp2'}];   // non-empty → union path, not wholesale adopt
+  const pp=[];for(let i=0;i<64;i++)pp.push({id:'pa'+i,name:'P'+i,nts:0});
+  _snap({k:'snapshot',peer:'p9',pages:pp});
+  assert.strictEqual(E.state.pages.length,64,'page union honours the 64-page cap');
+  assert.ok(!E.state.pages.some(p=>p.id==='lp2'),'the cap drops the viewed local page');
+  assert.strictEqual(E.state.curPg,'pa0','a dropped curPg re-derives to the first merged page');
+  assert.ok(E._pgOk({pg:'pa0'}),'a member of the landed page stays visible (ADR-1174)');
+  assert.strictEqual(E.byId('s1').pg,undefined,'a cap-dropped member rehomes — pg scrubbed, not dead (ADR-1175)');
+  assert.ok(E._pgOk(E.byId('s1')),'the rehomed member stays visible on the landed page (ADR-1175)');
+  console.log('  ✓ ADR-1174 snapshot-union curPg re-derivation + member rehome (6 asserts)');
+  pass += 6;
+}
+assert.ok(html.includes("if(!_pgById(state.curPg)){if(_ln(np))switchPage(np[0].id);else state.curPg=null}"),'union heal re-derives curPg like _pgAdopt (ADR-1174)');
+assert.ok(html.includes("const _pgHeal=s=>{if(s.pg&&!_pgById(s.pg))"),'member heal shared as _pgHeal (ADR-1175)');
+pass += 2;
+
+// ---- ADR-1176: member-pg intake funnel — every writer resolves or heals ----
+{
+  const pp=[];for(let i=0;i<64;i++)pp.push({id:'pa'+i,name:'P'+i,nts:0});
+  state.pages=pp;state.curPg='pa0';
+  const mkS=(id,pg)=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.pg=pg;return s};
+  Store.applyRemote({op:'add',shape:mkS('sC','pgX'),clock:{peer:'zz',seq:9,ts:9}});
+  assert.ok(byId('sC'),'op-carried member installs');
+  assert.strictEqual(byId('sC').pg,undefined,'cap-blocked intake member rehomes — pg scrubbed (ADR-1176)');
+  assert.ok(!_pgById('pgX'),'no stub past the 64-page cap (ADR-1176)');
+  assert.ok(_pgOk(byId('sC')),'the rehomed member stays visible on pages[0]');
+  state.pages=null;state.curPg=null;state.shapes=[];
+  console.log('  ✓ ADR-1176 cap-blocked op-intake member rehome (4 asserts)');
+  pass += 4;
+}
+assert.ok((html.match(/\bs\.pg=[^=]/g)||[]).length===6,'member-pg write census — resolving writers only (ADR-1176)');
+assert.ok(html.includes("if(_pgs())base.pg=state.curPg"),'local births stamp the viewed page (ADR-1176)');
+pass += 2;
+
+// ---- ADR-1185: off-canvas pointers clear the tracked cursor point ----
+// _curSp is stamped by the CANVAS pointermove only — but overlay chrome
+// (minimap, toolbar, panels, editors, ctx menu) sits inside the canvas box,
+// so hovering it never fires pointerleave: _curSp froze at the last canvas
+// point while sendCursorMoved() kept re-deriving world points under it. Every
+// viewport change during a minimap scrub (or ⌘± zoom while hovering chrome)
+// emitted a ghost cursor jump to peers. A document-level pointermove now
+// clears _curSp when the hit target isn't the canvas (pointer capture still
+// targets the canvas, so live drags keep tracking).
+{
+  const _ob9=Net._bcast;let _cN=0;Net._bcast=m=>{if(m&&m.k==='cursor')_cN++;return _ob9.call(Net,m)};
+  state.peers.set('p1185x',{color:'#123',lastSeen:Date.now()});
+  Net._curSp={x:10,y:10};
+  const _pmD=fakeDoc._L['pointermove']||[];
+  assert.ok(_pmD.length>0,'a document pointermove listener exists');
+  for(const f of _pmD)f({target:{tagName:'BUTTON'}});
+  assert.strictEqual(Net._curSp,null,'hover over overlay chrome clears _curSp — no ghost re-derive');
+  Net.sendCursorMoved();
+  assert.strictEqual(_cN,0,'no cursor emit while the pointer sits over chrome');
+  Net._curSp={x:10,y:10};
+  for(const f of _pmD)f({target:canvas});
+  assert.strictEqual(Net._curSp.x,10,'canvas-target pointermove keeps _curSp (drag capture survives)');
+  Net._bcast=_ob9;Net._curSp=null;Net._lastCurKey=null;state.peers.delete('p1185x');
+  console.log('  ✓ ADR-1185 off-canvas pointer clears the cursor point (4 asserts)');
+  pass += 4;
+}
+
+// ---- ADR-1186: dirty-flag semantics at the save boundary ----
+// save() cleared state.dirty only AFTER awaiting txDone — a mutation mid-save
+// (schedule() re-marks + re-arms a write) was clobbered: _dt() read false while
+// an armed write still existed, so beforeunload skipped its prompt and
+// flushIfHidden skipped its flush inside that window. The flag now clears at
+// write start (mid-save mutations re-dirty via schedule()) and restores on
+// failure, so it always means "unsaved writes exist".
+{
+  const _idb=makeFakeIdb(),_db0=Persist.db;Persist.db=_idb;
+  state.dirty=true;
+  const p=Persist.save();
+  Persist.schedule();   // a mid-write mutation re-dirties + re-arms
+  await p;
+  assert.strictEqual(state.dirty,true,'a mid-save mutation survives the dirty clear (ADR-1186)');
+  clearTimeout(Persist._saveT);   // stop the re-armed debounce
+  Persist.db={transaction(){return{objectStore(){return{getAll(){const rq={};queueMicrotask(()=>{rq.error=new Error('boom');rq.onerror&&rq.onerror()});return rq}}}}}};
+  state.dirty=false;
+  await Persist.save();
+  assert.strictEqual(state.dirty,true,'a failed write restores dirty (ADR-1186)');
+  Persist.db=_idb;state.dirty=false;
+  await Persist.save();
+  assert.strictEqual(state.dirty,false,'a clean write still clears dirty');
+  Persist.db=_db0;
+  console.log('  ✓ ADR-1186 save-boundary dirty semantics (3 asserts)');
+  pass += 3;
+}
+
+// ---- ADR-1187: an imgs-store read failure must not sink the valid shapes.
+// Previously the img-attach block sat inside the same try as the doc read —
+// a getAll/getAllKeys error rejected load() wholesale, installing nothing;
+// the next save() then overwrote a recoverable doc record with an empty board.
+// The attach is now isolated: shapes install, ref-bearing imgs park via
+// Net._attachShape (imgq heal resolves them like any other parked ref).
+{
+  const imgShape={id:'i1',type:'image',img:'img:K9',x:0,y:0,w:10,h:10,z:1};
+  const doc={shapes:[imgShape],viewport:{x:0,y:0,zoom:1},docName:'D',pages:null,curPg:null,wc:{}};
+  const _errRq=()=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.error=new Error('imgs dead');rq.onerror&&rq.onerror()});return rq};
+  const _okRq=v=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.result=v;rq.onsuccess&&rq.onsuccess()});return rq};
+  const brokenImgs={transaction(){
+    setTimeout(()=>{},0);
+    return{objectStore(n){return{
+      get(k){return _okRq(n==='docs'?doc:undefined)},
+      getAll(){return _errRq()},
+      getAllKeys(){return _errRq()},
+      put(){},delete(){}
+    }}};
+  }};
+  const _ldb=Persist.db;Persist.db=brokenImgs;Net._imgPending.clear();
+  try{
+    await Persist.load();
+    assert.strictEqual(byId('i1')?.id,'i1','the shape list survives an imgs-store read failure (ADR-1187)');
+    assert.ok(Net._imgPending.has('i1'),'the unresolved img ref parks for imgq heal instead of crashing the load (ADR-1187)');
+    assert.strictEqual(state.shapes.length,1,'no shape was lost (ADR-1187)');
+  }finally{Persist.db=_ldb;Net._imgPending.clear()}
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
+  console.log('  ✓ ADR-1187 imgs-store failure isolation (3 asserts)');
+  pass += 3;
+}
+
+// ---- ADR-1188: restoreBackup also isolates the imgs-store read
+{
+  const imgShape={id:'i2',type:'image',img:'img:K10',x:0,y:0,w:10,h:10,z:1};
+  const bdoc={shapes:[imgShape],viewport:{x:0,y:0,zoom:1},docName:'B',pages:null,curPg:null,ro:0,savedAt:1};
+  const _errRq=()=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.error=new Error('imgs dead');rq.onerror&&rq.onerror()});return rq};
+  const _okRq=v=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.result=v;rq.onsuccess&&rq.onsuccess()});return rq};
+  const brokenImgs={transaction(){
+    const tx={
+      oncomplete:null,onerror:null,onabort:null,
+      objectStore(n){return{
+        get(k){return _okRq(k==='main:prev'?bdoc:undefined)},
+        getAll(){return _errRq()},
+        getAllKeys(){return _errRq()},
+        put(){},delete(){}
+      }}
+    };
+    queueMicrotask(()=>tx.oncomplete&&tx.oncomplete());
+    return tx;
+  }};
+  const _ldb=Persist.db;Persist.db=brokenImgs;Net._imgPending.clear();
+  try{
+    const ok=await Persist.restoreBackup();
+    assert.strictEqual(ok,true,'restoreBackup lands the backup shapes despite an imgs-store read failure (ADR-1188)');
+    assert.strictEqual(byId('i2')?.id,'i2','the restored shape survives (ADR-1188)');
+    assert.ok(Net._imgPending.has('i2'),'the unresolved img ref parks for imgq heal instead of blocking the restore (ADR-1188)');
+  }finally{Persist.db=_ldb;Net._imgPending.clear()}
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;state.docName='';_invalidateGrid();
+  console.log('  ✓ ADR-1188 backup-restore imgs failure isolation (3 asserts)');
+  pass += 3;
+}
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
