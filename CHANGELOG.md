@@ -1,3 +1,8 @@
+## [1.8.177] - 2026-10-01
+
+### Fixed
+- **round903 / ADR-1153 — editor overlays join the focus contract**: the text and label editors never captured/restored focus — every fold (blur commit, Esc, remote-del/lock/hide/page/ro teardown) removed a focused element and left `activeElement` on `<body>`, stranding keyboard/SR users off the document surface after every inline edit (the same defect class ADR-1150/1151 closed for ctx menu and find box). Both openers now capture the invoker into a shared `_edPrev` slot, and all seven removal sites go through `_foldOv`: if the element still held focus (`had`) or focus already fell to `<body>` (the blur path, where `activeElement` has already moved), it is handed back to the invoker — detached invokers fall back to `canvas`. A blur that moved focus to a real element (a button/menu item) is never stolen. 7 pins (2 source + 5 behavioural incl. the real element-then-window blur order).
+
 ## [1.8.176] - 2026-10-01
 
 ### Fixed

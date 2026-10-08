@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.176';   // ADR-1152
+const V='1.8.177';   // ADR-1153
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4681,6 +4681,7 @@ function editSelectedShapeKbd(){
 // bold = frame styling. IME-safe; Enter commits, Escape discards (blur detached).
 function openLabelEditor(hit,leftPx,topPx,bold){
   _cxO();   // ADR-0560
+  _edPrev=_aE();   // ADR-1153: invoker slot — the fold hands focus back here
   const inp=_ce('input');
   inp.value=hit.label||'';inp.maxLength=80;
   const col=hit.stroke||_gC(bold?'--accent-contrast':'--ink');   // text needs the 4.5:1 floor
@@ -4694,10 +4695,10 @@ function openLabelEditor(hit,leftPx,topPx,bold){
   _lblTa={inp,hit};_lblVp='';   // ADR-0182: follow the viewport while editing
   const commit=()=>{
     // ADR-0556/0967
-    if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_rm(inp);_iv();return}
+    if(!(hit=byId(hit.id))||_lk(hit)){_lblTa=null;_foldOv(inp);_iv();return}
     const lbl=_trm(inp.value);
     if(lbl!==hit.label){const before={label:hit.label??null};const after={label:lbl||null};hit.label=lbl||null;_rcOp({op:'upd',id:hit.id,before,after});_iv()}
-    _lblTa=null;_rm(inp);
+    _lblTa=null;_foldOv(inp);
   };
   _on(inp,'blur',commit);
   _on(inp,_KD,ev=>{
@@ -4721,19 +4722,26 @@ function openLabelEditor(hit,leftPx,topPx,bold){
       }
       commit();
     }
-    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;_rm(inp)}
+    if(ev.key==='Escape'){inp.removeEventListener('blur',commit);_lblTa=null;_foldOv(inp)}
   });
 }
 // ADR-0182
 // label input — it used to stay glued to the glass while the board panned.
 let _lblTa=null,_lblVp='';
+// ADR-1153: fold hands focus back to the captured invoker — removing a focused
+// overlay otherwise strands keyboard/SR users on <body>. Never steals a real
+// target: a blur that already moved focus (button/menu) is left alone.
+let _edPrev=null;
+const _foldOv=el=>{const had=_aE()===el;_rm(el);
+  if(had||_aE()===_db)_fc(_edPrev&&_edPrev.focus&&_edPrev.isConnected!==false?_edPrev:canvas);
+  _edPrev=null};
 // ADR-0560: commit a still-open overlay first
 const _cxO=()=>{if(_teTa)_teTa.blur();if(_lblTa)_lblTa.inp.blur()};
 function _lblFollow(){
   if(!_lblTa)return;
   // ADR-0559/0569/0572: close when the labelle
   // (locked skips upd — the edit would be silently dropped)
-  const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)||state.ro){_rm(_lblTa.inp);_lblTa=null;return}   // ADR-1103
+  const _lt=byId(_lblTa.hit.id);if(!_lt||_hd(_lt)||_lk(_lt)||!_pgOk(_lt)||state.ro){_foldOv(_lblTa.inp);_lblTa=null;return}   // ADR-1103
   const v=_vp(),sig=v.x+'|'+v.y+'|'+v.zoom+'|'+_gridVer;   // ADR-0892/0893
   if(sig===_lblVp)return;
   _lblVp=sig;
@@ -5768,6 +5776,7 @@ function _syncTextFinalize(s,before,deleted){
 function openTextEditor(s,isNew){
   if(state.ro){_roNo();return}
   _cxO();
+  _edPrev=_aE();   // ADR-1153: invoker slot — the fold hands focus back here
   s=byId(s.id)||s;   // ADR-0533: add commits clone — bind the liv
   state.editing=s.id;_iv();
   const ta=_ce('textarea');
@@ -5796,7 +5805,7 @@ function openTextEditor(s,isNew){
   _on(ta,'blur',()=>{
     const newText=ta.value;
     // ADR-0556/0967/0995: re-bind post-swap
-    if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_rm(ta);_iv();return}
+    if(!(s=byId(s.id))||_lk(s)){state.editing=null;_teTa=null;_foldOv(ta);_iv();return}
     _sv2(ctx);
     resizeAfterTextEdit(s,newText,ctx);
     _rs2(ctx);
@@ -5828,7 +5837,7 @@ function openTextEditor(s,isNew){
         _rcOp({op:'upd',id:s.id,before,after});
       }
     }
-    _teTa=null;_rm(ta);_iv();
+    _teTa=null;_foldOv(ta);_iv();
   });
   _on(ta,_KD,ev=>{
     if(ev.isComposing)return;
@@ -5865,7 +5874,7 @@ function _teFollow(){
   // us (remote del/clear/replace/hide/lock, local del) — fold
   // once instead of dangling until blur. No commit;
   // upd anyway, so the typed text can't be applied.
-  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_rm(_teTa);_teTa=null;state.editing=null;_iv();return}
+  const s=byId(_ed());if(!s||_hd(s)||_lk(s)||!_pgOk(s)||state.ro){_foldOv(_teTa);_teTa=null;state.editing=null;_iv();return}
   const v=_vp(),sig=v.x+','+v.y+','+v.zoom+','+_gridVer;
   if(sig===_teVp)return;
   _teVp=sig;positionTextEditor(_teTa,s);
