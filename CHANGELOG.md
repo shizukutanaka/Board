@@ -1,3 +1,8 @@
+## [1.8.207] - 2026-10-01
+
+### Fixed
+- **round933 / ADR-1183 — exportPDF の popup-blocked blob URL 漏洩を閉塞**: `fin` コールバックが `window.open` の成否確認前に `_oURL(bl)` で blob URL を生成していたため、popup がブロックされた早期 return で revoke されずリーク (ADR-0813 同型)。URL 生成を `w2` ガード後へ移動する純粋な並べ替えで閉塞 (raw 増加ゼロ)。全 `_oURL` サイト (6 ダウンロード export は `_rO` 済み、画像は dataUrl モデル) とブート順序・履歴漏斗・`_oa` callsite の監査も完走 clean。6挙動ピン + `window.open` harness trampoline で固定。
+
 ## [1.8.206] - 2026-10-01
 
 ### Test

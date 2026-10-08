@@ -1708,6 +1708,7 @@ const fakeWin = {
   indexedDB: { open: () => ({ addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null }) },
   URL: { createObjectURL: () => 'blob:x', revokeObjectURL(){} },
   Blob, confirm: () => false, alert(){}, prompt: () => null,
+  open:(...a)=>(fakeWin._openFn?fakeWin._openFn(...a):null),
   getComputedStyle: () => ({ getPropertyValue: () => '#fff' }),
   BroadcastChannel: class { onmessage=null; postMessage(){} close(){} },
   screen: { orientation: { addEventListener(){} } },
@@ -11375,6 +11376,34 @@ try {
     assert.ok(_tk&&/(Canvas is empty|キャンバスが空)/.test(_tk.m),"exportPDF toasts the 'empty' message, not a silent return");
     console.log('  ✓ ADR-1101 exportPDF empty-page toast parity (2 asserts)');
     pass += 2;
+  }
+
+  // ADR-1183: exportPDF mints the blob URL only after the print window is
+  // confirmed — a popup-blocked path used to leak the object URL.
+  {
+    const _emSave=UI.toast;let _tk=null;UI.toast=(m,k)=>{_tk={m,k}};
+    const _ou=fakeWin.URL.createObjectURL;let _oN=0;
+    fakeWin.URL.createObjectURL=b=>{_oN++;return 'blob:t'};
+    state.shapes.length=0;_invalidateGrid();
+    const hs=api.Shape.make('rect',{x:0,y:0,w:10,h:10});
+    api.Store.commit({op:'add',shape:hs});
+    fakeWin._openFn=null;
+    let _err=null;
+    try{api.exportPDF()}catch(e){_err=e}
+    assert.ok(!_err,'exportPDF does not throw on a blocked popup');
+    assert.strictEqual(_oN,0,'a blocked popup mints no blob URL');
+    assert.ok(_tk&&_tk.k==='warn','a blocked popup still toasts popupBlocked');
+    const w2doc={wrote:0,write(){this.wrote++},close(){}};
+    fakeWin._openFn=()=>({document:w2doc});
+    _tk=null;_err=null;
+    try{api.exportPDF()}catch(e){_err=e}
+    assert.ok(!_err,'exportPDF does not throw when the popup opens');
+    assert.strictEqual(_oN,1,'an open popup mints exactly one blob URL');
+    assert.strictEqual(w2doc.wrote,1,'the print document was written');
+    fakeWin._openFn=null;fakeWin.URL.createObjectURL=_ou;UI.toast=_emSave;
+    state.shapes.length=0;_invalidateGrid();
+    console.log('  ✓ ADR-1183 exportPDF blob-URL lifecycle (6 asserts)');
+    pass += 6;
   }
 
   // v1.6.94: _esc single-quote encoding — must fail before fix, pass after
