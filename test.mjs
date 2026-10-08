@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM } = api;
+          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -20154,6 +20154,37 @@ pass += 1959; // prev 1947 + 12 ADR-1124 merge-emit pins
   console.log('  ✓ ADR-1127 proto-key × keyed-map contract (9 asserts)');
 }
 pass += 9;
+
+// ---- ADR-1128: local-commit exception boundary — a failed _apply must not
+// strand the op's dedup key (applyRemote already evicts on throw, ADR-1026).
+// Same for the headless emit path _txC: a throw must evict the key so the
+// flushed convergence op can be retried by a later flush/commit.
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock=_wM();
+  const op={op:'add',shape:{id:'e1',type:'rect',x:0,y:0,w:1,h:1,z:1}};
+  const _origA=Store._apply;
+  Store._apply=()=>{throw new Error('boom')};
+  let threw=false;try{Store.commit(op)}catch(e){threw=true}
+  Store._apply=_origA;
+  assert.ok(threw,'ADR-1128: commit propagates the _apply failure');
+  assert.ok(!byId('e1'),'ADR-1128: failed apply leaves no shape');
+  Store.commit(op);   // retry of the SAME op object — dedup key must not eat it
+  assert.ok(byId('e1'),'ADR-1128: retried commit lands after dedup eviction');
+  // _txC: a throwing broadcast must evict too — no apply, but the same dedup slot.
+  const op2={op:'upd',id:'e1',before:{x:0},after:{x:5}};
+  const _origB=Net.broadcast;
+  Net.broadcast=()=>{throw new Error('boom')};
+  threw=false;try{_txC(op2)}catch(e){threw=true}
+  Net.broadcast=_origB;
+  assert.ok(threw,'ADR-1128: _txC propagates the send failure');
+  _txC(op2);   // retry — stamps the prop clock + broadcasts
+  assert.strictEqual(byId('e1').x,0,'ADR-1128: _txC is headless — no local apply');
+  assert.ok(state.seenOps.has(`${op2.clock.peer}:${op2.clock.seq}`),'ADR-1128: retried _txC re-added the dedup key');
+  assert.ok(html.includes('catch(e){_sO().delete(k);throw e}'),'ADR-1128: dedup-evict in source');
+  state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ ADR-1128 commit/_txC dedup-eviction parity (7 asserts)');
+}
+pass += 7;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
