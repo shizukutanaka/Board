@@ -1,3 +1,8 @@
+## [1.8.171] - 2026-10-01
+
+### Fixed
+- **round897 / ADR-1147 — keyboard-only ops reach the context menu (text flags + zoom-to-selection)**: the last keyboard-only ops — ⌘B/⌘I/⌘U/⌘⇧X text modifiers and ⇧2 zoom-to-selection — are now reachable from the ctx menu, gated `has&&_selTxtL()` (the same text-capable unlocked set `toggleTextFlag` writes) and `has&&` respectively. Touch/mouse users had no path at all to bold/italic/underline/strike — ADR-0135's exact trap (a keyboard-only op is invisible reachability-wise). The items call the identical `toggleTextFlag`/`zoomToSelection` fns, so apply semantics (style op, `_forTxt` skip-locked, `_nugPush` undo coalescing) are shared, not forked. 8 behavioural pins.
+
 ## [1.8.170] - 2026-10-01
 
 ### Test+Docs
