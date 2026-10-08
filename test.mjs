@@ -21933,6 +21933,33 @@ pass += 2;
   pass += 4;
 }
 
+// ---- ADR-1186: dirty-flag semantics at the save boundary ----
+// save() cleared state.dirty only AFTER awaiting txDone — a mutation mid-save
+// (schedule() re-marks + re-arms a write) was clobbered: _dt() read false while
+// an armed write still existed, so beforeunload skipped its prompt and
+// flushIfHidden skipped its flush inside that window. The flag now clears at
+// write start (mid-save mutations re-dirty via schedule()) and restores on
+// failure, so it always means "unsaved writes exist".
+{
+  const _idb=makeFakeIdb(),_db0=Persist.db;Persist.db=_idb;
+  state.dirty=true;
+  const p=Persist.save();
+  Persist.schedule();   // a mid-write mutation re-dirties + re-arms
+  await p;
+  assert.strictEqual(state.dirty,true,'a mid-save mutation survives the dirty clear (ADR-1186)');
+  clearTimeout(Persist._saveT);   // stop the re-armed debounce
+  Persist.db={transaction(){return{objectStore(){return{getAll(){const rq={};queueMicrotask(()=>{rq.error=new Error('boom');rq.onerror&&rq.onerror()});return rq}}}}}};
+  state.dirty=false;
+  await Persist.save();
+  assert.strictEqual(state.dirty,true,'a failed write restores dirty (ADR-1186)');
+  Persist.db=_idb;state.dirty=false;
+  await Persist.save();
+  assert.strictEqual(state.dirty,false,'a clean write still clears dirty');
+  Persist.db=_db0;
+  console.log('  ✓ ADR-1186 save-boundary dirty semantics (3 asserts)');
+  pass += 3;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
