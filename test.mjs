@@ -18973,18 +18973,33 @@ pass += 7;
   E.Store.undo();
   assert.ok(!E.byId('imp9'),'ro→editable import swap is undoable');
   E.Store.redo();
-  // (b) ro session + ro:1 link → swap applies, adopted ro keeps repC dropped.
-  // ADR-1054: an empty board skips the merge/replace confirm — clear first so
-  // this keeps testing the replace path's ro adoption.
+  // (b) ADR-1162: ro session + ro:1 link → REJECTED before the swap — was:
+  //     the swap applied silently while repC dropped the op (no undo, live
+  //     ops merging into the imported doc, snapshot heal leaking it back).
   E.state.shapes.length=0;E._invalidateGrid();
   fakeWin.location.hash=await _z({v:1,shapes:[_r('impR',0)],ro:1});
   E.state.ro=true;
   const h1=E.state.history.length;
-  assert.strictEqual(await E.Share.importFromHash(),true,'ro session: ro link imports');
-  assert.ok(E.byId('impR'),'ro→ro import swap applies');
+  const _et=E.UI.toast,_seen=[];E.UI.toast=m=>_seen.push(m);
+  const _rs=fakeWin.history.replaceState;let _rsC=0;fakeWin.history.replaceState=()=>_rsC++;
+  assert.strictEqual(await E.Share.importFromHash(),false,'ro session: ro link rejected (ADR-1162)');
+  assert.ok(!E.byId('impR'),'ro→ro import swaps nothing');
   assert.strictEqual(E.state.ro,true,'ro→ro import stays read-only');
-  assert.strictEqual(E.state.history.length,h1,'ro→ro records no op (doc load, not a mutation)');
+  assert.strictEqual(E.state.history.length,h1,'ro→ro records no op — and swaps nothing');
+  assert.ok(_rsC>0,'ro→ro reject clears the hash (ADR-0038 parity)');
+  assert.ok(_seen.some(m=>/閲覧|View only/.test(m)),'ro→ro reject toasts readOnlyMode');
   fakeWin.location.hash='';
+  // (b2) merge-mode on a ro doc is gated identically — E's confirm is ()=>true,
+  // so the merge branch fires, but _mergeImport itself rejects under ro.
+  E.state.shapes=[_r('local',0)];E._invalidateGrid();E.state.ro=true;
+  _seen.length=0;
+  fakeWin.location.hash=await _z({v:1,shapes:[_r('impM',0)]});
+  await E.Share.importFromHash();
+  assert.ok(E.state.shapes.length===1,'ro merge-mode places nothing (ADR-1162)');
+  assert.ok(_seen.some(m=>/閲覧|View only/.test(m)),'ro merge toasts readOnlyMode');
+  fakeWin.location.hash='';
+  E.state.shapes.length=0;E._invalidateGrid();
+  E.UI.toast=_et;fakeWin.history.replaceState=_rs;
   // (c) importBoard — FileReader stub fires onload synchronously.
   const _hadFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR=globalThis.FileReader;
   try{
@@ -18997,7 +19012,29 @@ pass += 7;
     assert.strictEqual(E.state.ro,false,'ro→file: absent ro → editable adopted');
     assert.strictEqual(E.state.history.length,h2+1,'ro→file records the replace');
   }finally{if(_hadFR)globalThis.FileReader=_prevFR;else delete globalThis.FileReader}
-  // (d) saveBackup carries ro; restoreBackup adopts it before repC.
+  // (c2) ADR-1162: writable doc + ro:1 file → repC commits first, ro adopts after.
+  const _hadFR2=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR2=globalThis.FileReader;
+  try{
+    globalThis.FileReader=class{readAsText(){this.result=JSON.stringify({v:1,shapes:[_r('impFR',0)],ro:1});this.onload&&this.onload()}};
+    E.state.shapes.length=0;E._invalidateGrid();E.state.ro=false;
+    const h4=E.state.history.length;
+    E.importBoard({name:'ro.board'});
+    assert.ok(E.byId('impFR'),'writable→ro file swap applies');
+    assert.strictEqual(E.state.history.length,h4+1,'ro payload swap commits while writable (was dropped)');
+    assert.strictEqual(E.state.ro,true,'ro flag adopts after the commit');
+  }finally{if(_hadFR2)globalThis.FileReader=_prevFR2;else delete globalThis.FileReader}
+  // (c3) ro doc + ro:1 file → rejected before the swap.
+  const _hadFR3=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR3=globalThis.FileReader;
+  try{
+    globalThis.FileReader=class{readAsText(){this.result=JSON.stringify({v:1,shapes:[_r('impRR',0)],ro:1});this.onload&&this.onload()}};
+    E.state.shapes.length=0;E._invalidateGrid();E.state.ro=true;
+    const h5=E.state.history.length;
+    E.importBoard({name:'ro2.board'});
+    assert.ok(!E.byId('impRR')&&E.state.shapes.length===0,'ro→ro file swaps nothing');
+    assert.strictEqual(E.state.history.length,h5,'ro→ro file records no op');
+    assert.strictEqual(E.state.ro,true,'ro→ro file stays read-only');
+  }finally{if(_hadFR3)globalThis.FileReader=_prevFR3;else delete globalThis.FileReader}
+  // (d) ADR-1162: restoreBackup commits while writable, then adopts the record's ro.
   const _prevDb=E.Persist.db;E.Persist.db=makeFakeIdb();
   try{
     E.state.ro=true;
@@ -19008,16 +19045,29 @@ pass += 7;
     assert.strictEqual(await E.Persist.restoreBackup(),true,'ro-backed backup restores');
     assert.ok(E.byId('bk1'),'backup shapes restored');
     assert.strictEqual(E.state.ro,true,'restore adopts the record ro');
-    assert.strictEqual(E.state.history.length,h3,'adopted ro → repC drops');
+    assert.strictEqual(E.state.history.length,h3+1,'ADR-1162: swap commits before ro adopts');
   }finally{E.Persist.db=_prevDb}
+  // (d2) ro doc + ro:1 backup → rejected, backup slot kept.
+  const _prevDb2=E.Persist.db;E.Persist.db=makeFakeIdb();
+  try{
+    E.state.shapes.length=0;E._invalidateGrid();E.state.ro=true;
+    await E.Persist.saveBackup([_r('bk2',1)],{x:0,y:0,zoom:1},'B2');   // writes ro:1 (current state)
+    const h6=E.state.history.length;
+    assert.strictEqual(await E.Persist.restoreBackup(),false,'ro→ro backup restore rejected');
+    assert.strictEqual(E.state.history.length,h6,'ro→ro restore records no op');
+    assert.strictEqual(await E.Persist.checkBackup(),true,'rejected restore keeps the backup slot');
+  }finally{E.Persist.db=_prevDb;E.state.ro=false;E.state.shapes.length=0;E._invalidateGrid()}
 }
-console.log('  ✓ ADR-1069 doc-switch ro adoption (14 asserts)');
-pass += 14;
-assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069"),'hash import adopts ro before repC');
+console.log('  ✓ ADR-1069/1162 doc-switch ro adoption (28 asserts)');
+pass += 28;
+assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069/1162"),'hash import adopts ro after repC');
+assert.ok(html.includes("state.ro=false;   // ADR-1162"),'swap commits while writable before adopting ro');
 assert.ok(html.includes("ro:state.ro?1:0,shapes:roundShapesForExport"),'.board export carries ro');
 assert.ok(html.includes("rs:state.roomSecret,ro:state.ro?1:0,savedAt"),'backup record carries ro');
 assert.ok((html.match(/state\.ro=d\.ro===1/g)||[]).length>=2,'importBoard+restoreBackup adopt ro');
-pass += 4;
+assert.ok(html.includes("if(state.ro&&d.ro===1){_roNo();return}   // ADR-1162")&&html.includes("if(state.ro&&data.ro===1){_roNo();clearHash();return false}")&&html.includes("if(state.ro&&d.ro===1){_roNo();return false}   // ADR-1162"),'all three swap paths reject ro→ro at entry');
+assert.ok(html.includes("function _mergeImport(shapes){\n  if(state.ro){_roNo();return}   // ADR-1162"),'merge-import is ro-gated like every sibling');
+pass += 7;
 
 // ---- ADR-1070: wire-secret lifecycle — SDP codec + `k` intake bound ----
 {
@@ -19149,7 +19199,7 @@ pass += 1;
 {
   // ADR-1076: the read-only funnel is total — every local-mutation entry
   // (commit/undo/redo/_recordCommitted) early-returns under state.ro, and the
-  // doc-switch swaps adopt the payload's ro flag before _repC records.
+  // doc-switch swaps adopt the payload's ro flag after _repC records (ADR-1162).
   state.ro=1;
   const h0=state.history.length,n0=state.shapes.length;
   Store.commit({op:'add',shape:{id:'r1',type:'rect',x:0,y:0,w:10,h:10,z:1}});
@@ -19162,8 +19212,8 @@ pass += 1;
 }
 assert.ok(html.includes("_nugEnd();   // ADR-0958/0960\n    if(state.ro){_roRe(op);_roNo();return}"),'commit gates ro after the nudge flush');
 assert.ok(html.includes("if(state.ro){_roNo();return false}"),'undo+redo gate ro');
-assert.ok(html.includes("state.ro=d.ro===1;_roBadge();   // ADR-1069: adopt the payload's context before recording"),'.board replace adopts ro before repC');
-assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069: adopt before the swap's repC"),'hash replace adopts ro before repC');
+assert.ok(html.includes("state.ro=false;   // ADR-1162"),'.board replace commits while writable (ADR-1162)');
+assert.ok(html.includes("state.ro=d.ro===1;_roBadge();   // ADR-1057/1069/1162")&&html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069/1162"),'replace swaps adopt ro after repC (ADR-1162)');
 assert.ok(html.includes("function importBoardText(txt,wp){\n  if(state.ro){_roNo();return true}"),'clipboard .board import is ro-gated');
 pass += 5;
 
