@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.174';   // ADR-1150
+const V='1.8.175';   // ADR-1151
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -5946,7 +5946,9 @@ function _openDialog(){
 }
 _on(window,_KD,e=>{
   if(e.target.matches?.('input,textarea')){
-    if(e.key==='Escape'&&!e.isComposing)e.target.blur();   // IME: Esc cancels the conversion first
+    // ADR-1151: Esc in the find box folds it (and returns focus to the
+    // invoker) — a mere blur stranded it open, visible yet unreachable.
+    if(e.key==='Escape'&&!e.isComposing){if(e.target===_g('sqinput'))toggleSq();else e.target.blur();}
     return;
   }
   const meta=_mod(e);
@@ -6109,11 +6111,18 @@ function toggleGridView(){state.showGrid=!state.showGrid;_iv();_tst(`${t('grid')
 function toggleSnapMode(){state.snap=!state.snap;_tst(`${t('snap')} ${state.snap?t('on'):t('off')}`)}
 // ADR-0134
 // (the exact keyboard-only trap FT-06 warned about). Shared by ⌘F and ctx.
+// ADR-1151: the find box gets its own invoker slot — it can outlive a
+// menu/dialog open-close, which the shared _prevFocus cannot represent.
+let _sqPrev=null;
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
-  _dsp(sq,sq.style.display==='none'?'block':'none');
-  if(sq.style.display!=='none'){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
-  else{_setSq('');_ivO();}
+  const open=sq.style.display==='none';
+  if(open)_sqPrev=_aE();
+  _dsp(sq,open?'block':'none');
+  if(open){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
+  else{_setSq('');_ivO();
+    if(_aE()===sq){const p=_sqPrev;if(p&&p.focus)_fc(p.isConnected===false?canvas:p)}
+    _sqPrev=null}
 }
 // ADR-1149: keyboard path to the ctx menu — ContextMenu key (≣) or ⇧F10.
 // Anchors on the selection's centre; empty selection centres the canvas.
