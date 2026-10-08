@@ -16897,6 +16897,56 @@ try {
       console.log('  ✓ room switch resets presence send state (ADR-1178)');
     }
     {
+      // ADR-1179: cursor send completeness — three staleness holes of the same
+      // family 1177/1178 closed for selection: (a) trailing-edge drops left the
+      // resting position forever unsent (skips now arm _curT, re-deriving the
+      // world point at fire time), (b) viewport drift moved the world point
+      // under a still pointer with no emit (frame() runs sendCursorMoved, keyed
+      // on the last emitted point), (c) latecomers never heard a resting cursor
+      // (_touchPeer/init/hide all clear _lastCurKey).
+      assert.ok(html.includes("sendCursorMoved(){if(this._curSp&&_nP()<2)this.sendCursor(_s2(this._curSp))}"),'sendCursorMoved re-derives the world point (ADR-1179)');
+      assert.ok(html.includes("this._curT=_stO(()=>{this._curT=null;this.sendCursorMoved()},CURSOR_THROTTLE_MS)"),'a throttled cursor send arms a trailing resend (ADR-1179)');
+      assert.ok(html.includes("Net._curSp=sp;"),'pointermove records the last screen point (ADR-1179)');
+      assert.ok(html.includes("this._lastCursorSend=0;this._curSp=null;this._lastCurKey=null;_cT(this._curT);this._curT=null;"),'hide clears the tracked point, dedup key, and armed resend (ADR-1179)');
+      Net._curSp=null;Net._curT=null;Net._lastCurKey=null;
+      const _ob4=Net._bcast;let curN=0,lastCur=null;Net._bcast=m=>{if(m&&m.k==='cursor'){curN++;lastCur=m}return _ob4.call(Net,m)};
+      state.peers.set('p1179x',{color:'#123',lastSeen:Date.now()});
+      const _vx0=state.viewport.x;
+      Net._curSp={x:10,y:10};
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,1,'moved-check emits when the derived point differs');
+      const _cx0=lastCur.x;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,1,'an unchanged derived point dedups — no resend');
+      state.viewport.x+=100;
+      Net._lastCursorSend=0;   // simulate the throttle window having elapsed
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,2,'viewport drift re-emits the re-derived point');
+      assert.notStrictEqual(lastCur.x,_cx0,'the drifted emit carries the new world x');
+      Net._lastCursorSend=Date.now();
+      state.viewport.x+=50;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,2,'a change inside the throttle window coalesces');
+      assert.ok(Net._curT,'trailing resend armed for the skipped cursor');
+      Net._lastCursorSend=0;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,3,'the resting position lands after the window');
+      Net._touchPeer('p1179y');
+      Net._lastCursorSend=0;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,4,'latecomer join clears the dedup key → one resend');
+      Net.sendCursorHide();
+      assert.strictEqual(Net._curSp,null,'hide clears the tracked screen point');
+      assert.strictEqual(curN,5,'cursorHide itself emits (h:1)');
+      state.viewport.x-=150;
+      Net.sendCursorMoved();
+      assert.strictEqual(curN,5,'no re-emit after hide until a real move re-arms');
+      Net._bcast=_ob4;Net._curSp=null;Net._lastCurKey=null;clearTimeout(Net._curT);Net._curT=null;
+      state.peers.delete('p1179x');state.peers.delete('p1179y');state.viewport.x=_vx0;
+      console.log('  ✓ cursor presence completeness (ADR-1179)');
+      pass += 15;
+    }
+    {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
       // one exists — a dual-connected peer must not count as two avatars.
       assert.ok(html.includes("if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}"),'viaRtc presence folds the synthetic row into the real row');

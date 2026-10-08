@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.202';   // ADR-1178
+const V='1.8.203';   // ADR-1179
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1476,7 +1476,7 @@ const Store={
     if(_sO().has(k))return;       // already applied (rare race)
     _sO().add(k);
     _trimSeen();
-    try{this._apply(op,true)}catch(e){_sO().delete(k);throw e}   // ADR-1128: applyRemote parity — a failed apply must not strand the dedup key
+    try{this._apply(op,true)}catch(e){_sO().delete(k);throw e}   // ADR-1128
     this._stampWrites(op);                 // record per-property write clock (LWW)
     // chop redo branch
     if(_hx()<_hi().length-1)
@@ -1630,7 +1630,7 @@ const Store={
     try{
     if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock);for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:op.clock)}   // ADR-0616/0736/0927/1109/1111
     this._stampWrites(op);                 // change already applied by caller; record clock
-    }catch(e){_sO().delete(k);throw e}     // ADR-1129: pre-record throw must not strand the dedup key
+    }catch(e){_sO().delete(k);throw e}     // ADR-1129
     _hi().length=_hx()+1;
     _hi().push(op);
     if(_hi().length>MAX_HISTORY)_hi().shift();
@@ -1647,7 +1647,7 @@ const Store={
     // ADR-0717
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
-    state.histIdx--;                  // ADR-1129: consume before _pgFollow — a follow throw must not double-revert
+    state.histIdx--;                  // ADR-1129
     let _werr=null;
     for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615
@@ -1666,7 +1666,7 @@ const Store={
     const op=_hi()[_hx()+1];
     _fck(op);   // ADR-0718
     this._apply(op,true);
-    state.histIdx++;                  // ADR-1129: advance after apply — a throw must not skip the op
+    state.histIdx++;                  // ADR-1129
     if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);let _werr=null;try{Net.broadcast(op)}catch(e){_werr=e}   // ADR-0615/1171
     _pgFollow(op);   // ADR-0652/1135
     _txFlush();   // ADR-1123
@@ -1763,7 +1763,7 @@ const Store={
             else{_sT2(sh,op.dx*d,op.dy*d);op.moved.push(id)}}
         }
         if(!forward)_selR(op);
-        if(op.dd&&op.clock&&op.clock.peer===_pi()&&_dd()&&op.ids.every(id=>state.dupIds.has(id)))state.dupDelta={x:op.dd.x+(forward?op.dx:0),y:op.dd.y+(forward?op.dy:0)};   // ADR-1166: undo/redo round-trips the chain delta
+        if(op.dd&&op.clock&&op.clock.peer===_pi()&&_dd()&&op.ids.every(id=>state.dupIds.has(id)))state.dupDelta={x:op.dd.x+(forward?op.dx:0),y:op.dd.y+(forward?op.dy:0)};   // ADR-1166
         break;}
       case 'clear':{
         if(forward){_unB();if(op.clock)state._lastRep=op.clock;const wc0=state.wclock||{},dead=[],keep=[];for(const s of _sh())if(_bN(s.id,op.clock))keep.push(s);else dead.push(s.id);_sh().length=0;for(const s of keep)_sh().push(s);_scl();state.measure=null;state.wclock=_wM();for(const s of keep)_wR(s.id,wc0[s.id]);for(const id of dead)_wD(id,op.clock);_wTb(wc0,op.clock,_sT());_pcC();_pcR()}
@@ -1790,9 +1790,9 @@ const Store={
         if(forward)_pgAdopt(op.pages,op.curPg,op.clock,1);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock,1);   // ADR-0646/1093/1168
         if(!forward)_selR(op);
         if(!forward&&'bro' in op){state.ro=!!op.bro;_roBadge()}   // ADR-1163
-        else if(forward&&'aro' in op&&op.clock&&op.clock.peer===_pi()){state.ro=!!op.aro;_roBadge()}   // ADR-1163: own redo re-adopts — the wire-slimmed form never carries it
+        else if(forward&&'aro' in op&&op.clock&&op.clock.peer===_pi()){state.ro=!!op.aro;_roBadge()}   // ADR-1163
         if(!forward&&'bvp' in op){const v=op.bvp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164
-        else if(forward&&'avp' in op&&op.clock&&op.clock.peer===_pi()){const v=op.avp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164: own redo re-lands the adopted view
+        else if(forward&&'avp' in op&&op.clock&&op.clock.peer===_pi()){const v=op.avp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164
         if(!forward&&'bnm' in op){_setDocName(op.bnm);_bName()}   // ADR-1167
         else if(forward&&'anm' in op&&op.clock&&op.clock.peer===_pi()){_setDocName(op.anm);_bName()}   // ADR-1167: own redo re-adopts
         break;}
@@ -1997,16 +1997,16 @@ _mT3=(l,b,r,t)=>{
   const rp=_cpl(b,r),rs=_min(_csl(b,r),_ln(b)-rp,_ln(r)-rp),R1=_ln(b)-rs,Hr=r.slice(rp,_ln(r)-rs),
         lp=_cpl(b,l),ls=_min(_csl(b,l),_ln(b)-lp,_ln(l)-lp),L1=_ln(b)-ls,Hl=l.slice(lp,_ln(l)-ls);
   const _m=L1<=rp?b.slice(0,lp)+Hl+b.slice(L1,rp)+Hr+b.slice(R1):R1<=lp?b.slice(0,rp)+Hr+b.slice(R1,lp)+Hl+b.slice(L1):_mL3(l,b,r);
-  return _m==null||t&&_ln(_m)>t?r:_m;   // ADR-1141: an over-cap union can't be emitted — converge on remote
+  return _m==null||t&&_ln(_m)>t?r:_m;   // ADR-1141
 };
 let _txE=null;
 function _txC(op){if(!op.clock)_fck(op);const k=_ck(op);if(_sO().has(k))return;_sO().add(k);_trimSeen();try{Store._stampWrites(op);_ps();Net.broadcast(op)}catch(e){_sO().delete(k);throw e}}   // ADR-1128
 function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;const g=_mP(),gg=[];let z=null;
-  for(const e of q){const s=byId(e.id);if(!s)continue;   // ADR-1134: read live at flush — a throw window can't strand a stale value or a dead id
+  for(const e of q){const s=byId(e.id);if(!s)continue;   // ADR-1134
     if(e.op==='zorder'){if(_iS(s.frac)&&s.frac!==e.b)_pu(z||(z=[]),{id:e.id,before:e.b,after:s.frac})}
     else if(e.op){const _g=s.groupId??null;if(_g!==(e.b??null)){if(_g==null)_pu(gg,{op:'ungroup',ids:[e.id],gids:[e.b],before:[{id:e.id,groupId:e.b}]});else _pu(gg,{op:'group',ids:[e.id],gid:_g,before:[{id:e.id,groupId:e.b}]})}}
     else{let p=g.get(e.id);if(!p)g.set(e.id,p={b:{},a:{}});if(e.b!==_ud)p.b[e.k]=e.b;if(_JS(s[e.k])!==_JS(e.b))p.a[e.k]=s[e.k]}}
-  let err=null;const _run=f=>{try{f()}catch(e){if(!err)err=e}};   // ADR-1130: a failed emit must not strand the rest of the queue
+  let err=null;const _run=f=>{try{f()}catch(e){if(!err)err=e}};   // ADR-1130
   for(const[id,p]of g)_run(()=>{if(_ln(_ok(p.a)))_txC({op:'upd',id,before:p.b,after:p.a})});   // ADR-1134: skip a fully-converged emit
   if(z)_run(()=>_txC({op:'zorder',changes:z}));
   for(const o of gg)_run(()=>_txC(o));if(err)throw err}}   // ADR-1126/1130
@@ -2220,7 +2220,7 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
 const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009/1071
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg,_pgEq=(a,b)=>!_pgOn()||(a.pg||_pgs()[0].id)===(b.pg||_pgs()[0].id);   // ADR-0646/1145
-const _pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}};   // ADR-1173: home members on the viewed page — pg-less would attribute to pages[0]
+const _pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}};   // ADR-1173
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64)&&(p.bts==null||_tsOK(p.bts))&&(p.btp==null||_iS(p.btp)&&_ln(p.btp)<=64))?a:null);   // ADR-0700/0791/1110
 const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)};   // ADR-1137: tomb-dead pages get no '?' stub
 const _pgHeal=s=>{if(s.pg&&!_pgById(s.pg)){if(_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1});else delete s.pg}};   // ADR-1175
@@ -2580,6 +2580,7 @@ function frame(){
     // ADR-0565
     try{
       Net.sendSelectionIfChanged();
+      Net.sendCursorMoved();
       _mirrorSync();   // ADR-0041
       _teFollow();     // ADR-0053: open text overlay tracks pan/zoom
       _lblFollow();    // ADR-0182: open label overlay tracks pan/zoom
@@ -4338,6 +4339,7 @@ _on(canvas,_PD,e=>{
 _on(canvas,_PM,e=>{
   const sp=_osp(e);
   const wp=_s2(sp);
+  Net._curSp=sp;   // ADR-1179
   if(_pA()){_laser=wp;_ivO();return;}
   if(_nP()>=2)return;   // pinch in progress — handler owns gesture
   Net.sendCursor(wp);   // ADR-0010
@@ -8190,7 +8192,7 @@ const Net={
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}   // ADR-0619/0695/0839
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._fragOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;this._dcKey=null;this._dcQ=null;this._dcQB=0;   // ADR-0464/0466/0836/1049/1056/1059/1061
     for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467
-    this._lastSelSent='';this._lastSelAt=0;this._lastCursorSend=0;   // ADR-1178: self-latecomer
+    this._lastSelSent='';this._lastSelAt=0;this._lastCursorSend=0;this._lastCurKey=null;   // ADR-1178/1179: self-latecomer
     clearInterval(this._presenceTimer);
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
@@ -8339,17 +8341,20 @@ const Net={
   },
   // ADR-0010
   // as broadcast() (BC-only via _send): cursors
-  _lastCursorSend:0,
+  _lastCursorSend:0,_curSp:null,_curT:null,_lastCurKey:null,
   sendCursor(wp){
     if(_pr().size===0)return;   // nobody to tell
+    const key=wp.x+'|'+wp.y+'|'+(state.curPg||'');
+    if(key===this._lastCurKey)return;   // ADR-1179
     const now=_now();
-    if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return;
-    this._lastCursorSend=now;
+    if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return this._curT||(this._curT=_stO(()=>{this._curT=null;this.sendCursorMoved()},CURSOR_THROTTLE_MS));
+    this._lastCursorSend=now;this._lastCurKey=key;
     this._bcast(_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg,..._nm()}));   // ADR-0647/1053
   },
+  sendCursorMoved(){if(this._curSp&&_nP()<2)this.sendCursor(_s2(this._curSp))},   // ADR-1179
   sendCursorHide(){   // ADR-0611
     if(_pr().size===0)return;
-    this._lastCursorSend=0;   // let the next real cursor in immediately
+    this._lastCursorSend=0;this._curSp=null;this._lastCurKey=null;_cT(this._curT);this._curT=null;
     this._bcast(_mk('cursor',{x:0,y:0,h:1,pg:state.curPg,..._nm()}));   // ADR-1053
   },
   // ADR-0011: resend only on serialized selection change; null forces resend.
@@ -8628,7 +8633,7 @@ const Net={
       const colorIdx=[..._pr().keys()].length%_ln(PEER_COLORS);
       _pr().set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:_now()});
       // ADR-0011/1177: latecomer forces a resend past the throttle.
-      this._lastSelSent=null;this._lastSelAt=0;_iv();
+      this._lastSelSent=null;this._lastSelAt=0;_iv();this._lastCurKey=null;   // ADR-1179
       if(this._onConnChange)this._onConnChange();
     }
   },
