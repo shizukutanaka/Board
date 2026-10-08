@@ -15731,9 +15731,9 @@ try {
     fire1('pointerdown',30,30,{shiftKey:true});
     fire1('pointerup',30,30,{shiftKey:true});
     assert.ok(!state.selection.has(SC1.id)&&state.selection.has(SC2.id),'⇧click on a selected shape removes it');
-    // drop of dragged text runs the text cascade (ADR-0518)
+    // drop of dragged text runs the text cascade (ADR-0518); the listener lives on window (ADR-1161)
     reset();
-    fire1('drop',300,300,{dataTransfer:{files:[],getData:k=>k==='text/plain'?'drop hello':''}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:k=>k==='text/plain'?'drop hello':''},clientX:300,clientY:300,preventDefault(){}});
     const dtx=state.shapes[state.shapes.length-1];
     assert.ok(dtx&&dtx.text==='drop hello','text drop creates a text shape at the drop point');
     // rotate knob drag (ADR-0057): knob above top-center → dragKind='rotate'
@@ -16087,15 +16087,15 @@ try {
     // drop: non-file payload → _textCascade (dragover must claim copy effect first) (ADR-0044/0273/0518)
     reset();
     const dt={files:[],getData:()=>null};
-    for(const f of (canvas._L['dragover']||[]).slice(0,1))f({dataTransfer:dt,preventDefault(){}});
+    for(const f of (fakeWin._L['dragover']||[]).slice(0,1))f({dataTransfer:dt,preventDefault(){}});
     assert.strictEqual(dt.dropEffect,'copy','dragover claims the copy drop effect');
-    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'{"v":"1","shapes":[{"id":"dp1","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}'},clientX:400,clientY:300,preventDefault(){}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'{"v":"1","shapes":[{"id":"dp1","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}'},clientX:400,clientY:300,preventDefault(){}});
     assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect','a dropped .board JSON imports its shapes through the real drop listener (ADR-0518)');
     reset();
-    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'a\tb\nc\td'},clientX:400,clientY:300,preventDefault(){}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'a\tb\nc\td'},clientX:400,clientY:300,preventDefault(){}});
     assert.ok(state.shapes.length>=3&&state.shapes.every(x=>x.type==='sticky'),'a dropped TSV builds a sticky grid (ADR-0273)');
     reset();
-    for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'hello'},clientX:400,clientY:300,preventDefault(){}});
+    for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'hello'},clientX:400,clientY:300,preventDefault(){}});
     assert.ok(state.shapes.length===1&&state.shapes[0].type==='text'&&state.shapes[0].text==='hello','a dropped plain text becomes a text shape (ADR-0044)');
     // rendering entity: draw() composite pass through an injected recording ctx (ADR-0641 residual)
     const mkRc=arr=>new Proxy({},{get(t,p){
@@ -16219,7 +16219,7 @@ try {
     try{
       reset();
       const dfile={name:'b.board',type:'',size:200,text:()=>Promise.resolve('{"v":"1","shapes":[{"id":"fb9","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0,"pg":"import2"}],"pages":[{"id":"import1","name":"First"},{"id":"import2","name":"Second"}],"curPg":"import2"}')};
-      for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+      for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length===1&&state.shapes[0].id==='fb9','a dropped .board file atomically replaces the board via FileReader');
       assert.deepStrictEqual(state.pages.map(p=>p.id),['import1','import2'],'file import adopts all page metadata');
@@ -16227,7 +16227,7 @@ try {
       assert.strictEqual(state.shapes[0].pg,'import2','file import preserves shape page membership');
       reset();
       const efile={name:'e.excalidraw',type:'',size:200,text:()=>Promise.resolve('{"type":"excalidraw","elements":[{"id":"ex9","type":"rectangle","x":5,"y":5,"width":40,"height":30}]}')};
-      for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+      for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[efile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
       await new Promise(r=>setTimeout(r,30));
       assert.ok(state.shapes.length>=1,'a dropped .excalidraw file imports its elements via FileReader (ADR-0043)');
       const _IM=globalThis.Image;
@@ -16235,7 +16235,7 @@ try {
       try{
         reset();
         const ifile={name:'i.png',type:'image/png',size:100};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ifile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ifile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='image'&&state.shapes[0].w>0,'a dropped image file decodes and adds an image shape (ADR-0022)');
         // ADR-0867: local intake shares the wire dataUrl bound exactly —
@@ -16243,12 +16243,12 @@ try {
         // locally yet be rejected by every peer (local-accept/peer-reject).
         reset();
         const big={name:'big.png',type:'image/png',size:100,__dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_001-'data:image/png;base64,'.length)};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[big],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[big],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.strictEqual(state.shapes.length,0,'ADR-0867: >16_000_000 dataUrl rejected at local intake (wire parity)');
         reset();
         const ok={name:'ok.png',type:'image/png',size:100,__dataUrl:'data:image/png;base64,'+'A'.repeat(16_000_000-'data:image/png;base64,'.length)};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ok],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[ok],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.strictEqual(state.shapes.length,1,'ADR-0867: exactly-16_000_000 dataUrl still accepted');
       }finally{globalThis.Image=_IM}
@@ -16276,13 +16276,13 @@ try {
       try{
         reset();
         const sfile={name:'d.svg',type:'image/svg+xml',size:80,text:()=>Promise.resolve('<svg viewBox="0 0 100 100"><rect x="10" y="10" width="30" height="20"/></svg>')};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[sfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[sfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect'&&state.shapes[0].w===30,'a dropped .svg file converts markup to board shapes via DOMParser (ADR-0042)');
         reset();
         const dio='<mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="c1" value="Hi" style="rounded=0;" vertex="1" parent="1"><mxGeometry x="10" y="10" width="120" height="60" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>';
         const dfile2={name:'d.drawio',type:'',size:dio.length,text:()=>Promise.resolve(dio)};
-        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile2],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[dfile2],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length>=1&&state.shapes.some(s=>s.type==='rect'),'a dropped .drawio file imports mxCell vertices via DOMParser (ADR-0199)');
       }finally{globalThis.DOMParser=_DP}
@@ -21119,6 +21119,35 @@ pass += 6;
   console.log('  ✓ ADR-1160 activation-key contract covers presentation mode (5 asserts)');
 }
 pass += 5;
+
+// ---------- ADR-1161: window-level drop — chrome suppresses navigation, imports still run ----------
+// dragover/drop moved from canvas to window: a file dropped on the toolbar,
+// stylePanel or page-strip otherwise hit the browser default and navigated
+// away from the app. File drops anywhere import; a text drop into a field
+// stays native; _pA() keeps the presentation view-only (nav blocked, import skipped).
+{
+  const _wdo=html.indexOf("_on(window,'dragover'");
+  assert.ok(_wdo>0&&html.indexOf("_on(canvas,'dragover'")===-1&&html.indexOf("_on(window,'drop'")>_wdo&&html.indexOf("_on(canvas,'drop'")===-1,'drag/drop listeners live on window, not canvas');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  // A drop on chrome (target ≠ canvas/input) still reaches the text cascade.
+  for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'drop text'},clientX:400,clientY:300,preventDefault(){},target:{matches:()=>false}});
+  assert.ok(state.shapes.length===1&&state.shapes[0].text==='drop text','a drop on chrome reaches the cascade');
+  // A text drop into a field stays native — no _pd, no cascade.
+  let pd0=false;
+  for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'x'},clientX:400,clientY:300,preventDefault(){pd0=true},target:{matches:s=>s.includes('input')}});
+  assert.ok(!pd0&&state.shapes.length===1,'a text drop into an input stays native');
+  // View-only: a drop during the presentation suppresses the nav but imports nothing.
+  const pfA=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  Store.commit({op:'add',shape:pfA});
+  Presentation.enter();
+  let pd1=false;
+  for(const f of (fakeWin._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[],getData:()=>'pres drop'},clientX:400,clientY:300,preventDefault(){pd1=true},target:{matches:()=>false}});
+  assert.ok(pd1&&state.shapes.length===2,'pres-mode drop blocks navigation without importing');
+  Presentation.leave();
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  console.log('  ✓ ADR-1161 window-level drop target (4 asserts)');
+}
+pass += 4;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

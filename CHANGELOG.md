@@ -1,3 +1,8 @@
+## [1.8.185] - 2026-10-01
+
+### Fixed
+- **round911 / ADR-1161 — the drop target is the whole window**: `dragover`/`drop` were canvas-only, so a file dropped on the toolbar, stylePanel, page-strip or any other chrome hit the browser default — **navigate away to the file**, closing the app (board persists, but peers/undo/gestures are lost). Listeners hoisted to `window` with three gates: `dragover`+`drop` suppress the nav everywhere; a *fileless* text drop into `input/textarea` stays native (field insertion still works); `_pA()` keeps the presentation view-only (nav blocked, import skipped). File drops now import from anywhere — `_o2w` projects the chrome-side drop point into world coordinates. 4 pins (window registration, chrome-target cascade reach, native field passthrough, pres gate); the 11 existing drop pins redispatched `canvas._L`→`fakeWin._L`.
+
 ## [1.8.184] - 2026-10-01
 
 ### Fixed
