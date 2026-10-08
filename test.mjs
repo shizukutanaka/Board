@@ -2,7 +2,7 @@
 // Run: node test.mjs
 // Extracts subset of board.js and tests it in isolation.
 
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { gzipSync, brotliCompressSync, constants as zlibConstants } from 'zlib';
 import assert from 'assert';
 
@@ -22243,6 +22243,22 @@ pass += 2;
   if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}Net.bc=null;
   console.log('  ✓ Net.init cleared/retained contract (ADR-1195, 7 asserts)');
   pass += 7;
+}
+
+{
+  // ADR-1196: CLAUDE.md ADR index ⇄ docs/ADR-*.md filename parity.
+  // Every ADR filename cited in the index exists on disk; every ADR file
+  // is cited. Catches rename-leftover dead links and orphaned ADRs.
+  const cm = readFileSync('./CLAUDE.md','utf8');
+  const cited = new Set(cm.match(/ADR-\d{4}-[A-Za-z0-9-]+\.md/g));
+  const files = new Set(readdirSync('./docs').filter(f=>/^ADR-\d{4}-[A-Za-z0-9-]+\.md$/.test(f)));
+  const dead=[...cited].filter(f=>!files.has(f));
+  const orphans=[...files].filter(f=>!cited.has(f));
+  assert.deepStrictEqual(dead,[],'index cites missing ADR files: '+dead.join(','));
+  assert.deepStrictEqual(orphans,[],'ADR files not cited in index: '+orphans.join(','));
+  assert.ok(cited.size>1000,'index cites the ADR corpus, not a subset stub');
+  console.log('  ✓ ADR index filename parity (ADR-1196, '+cited.size+' files)');
+  pass += 3;
 }
 
 } catch (err) {

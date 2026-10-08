@@ -1,3 +1,8 @@
+## [1.8.220] - 2026-10-01
+
+### Fix
+- **round946 / ADR-1196 — CLAUDE.md ADR index のファイル名 parity (9件の rename 残存 dead link 修正 + drift ゲート)**: index が言及していた9件のファイル名が実在ファイルと不一致で dead link 化していた残穴を修正 (0391/0392/0393/0394/0397/0398/0399/1047/1049)。同時に `docs/ADR-*.md` 実ファイル集合 ⇄ index 言及集合の一致を `node test.mjs` が毎回検証する drift ゲートを追加 — index→file 方向 (dead link) と file→index 方向 (orphan ADR) の両方向を3アサートで固定。
+
 ## [1.8.219] - 2026-10-01
 
 ### Docs
