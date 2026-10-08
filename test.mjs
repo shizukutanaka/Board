@@ -21429,6 +21429,41 @@ assert.ok(html.includes("if(!forward)_selR(op)"),'undo restores the pre-swap sel
 assert.ok(html.includes("und?!_tmE(w,{clock:clk}):!w._del")&&html.includes("op.beforeCurPg,op.clock,1)"),'swap applies veto only a tomb newer than the op — undo/redo/wire all restore (ADR-1168)');
 pass += 4;
 
+// ---------- ADR-1169: gesture × wholesale-swap contract — survive same-page, cancel on page move ----------
+// _pgAdopt cancels only when the adopted landing page differs: a pages-null
+// swap (single-page doc) lands nc===oc===null and the gesture survives by
+// design — ptr.reborn marks gate the restore-merge (ADR-0984) and every commit
+// path re-resolves ids against live shapes, so dead ids are filtered at emit.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  // (a) remote path: pages-null -> pages-null swap with an armed move gesture
+  const Z=Shape.make('rect',{x:0,y:0,w:10,h:10}),W=Shape.make('ellipse',{x:1,y:1,w:5,h:5});
+  E.Store.commit({op:'add',shape:Z});
+  E.state.pages=null;E.state.curPg=null;
+  E.ptr.down=true;E.ptr.dragKind='move';E.ptr.dragStartShapes=new Map([[Z.id,JSON.parse(JSON.stringify(Z))]]);
+  E.Store.applyRemote({op:'replace',after:[W],afterWc:{},clock:{peer:'peerG',seq:1,ts:E.state._lastTs+1}});
+  assert.ok(E.ptr.down===true&&E.ptr.dragKind==='move','pages-null swap keeps the gesture armed — no page move happened (ADR-1169)');
+  assert.ok(E.ptr.reborn!=null&&E.ptr.reborn.has(W.id),'swapped-in id marked reborn so cancel/restore skips it (ADR-0984)');
+  assert.ok(!E.state.shapes.some(s=>s.id===Z.id)&&E.byId(Z.id)==null,'dropped dragged id unresolvable — commit paths filter it at emit');
+  // (b) local commit path shares the apply body — same contract
+  E.ptr.down=true;E.ptr.dragKind='move';E.ptr.dragStartShapes=new Map([[W.id,JSON.parse(JSON.stringify(W))]]);
+  E.Store.commit({op:'replace',before:E.state.shapes.map(s=>({...s})),after:[{...W,x:9}]});
+  assert.ok(E.ptr.down===true,'local replace commit keeps the gesture armed too (ADR-1169)');
+  E.abortGesture();
+  console.log('  ✓ ADR-1169 gesture×swap contract: survive same-page, filter dead ids (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes("if(nc!==oc){_cancelPointerGesture();_cxO()}"),"_pgAdopt cancels only on a landing-page change — merge-path adoption (ADR-0664/1169)");
+assert.ok(html.includes("const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)})"),'the move commit re-resolves ids — dead/reborn-absent ids filtered at emit (ADR-1169)');
+pass += 2;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

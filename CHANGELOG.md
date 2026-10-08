@@ -1,3 +1,8 @@
+## [1.8.193] - 2026-10-01
+
+### Fixed
+- **round919 / ADR-1169 — gesture × wholesale-swap contract pinned**: audit of the post-swap ephemeral-state seam resolved clean — `_pgAdopt` cancels a live gesture only when the adopted landing page differs (`nc!==oc`), which reads as a hole for `pages:null` swaps (`null===null` → gesture survives) but is the intended half of the contract: a same-page swap isn't a context switch, `_bT` marks every swapped-in remote-born id into `ptr.reborn` so the restore-merge paths (`_gR1`/`_gR2`/`_gRst`/`_gRL`/`_nugLock`) skip them (ADR-0984), and every commit path re-resolves ids against live shapes at emit (`mids` filter, `byId(orig.id)`) so swap-dropped ids never reach history or the wire. A premature "always-cancel" edit broke the ADR-0984 pin — cancelled gestures lose `ptr.reborn` and the restore-merge can't tell keep-survivors from swapped-in ids; the correct statement is the two-case contract now pinned with 4 behavioural asserts + 2 source pins.
+
 ## [1.8.192] - 2026-10-01
 
 ### Fixed
