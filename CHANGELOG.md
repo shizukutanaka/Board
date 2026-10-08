@@ -1,3 +1,8 @@
+## [1.8.165] - 2026-10-01
+
+### Fixed
+- **round891 / ADR-1141 — over-cap text merges can't be emitted**: `_mT3`'s union output is bounded by the same per-prop wire cap as every other text value (`text` 5000, `label` 600). Two peers each writing near-cap disjoint lines produced a merged value exceeding the bound — adopted locally, but the convergence `upd` emit was rejected at every receiver's `validPatch`, so union-holders and remote-value-holders diverged permanently and *all subsequent* text edits were also rejected. `_mT3` now takes the prop's cap and returns the remote value wholesale when the union exceeds it — a deterministic converge-on-remote fallback. 7 behavioural pins.
+
 ## [1.8.164] - 2026-10-01
 
 ### Fixed
