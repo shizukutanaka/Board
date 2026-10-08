@@ -20909,6 +20909,34 @@ pass += 4;
 }
 pass += 7;
 
+// ---- ADR-1154: the sq invoker slot skips elements inside the closing ctx menu ----
+{
+  assert.ok(html.includes("_sqPrev=e&&m.contains(e)?UI._prevFocus:e"),'ADR-1154: a menu item is never recorded as the sq invoker');
+  const cm=fakeDoc.getElementById('ctx');cm.dataset.open='false';
+  const sq=fakeDoc.getElementById('sqinput');sq.select=()=>{};sq.matches=()=>true;sq.style.display='none';sq.value='';
+  const inv={f:0,focus(){inv.f++},isConnected:true};
+  const item={f:0,focus(){item.f++},isConnected:true};
+  fakeDoc.activeElement=inv;
+  UI.openCtxMenu(100,100);                  // closed→open records the real invoker
+  cm.contains=(el)=>el===item;              // the item lives inside the menu
+  fakeDoc.activeElement=item;               // ctxSearch's item is focused when fn() runs
+  toggleSq();
+  assert.strictEqual(sq.style.display,'block','ADR-1154: ctxSearch opens the find box');
+  fakeDoc.activeElement=sq;
+  cm.dataset.open='false';cm.contains=()=>false;   // the menu closed — the item is now display:none
+  toggleSq();
+  assert.strictEqual(inv.f,1,'ADR-1154: the fold restores the menu invoker, not the dead item');
+  assert.strictEqual(item.f,0,'ADR-1154: focus never lands on the hidden menu item');
+  const inv2={f:0,focus(){inv2.f++},isConnected:true};
+  fakeDoc.activeElement=inv2;toggleSq();
+  fakeDoc.activeElement=sq;toggleSq();
+  assert.strictEqual(inv2.f,1,'ADR-1154: an invoker outside the menu still records itself');
+  cm.contains=()=>false;UI._prevFocus=null;fakeDoc.activeElement=null;sq.style.display='none';
+  state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1154 sq invoker skips ctx menu items (5 asserts)');
+}
+pass += 5;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
