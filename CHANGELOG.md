@@ -1,3 +1,8 @@
+## [1.8.227] - 2026-10-01
+
+### Fix
+- **round953 / ADR-1203 — reborn commit ゲート (スカラ orig) + マーク寿命のジェスチャスコープ化**: ADR-1202 はスカラ orig ジェスチャの変異ループのみを `_rb` 閉塞し、commit サイトは残存 — remote reborn で live=remote 値のまま `{before: stale-arm-orig, after: remote}` の phantom op を記録し、undo の inverse wire op が全 peer の remote 幾何を stale 値へ巻き戻す発散窓を、resize/rotate/ebend/cbend/way/lblpos の 6 commit サイトへの `!_rb` ゲートで閉塞 (live が remote 真値のため skip は冪等収束)。併せて `ptr.reborn` が `_ptrReset` でしか消えず正常 PU 末尾で残存していた残穴 — 次ジェスチャでも `_rb` が真のまま変異+commit 両方 dead で、一度 remote-reborn された図形が事実上永久ローカル編集不能になっていた false-positive を、PU 末尾の `ptr.reborn=null` でジェスチャスコープへ閉塞。
+
 ## [1.8.226] - 2026-10-01
 
 ### Fix

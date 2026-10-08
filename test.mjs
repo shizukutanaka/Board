@@ -22456,6 +22456,44 @@ pass += 2;
   pass += 9;
 }
 
+{
+  // ADR-1203: the scalar-orig commit sites were the residual reborn surface —
+  // a remote reborn mid-gesture leaves live === remote while `before` stays the
+  // stale armed orig, so committing records a phantom change whose undo-inverse
+  // would revert remote state on every peer. Marks must also die at the PU tail
+  // (they only survive _ptrReset today) — otherwise a shape reborn during
+  // gesture 1 stays _rb-frozen for gesture 2: mutation loops AND commits both
+  // dead, a permanent local-edit lockout after any remote rebirth.
+  const r=Shape.make('rect',{x:0,y:0,w:10,h:10});r.id='r3A';
+  state.shapes=[r];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set(['r3A']);state.tool='select';state.ro=false;_invalidateGrid();
+  const fireUp=()=>{const ev={pointerId:1,offsetX:0,offsetY:0,button:0,preventDefault(){},stopPropagation(){}};for(const f of (canvas._L['pointerup|c']||[]).slice(0,1))f(ev);for(const f of (canvas._L['pointerup']||[]).slice(0,1))f(ev);};
+  ptr.down=true;ptr.dragKind='resize';ptr.resizeOrig={...byId('r3A')};ptr.resizeHandle='se';
+  _bT('r3A',{ts:nowTs()+9000,peer:'PZ',seq:1});        // remote reborn mid-gesture
+  byId('r3A').w=77;                                  // remote incarnation's own geometry
+  fireUp();
+  assert.ok(!state.history.length,'reborn mid-resize: pointerup commits nothing (undo would revert remote state)');
+  assert.strictEqual(byId('r3A').w,77,'remote geometry survives the skipped commit');
+  assert.ok(!ptr.reborn,'reborn marks die at the PU tail — no stale-mark carry into the next gesture');
+  const c=Shape.make('line',{x1:0,y1:0,x2:50,y2:0});c.id='r3B';c.curve=1;c.cbend=0;
+  state.shapes.push(c);_invalidateGrid();
+  ptr.down=true;ptr.dragKind='cbend';ptr.cbendOrig={id:'r3B',cbend:0};
+  _bT('r3B',{ts:nowTs()+9000,peer:'PZ',seq:2});
+  byId('r3B').cbend=0.9;
+  fireUp();
+  assert.ok(!state.history.length,'reborn mid-cbend: no style op either');
+  assert.strictEqual(byId('r3B').cbend,0.9,'remote cbend survives');
+  ptr.down=true;ptr.dragKind='resize';ptr.resizeOrig={...byId('r3A')};ptr.resizeHandle='se';
+  byId('r3A').w=55;
+  fireUp();
+  assert.ok(state.history.length===1&&state.history[0].after.w===55,'next gesture on the reborn id commits normally — marks are gesture-scoped');
+  assert.ok(html.includes("else if(!_rb(rsh.id)){")&&html.split("!_rb(sh.id)&&").length-1>=4,'reborn gates on all six scalar commit sites');
+  assert.ok(html.includes("ptr.wayOrig=null;ptr.reborn=null;   // ADR-1203"),'PU tail clears reborn with the gesture state');
+  ptr.down=false;ptr.reborn=null;ptr.dragKind=null;ptr.resizeOrig=null;ptr.resizeHandle=null;ptr.cbendOrig=null;
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
+  console.log('  ✓ ADR-1203: reborn sheds scalar commits; marks die at the PU tail (8 asserts)');
+  pass += 8;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
