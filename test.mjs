@@ -3527,14 +3527,14 @@ try {
   // corrupt _gmap Map keys, selection equality and the clone-remap, and now also
   // flows through the LWW _chg comparison - so reject it at the validator.
   {
-    const gv = state.shapes[0].id;
+    const gv = state.shapes[0].id, gv2 = state.shapes[1].id;
     delete state.shapes[0].groupId;
     Store.applyRemote({op:'group', ids:[gv], gid:{evil:1}, clock:{peer:'attacker', seq:20, ts:1}});
     assert.strictEqual(state.shapes[0].groupId, undefined, 'remote group with non-string gid is dropped');
     Store.applyRemote({op:'group', ids:[{x:1}], gid:'G1', clock:{peer:'attacker', seq:21, ts:1}});
     assert.strictEqual(state.shapes[0].groupId, undefined, 'remote group with non-string ids is dropped');
-    Store.applyRemote({op:'group', ids:[gv], gid:'GOOD', before:[{id:gv}], clock:{peer:'peerB', seq:4, ts:1}});
-    assert.strictEqual(state.shapes[0].groupId, 'GOOD', 'well-formed remote group is applied');
+    Store.applyRemote({op:'group', ids:[gv,gv2], gid:'GOOD', before:[{id:gv},{id:gv2}], clock:{peer:'peerB', seq:4, ts:1}});
+    assert.strictEqual(state.shapes[0].groupId, 'GOOD', 'well-formed remote group is applied (≥2 live members — ADR-1199)');
     console.log('  ✓ applyRemote validates group/ungroup payloads (string ids + gid)');
   }
 
@@ -4689,8 +4689,10 @@ try {
     // ADR-0380: group membership + bound-connector endpoints are announced —
     // the visual halo / bound-dot affordances previously had no SR channel.
     {
-      const grouped=describeShape({type:'rect',x:0,y:0,w:10,h:10,groupId:'g1'});
-      assert.ok(grouped.includes(api.I18N.ja.tagGroup)||grouped.includes(api.I18N.en.tagGroup),'describeShape announces group membership');
+      const gA={type:'rect',id:'gA',x:0,y:0,w:10,h:10,groupId:'g1'},gB={type:'rect',id:'gB',x:0,y:0,w:10,h:10,groupId:'g1'};
+      state.shapes=[gA,gB];_invalidateGrid();
+      const grouped=describeShape(gA);
+      assert.ok(grouped.includes(api.I18N.ja.tagGroup)||grouped.includes(api.I18N.en.tagGroup),'describeShape announces group membership (≥2 live members — ADR-1199)');
       const tgt={type:'rect',id:'ta',x:0,y:0,w:10,h:10};
       state.shapes=[tgt];
       const bound=describeShape({type:'arrow',x1:0,y1:0,x2:100,y2:0,a:'ta'});
@@ -5369,8 +5371,9 @@ try {
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
     state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
-    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,groupId:'gL',frac:'f2'};
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,frac:'f2'};
     Store.commit({op:'add',shape:r});
+    byId('S').groupId='gL';   // plant a divergent sole-carrier state the _lwwDrop emit repairs (a sole groupId can't arise via ops under ADR-1199)
     const hlen=state.history.length;
     state.wclock['S']={groupId:{peer:'B',seq:5,ts:5000},frac:{peer:'B',seq:6,ts:5000}};
     const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
@@ -5426,8 +5429,9 @@ try {
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
     state.seq=0;state.seenOps=new Set();state.wclock={};state.peerId='B';
-    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10,groupId:'gL'};
+    const r={id:'S',type:'rect',z:1,x:0,y:0,w:10,h:10};
     Store.commit({op:'add',shape:r});
+    byId('S').groupId='gL';state.shapes.push({id:'S2',type:'rect',z:1,x:0,y:0,w:10,h:10,groupId:'gL'});_invalidateGrid();   // ≥2 live carriers so 'gL' survives the ADR-1199 census
     const sent=[];const _ob=Net.broadcast;Net.broadcast=o=>sent.push(o);
     try{
       Store.applyRemote({op:'group',ids:['S'],gid:'gL',before:[{id:'S'}],clock:{peer:'A',seq:1,ts:50}});   // same gid, unclocked → applies
@@ -5811,7 +5815,8 @@ try {
   {
     const a=Shape.make('rect',{x:0,y:0,w:50,h:50,stroke:'#000000'});
     const b=Shape.make('rect',{x:200,y:0,w:50,h:50,stroke:'#000000'});
-    Store.commit({op:'addMany',shapes:[a,b]});
+    const c2=Shape.make('rect',{x:400,y:0,w:50,h:50,stroke:'#000000'});
+    Store.commit({op:'addMany',shapes:[a,b,c2]});
     byId(a.id).locked=true;
     // style op lists both ids; forward skips locked, undo restores before — must be no-op on locked
     Store.commit({op:'style',before:[{id:a.id,stroke:'#000000'},{id:b.id,stroke:'#000000'}],after:[{id:a.id,stroke:'#FF0000'},{id:b.id,stroke:'#FF0000'}]});
@@ -5820,12 +5825,12 @@ try {
     assert.ok(byId(a.id).stroke==='#000000'&&byId(b.id).stroke==='#000000','style undo restores only applied shape');
     // group op with a locked member: undo restores before-groupId (undefined) — must not resurrect a bogus membership
     const gid='g1';
-    Store.commit({op:'group',ids:[a.id,b.id],gid,before:[{id:a.id},{id:b.id}]});
-    assert.ok(byId(a.id).groupId===undefined&&byId(b.id).groupId===gid,'group skips locked, applies unlocked');
+    Store.commit({op:'group',ids:[a.id,b.id,c2.id],gid,before:[{id:a.id},{id:b.id},{id:c2.id}]});
+    assert.ok(byId(a.id).groupId===undefined&&byId(b.id).groupId===gid&&byId(c2.id).groupId===gid,'group skips locked, applies unlocked (≥2 live members — ADR-1199)');
     Store.undo();
-    assert.ok(byId(a.id).groupId===undefined&&byId(b.id).groupId===undefined,'group undo is consistent');
+    assert.ok(byId(a.id).groupId===undefined&&byId(b.id).groupId===undefined&&byId(c2.id).groupId===undefined,'group undo is consistent');
     byId(a.id).locked=false;
-    Store.commit({op:'del',shapes:[byId(a.id),byId(b.id)].map(s=>JSON.parse(JSON.stringify(s)))});
+    Store.commit({op:'del',shapes:[byId(a.id),byId(b.id),byId(c2.id)].map(s=>JSON.parse(JSON.stringify(s)))});
     console.log('  ✓ locked-parity audit: style/group undo no-op on locked (4 asserts)');
   }
 
@@ -8862,9 +8867,10 @@ try {
     const Ags1=A.state.shapes.find(s=>s.id==='gs1'), Bgs1=B.state.shapes.find(s=>s.id==='gs1');
     const Ags2=A.state.shapes.find(s=>s.id==='gs2'), Bgs2=B.state.shapes.find(s=>s.id==='gs2');
     const Ags3=A.state.shapes.find(s=>s.id==='gs3'), Bgs3=B.state.shapes.find(s=>s.id==='gs3');
-    // gs1 uncontested (only A touched it) → GA on both
+    // gs1 was GA's only other member — gs2's defection to GB orphans it, so the
+    // ADR-1199 census strips the sole-carrier gid on BOTH peers (converged: no ghost 1-member group)
     assert.strictEqual(Ags1.groupId, Bgs1.groupId, 'group LWW: disjoint member gs1 agrees');
-    assert.strictEqual(Ags1.groupId, 'GA', 'group LWW: gs1 keeps GA (B never claimed it)');
+    assert.strictEqual(Ags1.groupId, undefined, 'group LWW: gs1 orphan stripped once gs2 left GA (ADR-1199)');
     // gs3 uncontested (only B touched it) → GB on both
     assert.strictEqual(Ags3.groupId, Bgs3.groupId, 'group LWW: disjoint member gs3 agrees');
     assert.strictEqual(Ags3.groupId, 'GB', 'group LWW: gs3 keeps GB (A never claimed it)');
@@ -8882,7 +8888,8 @@ try {
     A.Store.commit({op:'group',ids:['gs2'],gid:'GA2',before:[{id:'gs2',groupId:undefined}],clock:{peer:'peerA',seq:20,ts:1000}});
     B.Store.commit({op:'group',ids:['gs2'],gid:'GB2',before:[{id:'gs2',groupId:undefined}],clock:{peer:'peerB',seq:20,ts:2000}}); // B newer
     hAB.forEach(m=>B.Net._onRecv(m)); hBA.forEach(m=>A.Net._onRecv(m));
-    assert.strictEqual(A.state.shapes.find(s=>s.id==='gs2').groupId, 'GB2', 'undo-clobber precondition: A converged to the newer remote groupId GB2');
+    assert.strictEqual(A.state.shapes.find(s=>s.id==='gs2').groupId, undefined, 'sole-carrier group ops never form under the ADR-1199 census');
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='gs2').groupId, undefined, 'converged: no ghost 1-member group on either peer (ADR-1199)');
     A.Store.undo();   // undo A's OWN local group op
     assert.ok(!A.state.shapes.find(s=>s.id==='gs2').groupId,
       'ADR-0717: group undo restores locally under its fresh clock (was: split GB2 vs ungrouped)');
@@ -8986,7 +8993,7 @@ try {
     B.Store._apply({op:'group',ids:['gs1','gs2'],gid:'g7',
       before:[{id:'gs1',groupId:null},{id:'gs2',groupId:null}],
       clock:{peer:'peerU',seq:5,ts:Date.now()}},false);
-    assert.strictEqual(B.state.shapes.find(s=>s.id==='gs1').groupId,'g7','locked member keeps groupId — was un-grouped locally while peers kept it');
+    assert.strictEqual(B.state.shapes.find(s=>s.id==='gs1').groupId,undefined,'locked member keeps groupId — then the sole-carrier gid is stripped by the ADR-1199 census');
     assert.ok(!B.state.shapes.find(s=>s.id==='gs2').groupId,'unlocked sibling still un-groups');
     console.log('  ✓ ADR-0923: group backward skips locked members');
 
@@ -10584,8 +10591,7 @@ try {
     const a2=Shape.make('rect',{x:100,y:0,w:10,h:10,groupId:'g1'});
     const b1=Shape.make('rect',{x:500,y:0,w:10,h:10,groupId:'g2',visible:0});
     const b2=Shape.make('rect',{x:600,y:0,w:10,h:10,groupId:'g2',visible:0});
-    Store.commit({op:'add',shape:a1});Store.commit({op:'add',shape:a2});
-    Store.commit({op:'add',shape:b1});Store.commit({op:'add',shape:b2});
+    Store.commit({op:'addMany',shapes:[a1,a2,b1,b2]});   // both carriers land together (≥2 members — ADR-1199)
     _invalidateGrid();
     const m=_grpMapGet();
     assert.ok(m.has('g1'),'visible group present');
@@ -13258,9 +13264,7 @@ try {
     const ugC=Shape.make('rect',{x:100,y:0,w:30,h:30});
     const testGid='test-group-id-37';
     ugA.groupId=testGid; ugB.groupId=testGid; ugC.groupId=testGid;
-    Store.commit({op:'add',shape:ugA});
-    Store.commit({op:'add',shape:ugB});
-    Store.commit({op:'add',shape:ugC});
+    Store.commit({op:'addMany',shapes:[ugA,ugB,ugC]});   // all carriers land together (≥2 members — ADR-1199)
     state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();
     // Select only A — doUngroup will expand to all three members of the group
     state.selection=new Set([ugA.id]);
@@ -13368,7 +13372,9 @@ try {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const ul=Shape.make('rect',{x:0,y:0,w:30,h:30});
     ul.groupId='existing-group';
-    state.shapes.push(ul);
+    const ul2=Shape.make('rect',{x:40,y:0,w:30,h:30});
+    ul2.groupId='existing-group';
+    state.shapes.push(ul,ul2);   // ≥2 live carriers so 'existing-group' survives the ADR-1199 census
     ul.locked=true;
     Store.applyRemote({op:'ungroup',ids:[ul.id],gids:['existing-group'],before:[{id:ul.id,groupId:'existing-group'}],clock:{peer:'evil40u',seq:1,ts:1}});
     const ul_after=state.shapes.find(s=>s.id===ul.id);
@@ -15732,7 +15738,7 @@ try {
     state.tool='select';
     const GD1=Shape.make('rect',{x:10,y:10,w:40,h:40,groupId:'gd'});
     const GD2=Shape.make('rect',{x:100,y:10,w:40,h:40,groupId:'gd'});
-    Store.commit({op:'add',shape:GD1});Store.commit({op:'add',shape:GD2});
+    Store.commit({op:'addMany',shapes:[GD1,GD2]});   // both carriers land together (≥2 members — ADR-1199)
     state.selection=new Set([GD1.id,GD2.id]);
     fire('dblclick',30,30);
     assert.ok(state.selection.size===1&&state.selection.has(GD1.id),'dblclick descends into the group member');
@@ -17286,7 +17292,7 @@ try {
       // regression: del→undo must keep a NEWER frac/groupId clock so an OLDER
       // concurrent zorder/group op is rejected (head-of-#800 let it win)
       reset();const T0=state._lastTs+1000;
-      state.shapes.push({id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'c',groupId:'G2'});_invalidateGrid();
+      state.shapes.push({id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'c',groupId:'G2'},{id:'z2',type:'rect',x:20,y:0,w:10,h:10,z:2,frac:'d',groupId:'G2'});_invalidateGrid();   // ≥2 live G2 carriers (ADR-1199)
       const nw={peer:'pb',seq:1,ts:T0+20};
       Store._apply({op:'del',shapes:[{id:'z1',type:'rect',x:0,y:0,w:10,h:10,z:1,frac:'c',groupId:'G2'}],wc:{z1:{frac:nw,groupId:nw,x:nw}}},false);
       assert.ok(state.wclock.z1?.frac?.ts===T0+20&&state.wclock.z1?.groupId?.ts===T0+20,'del-undo restores newer frac/groupId clocks');
@@ -22320,6 +22326,7 @@ pass += 2;
   assert.ok(g1.x===10&&g1.y===10,'remote move lands on the live shape');
   assert.ok(ptr.gOrig.get(g1.id).x===10&&ptr.gOrig.get(g1.id).y===10,'_gTouch folds the remote write into the armed gesture orig');
   ptr.dragStartShapes=new Map([[g1.id,{groupId:'gg0'}]]);
+  const g2=Shape.make('rect',{id:'gt2',x:5,y:5,w:5,h:5});g2.groupId='gg1';state.shapes.push(g2);_invalidateGrid();   // second live carrier so 'gg1' survives the ADR-1199 census
   Store.applyRemote({op:'group',ids:[g1.id],gid:'gg1',before:[{id:g1.id,groupId:null}],clock:{peer:'pG',seq:2,ts:Date.now()}});
   assert.strictEqual(ptr.dragStartShapes.get(g1.id).groupId,'gg1','_gTouch folds a remote groupId into dragStartShapes');
   ptr.down=false;ptr.gOrig=new Map([[g1.id,{x:100,y:100}]]);
@@ -22336,6 +22343,36 @@ pass += 2;
   state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.wclock={};Net._imgPending.clear();_invalidateGrid();
   console.log('  ✓ ADR-1198: _oa patch gate — assign/coex/park/gTouch funnel + sanctioned bypasses');
   pass += 11;
+}
+{
+  // ADR-1199: orphan-group census — a group needs ≥2 live members, enforced at
+  // both funnels (_apply tail + _recordCommitted's caller-mutated replace) so
+  // every peer strips the last member's groupId identically.
+  const a=Shape.make('rect',{x:0,y:0,w:10,h:10}),b=Shape.make('rect',{x:20,y:0,w:10,h:10});
+  a.id='oA';b.id='oB';a.groupId=b.groupId='gO1';
+  state.shapes=[a,b];state.seenOps=new Set();state.wclock={};_invalidateGrid();
+  Store.applyRemote({op:'del',shapes:[{id:'oB',type:'rect',x:20,y:0,w:10,h:10,z:1}],clock:{peer:'rz',seq:1,ts:Date.now()}});
+  assert.ok(!('groupId' in a),'remote del strips the survivor\'s orphan groupId');
+  assert.ok(state.wclock.oA&&state.wclock.oA.groupId,'the strip stamps the group-channel clock');
+  a.groupId='gO2';b.groupId='gO2';state.shapes.push(b);_invalidateGrid();
+  Store.commit({op:'del',shapes:[{...b}]});
+  assert.ok(!('groupId' in a),'local del strips the survivor\'s orphan groupId');
+  const c=Shape.make('rect',{x:40,y:0,w:10,h:10});c.id='oC';state.shapes.push(c);_invalidateGrid();
+  Store.applyRemote({op:'group',ids:['oC'],gid:'gO3',before:[{id:'oC',groupId:null}],clock:{peer:'rz',seq:2,ts:Date.now()}});
+  assert.ok(!('groupId' in c),'a 1-member group op never forms');
+  const d=Shape.make('rect',{x:60,y:0,w:10,h:10});d.id='oD';state.shapes.push(d);_invalidateGrid();
+  Store.applyRemote({op:'group',ids:['oC','oD'],gid:'gO4',before:[{id:'oC',groupId:null},{id:'oD',groupId:null}],clock:{peer:'rz',seq:3,ts:Date.now()}});
+  assert.ok(c.groupId==='gO4'&&d.groupId==='gO4','a ≥2-member group survives the census');
+  const e=Shape.make('rect',{x:0,y:0,w:10,h:10});e.id='oE';e.groupId='gO5';
+  state.shapes=[e];state.wclock={};state.history=[];state.histIdx=-1;_invalidateGrid();
+  Store._recordCommitted({op:'replace',before:[],after:[{...e}],clock:{peer:'l1',seq:1,ts:Date.now()}});
+  assert.ok(!('groupId' in e),'_recordCommitted replace sweeps the swapped board too');
+  assert.ok(html.includes("if(_ln(members)<2)continue;   // ADR-1199"),'halo skips single-member groups');
+  assert.ok(html.includes("if(_gi(s)&&_ln(_grpMapGet().get(_gi(s))||[])>1)"),'describeShape announces only real groups');
+  assert.ok(html.includes("const _grpSweep=C=>{const c=_mP();"),'census helper exists');
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
+  console.log('  ✓ ADR-1199: orphan-group census — ≥2 live members or the groupId goes');
+  pass += 9;
 }
 
 } catch (err) {
