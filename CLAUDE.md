@@ -1181,6 +1181,13 @@ Board/
 │   ├── ADR-1152-find-box-esc-single-owner.md  # 検索ボックス Esc fold の単一 owner 化 — element 側 fold と window 側 toggleSq の競合 (閉じて即再オープンする回帰) を解消、close で `sq.value` クリア + ⌘Enter 経路 `_sqPrev=null`、4ピンで固定
 │   ├── ADR-1153-editor-fold-focus-contract.md  # text/label エディタのフォーカス契約加入 — 全7 fold 経路が `_foldOv` 経由で invoker へフォーカス返却 (<body> 落下を解消)、実要素への blur は奪わない、7ピンで固定
 │   ├── ADR-1154-invoker-capture-skips-closing-menu.md  # invoker 捕捉が ctx メニュー内要素を記録しない — ctxSearch で `_sqPrev` が死にゆく `.ctx-item` を捕捉して <body> 落下していた欠陥を `UI._prevFocus` 代替で閉塞 (全3スロット監査で唯一の ctx→overlay 遷移)、5ピンで固定
+│   ├── ADR-1155-dying-overlay-invoker-never-recorded.md  # 死にゆく overlay 内部の要素は invoker に記録しない — `_dyingH` 判定で `_captureFocus`/`_sqPrev` を一般化し、`openCtxMenu` を modal 中拒否。共有 `_prevFocus` の両方向 clobber を chokepoint 閉塞、10ピンで固定
+│   ├── ADR-1156-closed-details-focus-trap.md  # 閉じた `<details>` の子はフォーカストラップに列挙しない — `_focusables` が `#share` の閉 `.share-details` 内 RTC 全10要素をタブ対象化し Tab 脱出/⇧Tab 呪縛していた残穴を `details:not([open])` 祖先除外で閉塞 (summary は残す)、8ピンで固定
+│   ├── ADR-1157-find-box-folds-on-modal-open.md  # find box は modal/プレゼン開始前に畳む — sqinput (z999) が help/share (z100) の上に描画され leave() で中画面に復活していた残穴を `_foldSq` 単一シームで閉塞 (invoker capture 前に畳み真の呼出元を記録)、7ピンで固定
+│   ├── ADR-1158-presentation-folds-remaining-chrome.md  # プレゼンは残存インタラクティブ chrome を畳む — stylePanel/zoom-badge/shapeMirror/ctx が canvas 被覆下も tabbable で Space/Enter 活性化がスライド中に変異 op を撃っていた残穴を enter 一括 `_dsp` で閉塞 (leave で復元)、10ピンで固定
+│   ├── ADR-1159-button-owns-activation.md  # フォーカス中コントロールは活性化キーを所有する — focused `<button>` の Enter/Space がネイティブ click とキャンバス shortcut を二重発火していた残穴を dialog trap 直後の `button` ガードで閉塞、6ピンで固定
+│   ├── ADR-1160-pres-activation-keys.md  # 活性化キー契約はプレゼンにも適用 — pres 内で Space が nav key のため focused exit button の Space が `_pd`+`next()` でハイジャックされていた残穴を、ガードを `_pA()` 直上へホイストして閉塞、5ピンで固定
+│   ├── ADR-1161-window-drop-target.md  # ドロップ標的は window 全体 — toolbar/stylePanel 等 chrome へのファイルドロップがブラウザ既定でアプリからナビゲーション離脱していた残穴を canvas→window ホイストで閉塞 (input へのテキストドロップは native 維持・pres は view-only)、4ピンで固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

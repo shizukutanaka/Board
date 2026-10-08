@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.178';   // ADR-1154
+const V='1.8.185';   // ADR-1161
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4831,9 +4831,15 @@ function _textCascade(s,wp){
   _iv();_oT('textPasted');
   return true;
 }
-_on(canvas,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
-_on(canvas,'drop',e=>{
+// ADR-1161: the drop target is the whole window, not just the canvas — a file
+// dropped on the toolbar/stylePanel/page-strip otherwise hits the browser's
+// default (navigate away to the file, losing the app). Text drops into a
+// field stay native; presentation stays view-only (block the nav, skip import).
+_on(window,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
+_on(window,'drop',e=>{
+  if(!_ln(e.dataTransfer.files)&&e.target?.matches?.('input,textarea'))return;
   _pd(e);
+  if(_pA())return;
   const bf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.board'));
   if(bf){importBoard(bf);return}
   const xf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.excalidraw'));
@@ -5938,7 +5944,9 @@ const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog; else native Tab moves.
 function _focusables(root){
   return [..._qsa(root,'button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
-    .filter(el=>!el.disabled&&!el.hidden);
+    .filter(el=>{if(el.disabled||el.hidden)return false;const d=el.closest?.('details:not([open])');return !d||el===_qs(d,'summary');});
+  // ADR-1156: children of a closed <details> are not rendered/focusable —
+  // keeping them strands the wrap sentinel on an unfocusable element.
 }
 function _trapStep(items,active,back){
   if(!_ln(items))return null;
@@ -5953,6 +5961,9 @@ function _openDialog(){
   for(const id of ['help','share']){const m=_g(id);if(m&&m.dataset.open==='true')return m;}
   return null;
 }
+// ADR-1155: an invoker that dies with its overlay is never recorded — a
+// .ctx-item vanishes with the menu, a dialog child with the modal.
+const _dyingH=e=>{const m=_g('ctx'),d=_openDialog();return m.contains(e)||!!(d&&d.contains(e))};
 _on(window,_KD,e=>{
   if(e.target.matches?.('input,textarea')){
     // ADR-1151: Esc in the find box folds it (and returns focus to the
@@ -5962,6 +5973,9 @@ _on(window,_KD,e=>{
   }
   const meta=_mod(e);
   const k=_lc(e.key);
+  // ADR-1159/1160: a focused control owns its activation keys — Enter/Space on
+  // a button activates the button, not the routed action underneath.
+  if(e.target.matches?.('button')&&(k===_EN||k===' '))return;
   // Presentation mode is view-only (see "no editing"): allow only
   // navigation keys and suppress EVERYTHING else.
   // This guard precedes the editing shortcuts
@@ -6126,13 +6140,17 @@ let _sqPrev=null;
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
   const open=sq.style.display==='none';
-  if(open){const e=_aE(),m=_g('ctx');_sqPrev=e&&m.contains(e)?UI._prevFocus:e}   // ADR-1154: a menu item dies with the menu — record the invoker it stood in for
+  if(open){const e=_aE();_sqPrev=_dyingH(e)?UI._prevFocus:e}   // ADR-1155: a dying overlay child is never the invoker — record who stood in for it
   _dsp(sq,open?'block':'none');
   if(open){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
   else{_setSq('');sq.value='';_ivO();
     if(_aE()===sq){const p=_sqPrev;if(p&&p.focus)_fc(p.isConnected===false?canvas:p)}
     _sqPrev=null}
 }
+// ADR-1157: one transient overlay at a time — the find box (z-index 999)
+// must fold before a modal (z 100) or the presentation (z 9000) opens,
+// else it floats above the dialog / pops back mid-screen on leave().
+const _foldSq=()=>{const s=_g('sqinput');if(s&&s.style.display!=='none')toggleSq()};
 // ADR-1149: keyboard path to the ctx menu — ContextMenu key (≣) or ⇧F10.
 // Anchors on the selection's centre; empty selection centres the canvas.
 function ctxMenuKbd(){
@@ -9224,15 +9242,16 @@ const UI={
   },
   // ADR-0215/0982
   _prevFocus:null,
-  _captureFocus(){this._prevFocus=_aE()},
+  _captureFocus(){const e=_aE();if(!_dyingH(e))this._prevFocus=e},   // ADR-1155
   _restoreFocus(){const p=this._prevFocus;this._prevFocus=null;if(p&&p.focus)_fc(p.isConnected===false?canvas:p)},
   toggleHelp(){
     const h=_g('help'),open=h.dataset.open!=='true';
     h.dataset.open=open;
-    if(open){if(ptr.down)_cancelPointerGesture();this._captureFocus();_fc(_g('helpClose'))}
+    if(open){if(ptr.down)_cancelPointerGesture();_foldSq();this._captureFocus();_fc(_g('helpClose'))}
     else this._restoreFocus();
   },
   openCtxMenu(x,y,customItems){
+    if(_openDialog())return;   // ADR-1155: a menu must never float over a modal
     if(ptr.down)_cancelPointerGesture();   // ADR-0948
     const m=_g('ctx');
     if(m.dataset.open!=='true')this._captureFocus();   // ADR-1150
@@ -9482,6 +9501,7 @@ const UI={
     };
     chk.onchange=refresh;roc.onchange=refresh;
     refresh();
+    _foldSq();
     this._captureFocus();
     _fc(_g('shareClose'));
   },
@@ -10395,6 +10415,7 @@ const Presentation=(()=>{
     if(ptr.down)_cancelPointerGesture();   // ADR-0634
     _frames=_getFrames();
     if(!_ln(_frames)){_wT('noFrames');return}
+    _foldSq();
     _focusTrigger=_aE();
     _active=true;_idx=0;
     _savedVp={x:_vp().x,y:_vp().y,zoom:_vp().zoom};
@@ -10423,6 +10444,13 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'none');
     _dsp(_qs(document,'.statusbar'),'none');
     _qs(document,'.minimap-wrap')?.style.setProperty('display','none');
+    // ADR-1158: the fullscreen canvas only covers these visually — they
+    // stay in the tab order, so a keyboard/SR user could mutate style or
+    // re-fit the viewport mid-slide in a view-only mode. Fold them too.
+    UI.closeCtxMenu();
+    _dsp(_g('stylePanel'),'none');
+    _dsp(_qs(document,'.zoom-badge'),'none');
+    _dsp(_g('shapeMirror'),'none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
     ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024
     // The CSS box just changed to fullscreen but the backing buffer
@@ -10445,6 +10473,9 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'');
     _dsp(_qs(document,'.statusbar'),'');
     _qs(document,'.minimap-wrap')?.style.removeProperty('display');
+    _dsp(_g('stylePanel'),'');
+    _dsp(_qs(document,'.zoom-badge'),'');
+    _dsp(_g('shapeMirror'),'');
     // Mirror enter(): box shrank without a native resize event
     resize();
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ();_ps()}

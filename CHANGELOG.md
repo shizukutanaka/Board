@@ -1,3 +1,38 @@
+## [1.8.185] - 2026-10-01
+
+### Fixed
+- **round911 / ADR-1161 — the drop target is the whole window**: `dragover`/`drop` were canvas-only, so a file dropped on the toolbar, stylePanel, page-strip or any other chrome hit the browser default — **navigate away to the file**, closing the app (board persists, but peers/undo/gestures are lost). Listeners hoisted to `window` with three gates: `dragover`+`drop` suppress the nav everywhere; a *fileless* text drop into `input/textarea` stays native (field insertion still works); `_pA()` keeps the presentation view-only (nav blocked, import skipped). File drops now import from anywhere — `_o2w` projects the chrome-side drop point into world coordinates. 4 pins (window registration, chrome-target cascade reach, native field passthrough, pres gate); the 11 existing drop pins redispatched `canvas._L`→`fakeWin._L`.
+
+## [1.8.184] - 2026-10-01
+
+### Fixed
+- **round910 / ADR-1160 — the activation-key contract covers presentation mode**: ADR-1159's button guard sat *below* the `_pA()` branch, so inside a presentation the last reachable control (the `✕ Esc` exit button) was still hijacked — a focused-button Space press hit the pres nav mapping: `_pd` suppressed the button's native click **and** `Presentation.next()` advanced the slide, so Space could never fire `leave()`. (Enter was already consistent — not a pres nav key — and arrow keys aren't activation keys.) The guard is hoisted above `_pA()`: `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` now precedes every routed branch, one line moved, zero new logic. Uniform contract: a focused control owns Enter/Space in every mode. 5 pins (guard position + pres-focused-button Space/Enter stay on frame 0 + off-control non-vacuity); the ADR-1159 ordering pin recalibrated for the hoist.
+
+## [1.8.183] - 2026-10-01
+
+### Fixed
+- **round909 / ADR-1159 — a focused control owns its activation keys**: the key router's early-return covered only `input,textarea` and open dialogs — a focused `<button>` still bubbled Enter/Space to the canvas shortcuts, so native activation (click) **and** the canvas action fired together: Enter `_pd`'d the button's click while `editSelectedShapeKbd()`/`createShapeKbd()` stamped a shape or opened a second editor (and the repeat whitelist re-stamped on hold); Space fired the click **and** armed temp-hand, with the keyup restore silently flipping the tool back. One line after the dialog trap — `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` — closes the gap (no `contenteditable`/`select`/DOM `<a>` exist, so `button` completes the native-activation surface). 6 pins (2 source + 4 behavioural incl. off-control non-vacuity); recalibrated the v1.6.71 pres-guard distance bound for the ~210B insert.
+
+## [1.8.182] - 2026-10-01
+
+### Fixed
+- **round908 / ADR-1158 — the presentation folds the remaining interactive chrome**: `enter()` covered the screen at `z-index:8999` and hid toolbar/topbar/statusbar/minimap, but `#stylePanel` (swatches/colors/ranges → `applyStyleToSelection` = mutation ops + broadcast), `.zoom-badge` (4 live viewport writes vs `_goto` slide-fit) and `#shapeMirror` (`_mirrorGo` → `_ss`+`_fitViewport`) stayed **tabbable** — visual coverage is not reachability. Pointer input was `_pA()`-gated (ADR-0640) and non-nav keys swallowed, but an element focused *at enter time* kept DOM focus and Space/Enter activation still fired mid-slide. `enter()` now folds ctx/stylePanel/zoom-badge/mirror in one block; `leave()` restores them — exactly one reachable control during pres (the exit button). 10 pins (2 source + 8 behavioural).
+
+## [1.8.181] - 2026-10-01
+
+### Fixed
+- **round907 / ADR-1157 — the find box folds before a modal / presentation opens**: the ctx-menu→modal direction was closed in ADR-1155, but the find box (`#sqinput`, `z-index:999`) had the inverse hole — `UI.openShare`/`UI.toggleHelp`/`Presentation.enter` never folded it, so an open search box **rendered above** the share/help dialog (`z-index:100`) and **popped back mid-screen** after `leave()` with a stale query. `_captureFocus`/`_focusTrigger` then recorded the floating input itself as the invoker. New `_foldSq` seam is called *before* each invoker capture: `toggleSq`'s close path restores the pre-search focus, so the capture records the true chain end. One transient overlay at a time now holds symmetric. 7 pins (4 source + 3 behavioural).
+
+## [1.8.180] - 2026-10-01
+
+### Fixed
+- **round906 / ADR-1156 — closed-`<details>` children are excluded from the focus trap**: `_focusables`' `disabled`/`hidden` filter never accounted for `<details>` — the `#share` dialog's closed `.share-details` peer block contributed its `<summary>` plus all nine RTC controls to the trap list even though only the summary is rendered. Two live symptoms: (1) Tab on the mid-list `summary` hit `_trapStep`'s `null` middle branch, and native Tab walked out of the modal onto `<body>` (the dialog is last in document order); (2) ⇧Tab on the first item `shareClose` wrapped to the list tail `rtcAnswer` — a `focus()` on an unrendered element no-ops, permanently stranding ⇧Tab. The filter now drops elements inside `details:not([open])` except the `summary` itself, so every wrap sentinel and every middle step lands on a rendered, focusable element. 8 pins (2 source + 6 behavioural).
+
+## [1.8.179] - 2026-10-01
+
+### Fixed
+- **round905 / ADR-1155 — an invoker inside a dying overlay is never recorded**: generalised the ADR-1154 rule into a shared dying-host predicate `_dyingH` (inside `#ctx` or an open `.help-overlay`) and closed the shared `_prevFocus` slot's two clobber directions at the chokepoint: `_captureFocus` skips recording a dying host's child (the already-armed invoker stands in for it), and `openCtxMenu` early-returns while a modal dialog is open — a menu can never float over a modal and record a dialog child. `toggleSq`'s `_sqPrev` substitution now consults `_dyingH` (covers dialog interiors too). The editors' `_edPrev` is documented unreachable (all editor-open paths are gated while either overlay is up). 10 pins + recalibrated ADR-1154 source pin.
+
 ## [1.8.178] - 2026-10-01
 
 ### Fixed
