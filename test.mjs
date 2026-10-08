@@ -20687,6 +20687,39 @@ pass += 7;
 }
 pass += 7;
 
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+  const fr=Shape.make('frame',{x:0,y:0,w:500,h:500});
+  const mIn=Shape.make('rect',{x:10,y:10,w:40,h:40,pg:'pA'});
+  const mOff=Shape.make('rect',{x:20,y:20,w:40,h:40,pg:'pB'});   // geometrically inside the frame, on another page
+  const mHid=Shape.make('rect',{x:30,y:30,w:40,h:40,pg:'pA',visible:0});
+  Store.commit({op:'add',shape:fr});Store.commit({op:'add',shape:mIn});
+  Store.commit({op:'add',shape:mOff});Store.commit({op:'add',shape:mHid});
+  const fc=withFrameChildren(new Set([fr.id]));
+  assert.ok(fc.has(mIn.id)&&!fc.has(mOff.id),'ADR-1146: a frame drag pulls same-page children only');
+  assert.ok(fc.has(mHid.id),'ADR-1146: hidden members still move with the frame (membership is geometric)');
+  const fmap=_frameOf([fr]);
+  assert.strictEqual(fmap.get(mIn.id),fr.id,'ADR-1146: _frameOf maps the same-page child');
+  assert.ok(!fmap.has(mOff.id),'ADR-1146: _frameOf never captures an off-page child');
+  state.selection=new Set([fr.id]);selectFrameContents();
+  assert.ok(state.selection.has(mIn.id)&&!state.selection.has(mOff.id)&&!state.selection.has(mHid.id),'ADR-1146: selectFrameContents keeps the choice visible + same-page');
+  state.selection=new Set();
+  byId(mIn.id).groupId='g1';byId(mOff.id).groupId='g1';_invalidateGrid();
+  const gm=_grpMapGet().get('g1')||[];
+  assert.ok(gm.some(s=>s.id===mIn.id)&&!gm.some(s=>s.id===mOff.id||s.id===mHid.id),'ADR-1146: the group halo never spans pages or hidden members');
+  const tOff=Shape.make('rect',{x:50000,y:50000,w:10,h:10,pg:'pB'});
+  const tHid=Shape.make('rect',{x:60000,y:60000,w:10,h:10,pg:'pA',visible:0});
+  Store.commit({op:'add',shape:tOff});Store.commit({op:'add',shape:tHid});
+  const sidx=_snapIndex('move','pin46',s=>false);
+  assert.ok(!sidx.xs.some(e=>e.v===50000||e.v===60000),'ADR-1146: snap candidates exclude off-page + hidden targets');
+  state.selection=new Set();selectInverse();
+  assert.ok(state.selection.has(mIn.id)&&!state.selection.has(mOff.id)&&!state.selection.has(tHid.id)&&!state.selection.has(tOff.id),'ADR-1146: selectInverse (via _ss) never lands off-page or hidden ids');
+  state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;state.selection=new Set();
+  console.log('  ✓ ADR-1146 frame-membership page parity (8 asserts)');
+}
+pass += 8;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

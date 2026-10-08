@@ -1171,7 +1171,8 @@ Board/
 │   └── ADR-1142-cursor-intake-bound.md  # presence cursor x/y が有限性のみ検証で唯一の unbounded remote 座標だった残穴を `_xyOK` (≤1e7) parity で閉塞
 │   ├── ADR-1143-presentation-hidden-frames.md  # _getFrames/_goto が `_hd` 未フィルタで最後の non-hidden-aware 列挙だった残穴を閉塞 — hidden フレームが空スライド化・mid-pres hide が枠を残留させない
 │   ├── ADR-1144-bound-connector-hidden-parity.md  # connEnds が hidden 結合先を unbound 解決へ — 矢印が hidden 図形のライブ輪郭位置をリークしない (バインドは保持・復帰可)、_bt 検索名も parity
-│   └── ADR-1145-bound-connector-page-parity.md  # ADR-1144 のページ拡張 — off-page 結合先も unbound 解決 (`_pgEq` 実効ページ一致)、別ページ図形のライブ位置・検索名・SR 型名をリークしない
+│   ├── ADR-1145-bound-connector-page-parity.md  # ADR-1144 のページ拡張 — off-page 結合先も unbound 解決 (`_pgEq` 実効ページ一致)、別ページ図形のライブ位置・検索名・SR 型名をリークしない
+│   └── ADR-1146-frame-membership-page-parity.md  # フレーム子・グループメンバー列挙の page parity 監査完走 — withFrameChildren/_frameOf/_ss/_grpMapGet/_snapIndex 全て `_pgOk` 閉域、契約を8ピンで固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
