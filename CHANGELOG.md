@@ -1,3 +1,12 @@
+## [1.8.138] - 2026-10-01
+
+### Fixed
+- **round864 / ADR-1114 — foreign-clock admission advances the HLC floor on every channel**: `Store.applyRemote` advanced `state._lastTs` only on the op envelope's `op.clock.ts`, but snapshot-path channels admit *embedded* foreign clocks that bypassed it — `dels` tomb clocks, merge-op `.wc` records, page `bts`/`ntp`/`nts` stamps via `_pgAdopt` + the `msg.pages` union-heal, `rep` markers, and both docName channels (`nameTs`/`case 'name'`). A foreign stamp exceeding the next undo-clock `ut` re-arms the undo-side `_lwwSkip`/`_bN`/tomb gates on the undoer only — peers' forward apply is unconditional — diverging the two sides. New `_fTs` helper folds every admitted foreign stamp into the floor at all 17 admission sites (wclock primitives `_wD`/`_wR`/`_wTb`/`_bT`/`_wAdopt`, the op envelope, snapshot `dels`/`pages`/`rep`/`nameTs`/`mergeOp.rw`, `_pgAdopt`, and `case 'name'`). Boundedness is unchanged — `validClock`/`_tsOK` already cap every admitted stamp at wall+5min (ADR-0791), so the floor stays honest-bounded.
+
+### Tests
+- 9 behavioural pins: op envelope; snapshot `dels` tomb; `rep` marker; merge-op `.wc` record; `_pgAdopt` birth clock; `pages` union-heal rename clock; snapshot `nameTs`; `name` msg ts; source pin counting all 17 `_fTs` call sites.
+- Comment-tail reclaim (~650B) funded the change; raw 556,731B.
+
 ## [1.8.137] - 2026-10-01
 
 ### Audited

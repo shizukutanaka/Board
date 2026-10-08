@@ -19608,6 +19608,45 @@ pass += 5;
 }
 pass += 6;
 
+// ---- ADR-1114: every foreign-clock admission channel advances the HLC floor —
+// _fTs folds each admitted stamp into state._lastTs, so a foreign timestamp can
+// never exceed a future undo-clock 'ut' and re-arm undo-side _lwwSkip / tomb
+// gates asymmetrically (pre-1114 only the op envelope advanced it at :1520).
+{
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;state.history=[];state.histIdx=-1;state._lastTs=0;_invalidateGrid();
+  const T0=Date.now()-1e5;   // well under the +5min skew bound (ADR-0791)
+  // envelope path — op.clock.ts
+  const e1=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));e1.id='eF';
+  Net._onRecv({k:'op',peer:'p9',op:{op:'add',shape:e1,clock:{peer:'p9',seq:1,ts:T0}}},false);
+  assert.ok(state._lastTs>=T0,'op envelope clock advances the floor');
+  // snapshot dels tomb channel
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],dels:{zT:{ts:T0+10,peer:'q',seq:0}}},false);
+  assert.ok(state._lastTs>=T0+10,'snapshot dels tomb clock advances the floor');
+  // snapshot rep marker channel
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],rep:{ts:T0+20,peer:'q',seq:0}},false);
+  assert.ok(state._lastTs>=T0+20,'snapshot rep clock advances the floor');
+  // snapshot merge-op .wc embedded clocks (the 'add'-only merge path)
+  const mF=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:5,h:5})));mF.id='mF';
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[{op:'add',shape:mF,clock:{peer:'p9',seq:2,ts:1},wc:{x:{ts:T0+30,peer:'q',seq:0}}}]},false);
+  assert.ok(state._lastTs>=T0+30,'snapshot op .wc merge clock advances the floor');
+  // page clocks — _pgAdopt birth stamp, then the snapshot pages union-heal nts
+  _pgAdopt([{id:'pa',name:'A',nts:0,bts:T0+40,btp:'q'}],'pa',{ts:T0+39,peer:'p9',seq:0});
+  assert.ok(state._lastTs>=T0+40,'_pgAdopt birth-clock adoption advances the floor');
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],pages:[{id:'pa',name:'A2',nts:T0+50,ntp:'q'}]},false);
+  assert.ok(state._lastTs>=T0+50,'pages union-heal rename clock advances the floor');
+  // docName channels — snapshot nameTs + 'name' msg
+  Net._onRecv({k:'snapshot',peer:'p9',ops:[],name:'NN',nameTs:T0+60,namePeer:'q'},false);
+  assert.ok(state._lastTs>=T0+60,'snapshot nameTs advances the floor');
+  Net._onRecv({k:'name',name:'NN2',ts:T0+70,peer:'p9'},false);
+  assert.ok(state._lastTs>=T0+70,'name msg ts advances the floor');
+  // source pin: every embedded clock channel folds via _fTs
+  assert.strictEqual((html.match(/_fTs\(/g)||[]).length,17,'all 17 embedded-clock admission sites fold via _fTs');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
+  console.log('  ✓ ADR-1114 HLC floor coverage (9 asserts)');
+}
+pass += 9;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
