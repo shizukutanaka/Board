@@ -17002,6 +17002,40 @@ try {
       pass += 13;
     }
     {
+      // ADR-1182: peer lifecycle contract — 'bye' resolves through _pk (both
+      // transports), reap is TTL-based and skips 'rtc:' rows (their lifecycle
+      // is dc.onclose), Net.init purges BC rows and re-baselines _pCt, and the
+      // armed trailing timers (_selT/_curT) carry over only accurate content.
+      const _pBak3=new Map(state.peers);const _rtcBak3=Net._rtcPeerId;const _ctBak=Net._pCt;
+      state.peers.clear();
+      Net._onRecv({k:'ping',peer:'b1182'},false);
+      assert.ok(state.peers.has('b1182'),'row minted for the bye test');
+      Net._onRecv({k:'bye',peer:'b1182'},false);
+      assert.ok(!state.peers.has('b1182'),'a BC bye deletes the peer row');
+      Net._onRecv({k:'bye',peer:'ghostBye'},false);
+      assert.strictEqual(state.peers.size,0,'a bye for an unknown peer is a no-op');
+      Net._rtcPeerId='rtc:b1182';
+      Net._onRecv({k:'cursor',peer:'x',x:1,y:1},true);
+      assert.ok(state.peers.has('rtc:b1182'),'rtc row minted for the bye test');
+      Net._onRecv({k:'bye',peer:'x'},true);
+      assert.ok(!state.peers.has('rtc:b1182'),'an RTC bye resolves through _pk and deletes the link row');
+      state.peers.set('oldB',{color:'#000',lastSeen:_now()-20000});
+      state.peers.set('rtc:oldR',{color:'#000',lastSeen:_now()-99999});
+      Net._reapPeers();
+      assert.ok(!state.peers.has('oldB'),'a stale BC row is reaped');
+      assert.ok(state.peers.has('rtc:oldR'),'a stale rtc: row is exempt from TTL reap');
+      assert.ok(html.includes("if(_sw(id,'rtc:'))continue;"),'rtc peers skip the TTL reap');
+      state.peers.set('bcGone',{color:'#000',lastSeen:_now()});
+      Net._pCt=9;
+      Net.init('room1182');
+      assert.ok(!state.peers.has('bcGone'),'room switch purges BC peer rows');
+      assert.strictEqual(Net._pCt,state.peers.size,'init re-baselines the join/leave count');
+      assert.ok(html.includes("this._pCt=_pr().size;_ivO();"),'_pCt reset pinned at init');
+      state.peers=_pBak3;Net._rtcPeerId=_rtcBak3;Net._pCt=_ctBak;
+      console.log('  ✓ peer lifecycle contract (ADR-1182)');
+      pass += 11;
+    }
+    {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
       // one exists — a dual-connected peer must not count as two avatars.
       assert.ok(html.includes("if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}"),'viaRtc presence folds the synthetic row into the real row');

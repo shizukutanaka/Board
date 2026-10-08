@@ -1,3 +1,8 @@
+## [1.8.206] - 2026-10-01
+
+### Test
+- **round932 / ADR-1182 — peer lifecycle contract の監査完走 + ピン**: `bye`(`_pk` 経由・両 transport)・TTL reap (`rtc:` 免除は dc.onclose 管理のため)・ルーム切替 purge + `_pCt` 再ベースライン・armed `_selT`/`_curT` のルーム横断 announce セマンティクスを監査し clean 完走。9挙動+2ソース=11ピンで固定 (docs+pin ラウンド)。
+
 ## [1.8.205] - 2026-10-01
 
 ### Test
