@@ -1208,6 +1208,7 @@ Board/
 │   ├── ADR-1180-hide-clears-before-gate.md  # hide クリアを peers ゲート手前へ — ピア不在時の hide が `_curSp`/`_curT`/`_lastCurKey` を armed のまま残し、後続 joiner へ stale カーソル1発を送出していた残穴を、クリア無条件・emit のみゲートの契約で閉塞、3挙動+1ソースピン
 │   ├── ADR-1181-presence-recv-contract.md  # presence 受信側契約の監査完走 — peer row の生成・採用・描画全経路 clean (envelope bound/BC 非 mint/pg≤64/死 id フィルタ/viaRtc 復活)、11挙動+2ソースピンで固定 (docs+pin ラウンド)
 │   ├── ADR-1182-peer-lifecycle-contract.md  # peer ライフサイクル契約の監査完走 — bye (_pk fold)/TTL reap (rtc: 免除)/ルーム切替 purge+_pCt 再ベースライン/armed timer のルーム横断 announce — clean、9挙動+2ソースピンで固定 (docs+pin ラウンド)
+│   ├── ADR-1183-exportpdf-blob-url.md  # exportPDF の popup-blocked blob URL 漏洩を閉塞 — `fin` が `window.open` 確認前に `_oURL` を生成し blocked 早期 return で revoke なし (ADR-0813 同型)、`_wO` ガード後への純粋並べ替えで閉塞 (raw 増加ゼロ)、6挙動ピン + `open` harness trampoline
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)

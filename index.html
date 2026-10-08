@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.206';   // ADR-1182
+const V='1.8.207';   // ADR-1183
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6890,9 +6890,9 @@ function exportPDF(){
   for(const s of _shV())_dS(s,oc);   // ADR-0658
   const fin=bl=>{
     if(!bl){_eT(_EF);return}
-    const url=_oURL(bl);
     const w2=_wO('');
     if(!w2){_wT('popupBlocked');return}
+    const url=_oURL(bl);
     w2.document.write(`<!DOCTYPE html><html><head><title>${_esc(_dn()||'board')}</title><style>*{margin:0;padding:0}img{max-width:100%;display:block}</style></head><body><img src="${url}" onload="window.print();window.close()"></body></html>`);
     w2.document.close();_stO(()=>URL.revokeObjectURL(url),30e3);
   };
