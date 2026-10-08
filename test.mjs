@@ -16947,6 +16947,22 @@ try {
       pass += 15;
     }
     {
+      // ADR-1180: the hide's state clears precede the peers gate — hiding with
+      // nobody present still disarms _curSp/_curT/_lastCurKey so a latecomer
+      // can't hear a stale cursor afterwards.
+      const _hSeg=html.slice(html.indexOf('sendCursorHide(){'),html.indexOf("h:1,pg:state.curPg"));
+      assert.ok(_hSeg.indexOf('_curSp=null')<_hSeg.indexOf('_pr().size===0'),'hide clears precede the peers gate (ADR-1180)');
+      const _pBak=new Map(state.peers);state.peers.clear();
+      Net._curSp={x:5,y:5};Net._lastCurKey='k1180';Net._curT=1;   // sentinel — _cT tolerates any value
+      Net.sendCursorHide();
+      assert.strictEqual(Net._curSp,null,'hide with no peers clears the tracked point');
+      assert.strictEqual(Net._curT,null,'hide with no peers disarms the resend');
+      assert.strictEqual(Net._lastCurKey,null,'hide with no peers clears the dedup key');
+      state.peers=_pBak;
+      console.log('  ✓ hide clears precede the peers gate (ADR-1180)');
+      pass += 4;
+    }
+    {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
       // one exists — a dual-connected peer must not count as two avatars.
       assert.ok(html.includes("if(msg.peer&&_pr().has(msg.peer)){if(this._rtcPeerId&&_pr().delete(this._rtcPeerId))_ivO();return msg.peer}"),'viaRtc presence folds the synthetic row into the real row');

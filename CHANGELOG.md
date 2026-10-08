@@ -1,3 +1,8 @@
+## [1.8.204] - 2026-10-01
+
+### Fixed
+- **round930 / ADR-1180 — hide clears precede the peers gate**: `sendCursorHide` reset `_curSp`/`_curT`/`_lastCurKey` *after* the `_pr().size===0` early return — hiding with no peers present left the tracking point, the armed resend timer, and the dedup key alive. A peer joining afterwards heard one stale world cursor through `sendCursorMoved` even though the pointer had left (an `h:1` was never sent and shouldn't have been — there was nobody to tell, but the *state* should still reset). The three-field clear now runs before the peers gate; the `h:1` broadcast itself still correctly requires recipients. Pinned by 3 behavioural + 1 source asserts.
+
 ## [1.8.203] - 2026-10-01
 
 ### Fixed
