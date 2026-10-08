@@ -22196,6 +22196,29 @@ pass += 2;
   pass += 11;
 }
 
+{
+  // ADR-1194: the wire-protocol reference names every dispatched intake kind and
+  // every emitted _mk kind — drift between the doc and the switch/senders fails.
+  const doc=(()=>{try{return readFileSync('docs/ADR-1194-wire-protocol-reference.md','utf8')}catch(_){return''}})();
+  const sw=html.slice(html.indexOf('switch(msg.k)'),html.indexOf('_snapshotMsg'));
+  const cases=[...new Set([...sw.matchAll(/case '([a-z-]+)'/g)].map(m=>m[1]))];
+  assert.strictEqual(cases.length,13,'_onRecv dispatches exactly 13 envelope kinds');
+  for(const k of cases)assert.ok(doc.includes('`'+k+'`'),'ADR-1194 documents dispatched kind '+k);
+  const sends=[...new Set([...html.matchAll(/_mk\('([a-z-]+)'/g)].map(m=>m[1]))];
+  for(const k of sends)assert.ok(doc.includes('`'+k+'`'),'ADR-1194 documents emitted kind '+k);
+  // transport matrix: the viaRtc BC-only drop list and the frag viaRtc gate are stated
+  assert.ok(doc.includes('hello')&&doc.includes('ping')&&doc.includes('sync-req')&&doc.includes('BC-only'),'doc states the viaRtc BC-only drop list');
+  assert.ok(sw.includes("'snap':case 'opc'")&&sw.includes('if(!viaRtc)break'),'frag kinds gate on viaRtc');
+  // auth envelope: canon exclusions, idempotent tags, peer bound, forged-rtc rule stated
+  assert.ok(doc.includes('mac')&&doc.includes('dmac')&&doc.includes('data')&&doc.includes('MAX_PEER_ID_LEN'),'doc states the auth envelope');
+  // per-kind numeric bounds the doc references exist in the code
+  for(const lit of ['262144','4096','33554432','65536','384','24_000_000','96*1024','64'])assert.ok(html.includes(lit),'bound literal '+lit+' present in code');
+  // every op sub-op the dispatch accepts is named in the doc
+  for(const k of ['add','addMany','del','upd','move','group','ungroup','zorder','align','style','resize','replace','pageAdd','pageDel','pageName','beautify','clear'])assert.ok(doc.includes(k),'doc names op sub-op '+k);
+  console.log('  ✓ ADR-1194 wire-protocol reference drift gate (7 asserts)');
+  pass += 7;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
