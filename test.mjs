@@ -1151,7 +1151,7 @@ const checks = [
     html.includes("case 'selection':") && html.includes('sendSelectionIfChanged(){')
     && html.includes('function drawPeerSelections(c)') && html.includes('Net.sendSelectionIfChanged();')],
   ['ADR-0011 latecomer resend: _touchPeer resets _lastSelSent',
-    html.includes('this._lastSelSent=null;_iv();')],
+    html.includes('this._lastSelSent=null;this._lastSelAt=0;_iv();')],
   // v1.7.63 robustness audit
   ['SW: navigations are network-first (cache-first pinned users to the first cached version forever)',
     swjs.includes("e.request.mode==='navigate'")
@@ -7801,25 +7801,26 @@ try {
       A.state.peers.clear();B.state.peers.clear();
       A.state.peers.set('peerB',{color:'#111',lastSeen:Date.now()});
       B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
-      A.Net._lastSelSent='';
+      A.Net._lastSelSent='';A.Net._lastSelAt=0;
       const _bs=B.state.shapes.length;for(const id of['s1','s2','s3','s4','sX','ok','ok2'])B.state.shapes.push({id,type:'rect'});   // ADR-1080: sel ids must resolve
 
       // (a) BC path: A's selection reaches B, keyed by A's real peerId; deselect propagates
+      // (_lastSelAt reset between steps = the throttle window having elapsed, ADR-1177)
       A.state.selection=new Set(['s1','s2']);
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s1','s2'],'ADR-0011a: selection ids propagate A→B via the BC path, keyed by real peerId');
-      A.state.selection=new Set();
+      A.state.selection=new Set();A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,[],'ADR-0011a: deselecting propagates as an empty ids array (clears the highlight)');
 
       // (b) change detection: an unchanged selection is NOT resent. Prove it by planting
       // a sentinel in B's record — a resend would overwrite it.
-      A.state.selection=new Set(['s3']);
+      A.state.selection=new Set(['s3']);A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       B.state.peers.get('peerA').sel=['sentinel'];
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['sentinel'],'ADR-0011b: an unchanged selection is not resent (frame-boundary no-op)');
-      A.state.selection=new Set(['s3','s4']);
+      A.state.selection=new Set(['s3','s4']);A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011b: a changed selection is resent');
 
@@ -7831,7 +7832,7 @@ try {
       A.Net._touchPeer('peerC');
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011c: a new peer joining forces one selection rebroadcast');
-      A.state.peers.delete('peerC');
+      A.state.peers.delete('peerC');clearTimeout(A.Net._selT);A.Net._selT=null;
 
       // (d) viaRtc routing: same _rtcPeerId pitfall as ADR-0010c
       B.state.peers.clear();
@@ -16163,14 +16164,15 @@ try {
       const i2=_snapIndex('resize','["a,b"]',s=>s.id==='a,b');
       assert.ok(i2.xs.length>i1.xs.length,'ADR-0860: distinct snap-index keys hit distinct exclusion sets');
       Net._onRecv({k:'hello',peer:'sig-t'},false);
-      Net._lastSelSent='';
+      Net._lastSelSent='';Net._lastSelAt=0;
       state.selection.add('a');state.selection.add('b');
       Net.sendSelectionIfChanged();
       const k1=Net._lastSelSent;
       state.selection.clear();state.selection.add('a,b');
-      Net.sendSelectionIfChanged();
+      Net._lastSelAt=0;Net.sendSelectionIfChanged();
       assert.notEqual(Net._lastSelSent,k1,'ADR-0860: presence dedup key distinguishes {a,b} from {"a,b"} — resend happens');
       assert.ok(k1.indexOf('"a","b"')>=0,'ADR-0860: presence dedup key is the _JS-encoded sorted id set');
+      clearTimeout(Net._selT);Net._selT=null;
       state.selection.clear();
       const elA=[{id:'a',name:'b,c\x1fd'}],elB=[{id:'a',name:'b'},{id:'c',name:'d'}];
       assert.equal(elA.map(p=>p.id+'\x1f'+p.name).join(),elB.map(p=>p.id+'\x1f'+p.name).join(),'ADR-0860: crafted vs real page sets collided under the old join sig');
@@ -16294,7 +16296,7 @@ try {
     const PSEL=Shape.make('rect',{x:0,y:0,w:10,h:10});
     Store.commit({op:'add',shape:PSEL});
     state.selection.add(PSEL.id);
-    Net._lastSelSent=null;
+    Net._lastSelSent=null;Net._lastSelAt=0;
     Net.sendSelectionIfChanged();
     assert.ok(sent3.some(m=>m&&m.k==='selection'&&Array.isArray(m.ids)&&m.ids.includes(PSEL.id)),'selection change broadcasts a selection op to peers (ADR-0011)');
     sent3.length=0;
@@ -16834,7 +16836,7 @@ try {
       // dedup keys must self-correct across a room switch; a newly-seen peer
       // forces a resend; the pg rides the selection key; init rebases _pCt.
       assert.ok(html.includes("const key=_JS(ids.sort())+'|'+(state.curPg||'')"),'selection presence key carries the viewed page');
-      assert.ok(html.includes("this._lastSelSent=null;_iv();"),'a newly-seen peer forces a selection resend');
+      assert.ok(html.includes("this._lastSelSent=null;this._lastSelAt=0;_iv();"),'a newly-seen peer forces a selection resend');
       assert.ok(html.includes("this._pCt=_pr().size"),'init rebases the presence-count baseline');
       assert.ok(html.includes("if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return"),'cursor send is throttle-gated');
       Net._lastSelSent='stale';
@@ -16846,6 +16848,31 @@ try {
       assert.ok(selSent>=1,'selection presence emitted after peer touch');
       Net._bcast=_ob;Net._lastSelSent='';state.selection.delete('sel780');state.peers.delete('p780x');
       console.log('  ✓ presence-channel signature lifecycle (ADR-1031)');
+    }
+    {
+      // ADR-1177: selection presence rides the cursor throttle — a marquee drag
+      // mutates the set every rendered frame, so each frame emitted the full
+      // id list (~16-60/s). Throttled skips arm a trailing resend so the
+      // settled selection lands within one window; a latecomer resend clears
+      // the window so the new peer hears the selection immediately.
+      assert.ok(html.includes("if(now-this._lastSelAt<CURSOR_THROTTLE_MS)"),'selection presence is throttle-gated (ADR-1177)');
+      assert.ok(html.includes("this._selT=_stO(()=>{this._selT=null;this.sendSelectionIfChanged()},CURSOR_THROTTLE_MS)"),'throttled selection change arms a trailing resend');
+      Net._lastSelSent='';Net._lastSelAt=0;Net._selT=null;
+      const _ob2=Net._bcast;let selN=0;Net._bcast=m=>{if(m&&m.k==='selection')selN++;return _ob2.call(Net,m)};
+      state.peers.set('p1177x',{color:'#123',lastSeen:Date.now()});
+      state.selection.add('selA');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,1,'first selection change sends immediately');
+      state.selection.add('selB');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,1,'mid-drag change inside the window coalesces');
+      assert.ok(Net._selT,'trailing resend armed for the skipped change');
+      Net._lastSelAt=0;
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,2,'the settled selection lands after the window');
+      Net._bcast=_ob2;Net._lastSelSent='';Net._lastSelAt=0;clearTimeout(Net._selT);Net._selT=null;
+      state.selection.delete('selA');state.selection.delete('selB');state.peers.delete('p1177x');
+      console.log('  ✓ selection presence throttle contract (ADR-1177)');
     }
     {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
