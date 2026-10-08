@@ -22218,6 +22218,32 @@ pass += 2;
   console.log('  ✓ ADR-1194 wire-protocol reference drift gate (7 asserts)');
   pass += 7;
 }
+{
+  // ADR-1195: Net.init's cleared/retained split — room-bound state resets on
+  // every (re)join; doc-bound blob state survives because the doc is the same.
+  Net._imgIn.set('kA','DATA');Net._imgInB=4;
+  Net._imgPending.set('sA',{k:'kA',t0:0});
+  Net._imgSent.set('kB','SENT');
+  Net._imgChunks.set('rtc:x:kC',{n:2,parts:[]});
+  Net._imgOuts.push(['kD','D']);Net._fragOuts.push(['kE','E']);
+  Net._dcQ=['q1'];Net._dcQB=2;Net._dcKey='kk';Net._imgqT.set('kF',1);
+  Net._snapIn={n:2,parts:[]};Net._opcIn={n:2,parts:[]};
+  Net._lastSelSent='x';Net._lastSelAt=9;Net._lastCursorSend=9;Net._lastCurKey='y';
+  state.seenOps.add('sp:1');
+  Net.init('roomZ');
+  assert.ok(Net._imgIn.get('kA')==='DATA'&&Net._imgInB===4,'doc-bound _imgIn cache retained across room switch');
+  assert.ok(Net._imgPending.has('sA'),'doc-bound _imgPending waitlist retained');
+  assert.ok(!Net._imgSent.size&&!Net._imgChunks.size&&!Net._imgOuts.length&&!Net._fragOuts.length,'room-bound img/frag outflow cleared');
+  assert.ok(!Net._dcQ&&!Net._dcQB&&!Net._dcKey&&!Net._imgqT.size,'dc queue/key/imgq-throttle cleared');
+  assert.ok(!Net._snapIn&&!Net._opcIn,'inbound reassembly slots cleared');
+  assert.ok(!Net._lastSelSent&&!Net._lastSelAt&&!Net._lastCursorSend&&!Net._lastCurKey,'presence send state cleared');
+  assert.ok(!state.seenOps.has('sp:1'),'dedup namespace reset');
+  Net._imgIn.clear();Net._imgInB=0;Net._imgPending.clear();state.seenOps.clear();
+  clearInterval(Net._presenceTimer);
+  if(Net.bc&&Net.bc.close)try{Net.bc.close()}catch(_){}Net.bc=null;
+  console.log('  ✓ Net.init cleared/retained contract (ADR-1195, 7 asserts)');
+  pass += 7;
+}
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

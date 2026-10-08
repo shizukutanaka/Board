@@ -1,3 +1,8 @@
+## [1.8.219] - 2026-10-01
+
+### Docs
+- **round945 / ADR-1195 — `Net.init` の cleared/retained 契約を規約化 + 挙動ピン (room-bound vs doc-bound の state 分離監査、clean 完走)**: ~15 ADR が個別に積み上げてきた room 切替リセット境界を一箇所で規約化。cleared (room-bound — 部屋の「今の相手」にのみ意味のある状態): `bc` close+bye・`seenOps` dedup・join-sync 位相 (`_snapT`/`_snapRx`/`_snapRetry`/`_snapRqs`)・`_imgSent`/`_imgChunks`/`_imgOuts`/`_fragOuts` 流出記録・`_snapIn`/`_opcIn` 受信再組立・`_imgqT`/`_imgScanN`・`_dcKey`/`_dcQ`/`_dcQB`・presence 送信位相・`_presenceTimer`・非 `rtc:` ピア行+`_pCt`・(真の切替時のみ) 因果 marker+`dc`/`rtc` close。retained (doc-bound — 同一 doc が依存): `_imgIn`/`_imgInB` 受信 blob キャッシュ・`_imgPending` heal 待ち行列・`rtc:` ピア行・`_rtcPeerId`。「答えた」集合は部屋ごと・「持っている」集合は doc ごとの非対称が正であること、`_imgIn` 消去は live 図形の参照空転を招くこと、`seenOps` クリアによる再適用は op 冪等性で安全であることを確認。行動変更なし — 7 挙動アサート (retained 2・cleared 5) で契約固定。
+
 ## [1.8.218] - 2026-10-01
 
 ### Docs
