@@ -1204,6 +1204,7 @@ Board/
 │   ├── ADR-1175-unhealable-member-rehome.md  # 修復不能メンバーの pg 抹消 — stub 生成不能 (tomb-dead/64頁満杯) なら `pg=<死id>` のまま全頁で不可視の実害を、共有 `_pgHeal` (stub 可能→'?'頁、不可→pg 削除で pages[0] 再帰属、_pgDel2 同型) へ2生成サイト (_pgHealS + applyRemote op-intake) 集約で閉塞、3+3ピン
 │   ├── ADR-1176-member-pg-intake-funnel.md  # member-pg 取込漏斗監査 (clean 完走) — 全 `s.pg` 書込みサイト census: 6 代入サイト全て書込時点の実在頁へ解決 or 抹消 (null→_pgOk fallback)、残余は `_pgHeal`/`_pgHealS` へ。64頁満杯で stub 不能の op 取込フォークを4挙動+2ソースピンで固定
 │   ├── ADR-1178-room-switch-presence-state.md  # ルーム切替で presence 送出状態をリセット — `_lastSelSent` が旧ルームの既視キーを保持し、自分が遅参になった経路では dedup が再送を恒久的に棄却していた実害を、送出側3フィールドの init リセット (次フレームで現選択を一度アナウンス) で閉塞。`_touchPeer` 遅参リセットの self 版、4挙動+1ソースピン
+│   ├── ADR-1179-cursor-send-completeness.md  # カーソル送出の完全性 — trailing-edge 落ち (窓内で静止した位置が永未到達) + viewport ドリフト (pan/zoom で静止カーソルの世界座標が silently 不整合) + 遅参カーソル未再送の3残穴を、`_curSp` 記録 + `_curT` trailing resend + `_lastCurKey` dedup + frame() の `sendCursorMoved` で閉塞、11挙動+4ソースピン
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)

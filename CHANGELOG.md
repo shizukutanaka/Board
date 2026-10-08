@@ -1,3 +1,8 @@
+## [1.8.203] - 2026-10-01
+
+### Fixed
+- **round929 / ADR-1179 — cursor presence completeness**: the cursor send had three residual staleness holes of the same family ADR-1177/1178 closed for selection. (a) **Trailing-edge drop**: `sendCursor` discarded every move inside the throttle window with no trailing resend — when the pointer stopped inside a window, the resting position never reached peers until the next physical move (possibly never). Throttled skips now arm a `_curT` resend that re-derives the world point at fire time (mirrors `_selT`). (b) **Viewport drift**: pan/zoom/fit/minimap move the world point under a still pointer silently — no presence emit until the next physical move. Every canvas pointermove now records the last screen point `_curSp`, and the frame hook calls `Net.sendCursorMoved()` — any viewport change invalidates a frame, re-derives `s2w(_curSp)`, and emits only when the derived point differs from the last emitted one (`_lastCurKey` dedup over `x|y|pg`). (c) **Lifecycle parity**: the dedup key resets on `sendCursorHide` (with `_curSp`/`_curT` — a hidden cursor can't be resurrected by a stray timer), on `Net.init` room switch (self-latecomer re-announce), and on `_touchPeer` latecomer join (the joiner hears a resting cursor once instead of waiting for a move). `_curSp` is intentionally not cleared on room switch (a screen point stays valid across rooms/viewports) nor during pinch (`_nP()>=2` gates the emit, matching the send gate). Pinned by 11 behavioural + 4 source asserts.
+
 ## [1.8.202] - 2026-10-01
 
 ### Fixed
