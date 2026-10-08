@@ -1,3 +1,8 @@
+## [1.8.173] - 2026-10-01
+
+### Fixed
+- **round899 / ADR-1149 — ctx menu keyboard reachability**: keyboard-only users can now open the context menu — the ContextMenu key (≣) and ⇧F10 are bound in the global keydown chain (previously the only entry paths were right-click and touch long-press). The menu anchors on the selection's union-bbox centre; empty selection centres the canvas. Held-key repeats are suppressed by the ADR-1007 gate, presentation mode absorbs the key via the existing early return, and mid-gesture opens fold the gesture via openCtxMenu's own cancel. Help row now lists all three entry paths. 10 pins (5 source + 5 behavioural via the real keydown listener).
+
 ## [1.8.172] - 2026-10-01
 
 ### Fixed

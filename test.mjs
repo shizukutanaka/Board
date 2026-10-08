@@ -20753,12 +20753,39 @@ pass += 8;
   assert.ok(html.includes("['⌥ + click',t('waypointEdit')]"),'ADR-1148: help documents ⌥+click route edits');
   assert.ok(html.includes("['⇧ + click',t('selToggle')]"),'ADR-1148: help documents ⇧+click selection toggle');
   assert.ok(html.includes("['⌥ + drag',k.dup+' / '+k.lasso]"),'ADR-1148: ⌥+drag row covers duplicate AND lasso');
-  assert.ok(html.includes("['long press',t('ctxMenuKey')]"),'ADR-1148: help documents touch long-press → ctx menu');
+  assert.ok(html.includes('long press'),'ADR-1148: help documents touch long-press → ctx menu');
   assert.ok(html.includes("hPan:'水平パン'")&&html.includes("hPan:'Horizontal pan'")&&html.includes("ctxMenuKey:'コンテキストメニュー'")&&html.includes("ctxMenuKey:'Context menu'"),'ADR-1148: new help keys exist in ja+en');
   assert.ok(html.includes("k==='g'&&_sK(e)")&&html.includes("k==='i'&&_sK(e)&&meta")&&html.includes("k==='y'||")&&html.includes("meta&&k===_EN")&&html.includes("_longPressTimer")&&html.includes("state.measure"),'ADR-1148: each documented shortcut has a live handler');
   console.log('  ✓ ADR-1148 help grid × keymap parity (12 asserts)');
 }
 pass += 12;
+
+// ---- ADR-1149: ctx menu keyboard reachability — ContextMenu key / ⇧F10 ----
+{
+  assert.ok(html.includes("k==='contextmenu'||(k==='f10'&&_sK(e))"),'ADR-1149: ContextMenu key + ⇧F10 bound in the global keydown chain');
+  assert.ok(html.includes('function ctxMenuKbd()'),'ADR-1149: ctxMenuKbd anchor helper exists');
+  assert.ok(html.includes('_bA(_selShapes())'),'ADR-1149: the keyboard path anchors on the selection union bbox');
+  assert.ok(html.includes('UI.openCtxMenu(r.left+r.width/2'),'ADR-1149: empty selection centres the canvas');
+  assert.ok(html.includes('≣ / ⇧F10 / long press'),'ADR-1149: the help row documents all three ctx-menu entry paths');
+  // behavioural: real keydown opens the menu at the selection centre
+  state.shapes=[Shape.make('rect',{x:100,y:100,w:40,h:40})];_invalidateGrid();
+  state.selection=new Set([state.shapes[0].id]);
+  const cm=fakeDoc.getElementById('ctx');cm.dataset.open='false';delete cm._wx;delete cm._wy;
+  const _fk=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
+  _fk('ContextMenu');
+  assert.strictEqual(cm.dataset.open,'true','ADR-1149: the ContextMenu key opens the ctx menu');
+  assert.ok(Math.abs(cm._wx-120)<1e-6&&Math.abs(cm._wy-120)<1e-6,'ADR-1149: menu anchors at the selection centre (world coords)');
+  UI.closeCtxMenu();
+  state.selection=new Set();
+  _fk('F10',{shiftKey:true});
+  assert.strictEqual(cm.dataset.open,'true','ADR-1149: ⇧F10 opens the ctx menu');
+  const _vv=state.viewport;
+  assert.ok(Math.abs(cm._wx-(400/_vv.zoom+_vv.x))<1e-6&&Math.abs(cm._wy-(300/_vv.zoom+_vv.y))<1e-6,'ADR-1149: empty selection anchors at the canvas centre');
+  UI.closeCtxMenu();
+  state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1149 ctx menu keyboard reachability (10 asserts)');
+}
+pass += 10;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
