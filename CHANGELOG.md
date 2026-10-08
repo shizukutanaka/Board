@@ -1,3 +1,8 @@
+## [1.8.199] - 2026-10-01
+
+### Fixed
+- **round925 / ADR-1175 — unhealable member rehome**: both `'?'`-stub producers (`_pgHealS` set-heal and the `applyRemote` op-intake loop) ran the same gate `s.pg && !_pgById && _stubOk && <64` and did nothing when the stub couldn't be produced — a member carrying a tomb-dead or cap-blocked `pg` kept the dead id, `_pgOk` fails on every page → invisible, unreachable, silent. ADR-1174's cap-drop makes the case load-bearing: a snapshot that fills the 64-page cap drops local pages AND forbids the stub that could save their members. New shared `_pgHeal(s)` forks the decision — stub when producible (unknown-no-tomb `pg` is evidence the page is merely in flight), else scrub `s.pg` so the member rehomes to `pages[0]` via the `_pgOk` fallback, identical to `_pgDel2`'s member rehoming on page deletion. `applyRemote` delegates its inline stub loop to the shared rule (same rehome arm, free). Convergent: same input page set → same local decision on every peer; `pg` re-arbitrates as a normal prop. Tomb-dead ids still get no stub (ADR-1137 intact — the member rehomes without reviving the page). Pinned by 3 behavioural + 3 recalibrated source asserts.
+
 ## [1.8.198] - 2026-10-01
 
 ### Fixed
