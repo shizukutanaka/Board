@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.203';   // ADR-1179
+const V='1.8.204';   // ADR-1180
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8352,9 +8352,9 @@ const Net={
     this._bcast(_mk('cursor',{x:wp.x,y:wp.y,pg:state.curPg,..._nm()}));   // ADR-0647/1053
   },
   sendCursorMoved(){if(this._curSp&&_nP()<2)this.sendCursor(_s2(this._curSp))},   // ADR-1179
-  sendCursorHide(){   // ADR-0611
+  sendCursorHide(){   // ADR-0611/1180
+    this._lastCursorSend=0;this._curSp=null;this._lastCurKey=null;_cT(this._curT);this._curT=null;   // ADR-1180
     if(_pr().size===0)return;
-    this._lastCursorSend=0;this._curSp=null;this._lastCurKey=null;_cT(this._curT);this._curT=null;
     this._bcast(_mk('cursor',{x:0,y:0,h:1,pg:state.curPg,..._nm()}));   // ADR-1053
   },
   // ADR-0011: resend only on serialized selection change; null forces resend.
