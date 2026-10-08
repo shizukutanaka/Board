@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.196';   // ADR-1172
+const V='1.8.197';   // ADR-1173
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2220,6 +2220,7 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
 const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009/1071
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg,_pgEq=(a,b)=>!_pgOn()||(a.pg||_pgs()[0].id)===(b.pg||_pgs()[0].id);   // ADR-0646/1145
+const _pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}};   // ADR-1173: home members on the viewed page — pg-less would attribute to pages[0]
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64)&&(p.bts==null||_tsOK(p.bts))&&(p.btp==null||_iS(p.btp)&&_ln(p.btp)<=64))?a:null);   // ADR-0700/0791/1110
 const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)};   // ADR-1137: tomb-dead pages get no '?' stub
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110
@@ -6253,7 +6254,7 @@ function _placeCopies(srcShapes,dx,dy,dup){
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
@@ -6264,7 +6265,7 @@ function _placeCopies(srcShapes,dx,dy,dup){
     _pu(built,sh);
     _pu(added,sh.id);
   }
-  if(_ln(built))_cmt({op:'addMany',shapes:built});
+  if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}
   _ss(added);   // ADR-0568: _ss filters out hidden copies
   if(dup){state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy}}     // ADR-0080/1139: only ⌘D arms the repeat chain — paste/import placement vectors aren't user transforms
   _iv();
@@ -7262,7 +7263,7 @@ function importDrawioText(txt,wp){
   if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796: wire parity
   const _vpNull=wp==null;
   _ctrAt(shapes,wp)
-  _cOp({op:'addMany',shapes});
+  _pgHome(shapes);_cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
   if(_dioNm){_setDocName(_s80(_dioNm));_bName()}   // ADR-0405
@@ -7572,7 +7573,7 @@ function importSvgText(txt,wp){
   const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)_sT2(s,dx,dy)}
-  _cOp({op:'addMany',shapes});
+  _pgHome(shapes);_cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   _iv();_oT('svgImported');
   return true;
@@ -7726,7 +7727,7 @@ function importExcText(txt,wp){
   if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796
   const _vpNull=wp==null;   // ADR-0409
   _ctrAt(shapes,wp)
-  _cOp({op:'addMany',shapes});
+  _pgHome(shapes);_cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull){try{const ap=_JP(txt).appState;   // ADR-0409: scrollX/Y/zoom → viewport
     if(ap&&_xyOK(+ap.scrollX)&&_xyOK(+ap.scrollY)){_vp().x=-+ap.scrollX;_vp().y=-+ap.scrollY;   // ADR-0796
@@ -7754,9 +7755,7 @@ function importBoardText(txt,wp){
   _o(t('imported')+' '+_ln(added));
   return true;
 }
-// ADR-0115 (outbound half): whole board (or selection via exportSelection)
-// as .board JSON on the clipboard — moves content between boards/tabs without
-// a file round-trip.
+// ADR-0115: whole board → .board JSON on the clipboard
 function copyBoardJSON(shapes=_shWB()){
   if(!_ln(shapes)){_wT(_EM);return}
   _cpT(copyText(_JS({v:V,docName:_dn(),pages:_pgs(),curPg:state.curPg,shapes:roundShapesForExport(shapes)})));
@@ -9877,9 +9876,7 @@ function selectFrameContents(){
   _iv();
 }
 // ADR-0110
-// ADR-0109 — text/align/fontSize/w/h carry over; sticky's `color` simply
-// becomes unused on text (text ink = stroke), text's `stroke` unused on
-// sticky (border is fixed). Undo restores the original type wholesale.
+// ADR-0109 — props carry over on conversion; unused ones go inert.
 function toggleStickyText(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='sticky'&&s.type!=='text')||_lk(s))return;

@@ -1,3 +1,8 @@
+## [1.8.197] - 2026-10-01
+
+### Fixed
+- **round923 / ADR-1173 — intake page-homing**: the three single-page external-file intakes (`.drawio` single-diagram tail, `.svg`, `.excalidraw`) committed bare `addMany` ops — pg-less members attribute to `pages[0]` via `_pgOk`'s fallback, so on a multi-page board with `curPg≠first` the import landed invisibly yet still toasted success (ADR-1072 sibling), while a payload-carried foreign `pg` stayed live (phantom-page vector). New `_pgHome` helper stamps `s.pg=state.curPg` (or deletes a carried `pg` on a page-less board) at all four local intake seams — the three file importers plus `_placeCopies`, whose identical inline stamp folded into the shared rule. One seam now states the contract: a locally introduced shape homes on the viewed page, or on none. Pinned by 3 behavioural + 3 source asserts; 2 stale literals recalibrated.
+
 ## [1.8.196] - 2026-10-01
 
 ### Fixed

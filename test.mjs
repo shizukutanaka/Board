@@ -1343,7 +1343,7 @@ const checks = [
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
   ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!_ln(sel))return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
-  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built))_cmt({op:'addMany',shapes:built})")],
+  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
   ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
@@ -19279,7 +19279,7 @@ pass += 1;
   state.pages=null;state.curPg=null;state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();state.dupIds=new Set();_invalidateGrid();
   pass += 3;
 }
-assert.ok(html.includes("else delete sh.pg;"),"_placeCopies drops a foreign pg on a page-less doc");
+assert.ok(html.includes("else delete s.pg}}"),"pg scrub lives in the shared _pgHome helper (ADR-1173)");
 pass += 1;
 
 {
@@ -21577,6 +21577,38 @@ pass += 4;
 assert.ok(html.includes("{_werr=e}   // ADR-0650/0739/1172\n  switchPage(id);"),'_pgDup switchPage lands before the error surfaces (ADR-1172)');
 assert.ok(html.includes("{if(!_werr)_werr=e}   // ADR-1172"),'multi-page paste companion send is best-effort (ADR-1172)');
 assert.ok(html.split("Net.broadcast(").length-1===8&&html.split("try{Net.broadcast(").length-1===5,'every Net.broadcast site is try-guarded or terminal — _txC outer-try + 2 terminal (ADR-1172)');
+pass += 3;
+
+// ---------- ADR-1173: single-page external intakes home on the viewed page ----------
+// pg-less intake attributes to pages[0] via _pgOk's fallback — invisible on a
+// multi-page board when curPg≠first page (ADR-1072 sibling). _pgHome stamps
+// s.pg=state.curPg (or scrubs a foreign pg) at every local intake: the
+// _placeCopies funnel plus the three external-file single-page paths (drawio
+// tail / svg / excalidraw).
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const doc='{"type":"excalidraw","version":2,"elements":[{"type":"rectangle","id":"r1","x":0,"y":0,"width":10,"height":10}]}';
+  E.state.pages=[{id:'p1',name:'P1',nts:0},{id:'p2',name:'P2',nts:0}];E.state.curPg='p2';
+  assert.ok(E.importExcText(doc)===true,'exc import commits on a paged board (ADR-1173)');
+  const s=E.state.shapes[E.state.shapes.length-1];
+  assert.ok(s&&s.pg==='p2'&&E._pgOk(s),'exc members home on the viewed page — not pages[0] (ADR-1173)');
+  E.state.pages=null;E.state.curPg=null;
+  assert.ok(E.importExcText(doc)===true,'exc import commits on a page-less board');
+  const s2=E.state.shapes[E.state.shapes.length-1];
+  assert.ok(s2&&s2.pg===undefined,'page-less intake scrubs any foreign pg (ADR-1173)');
+  console.log('  ✓ ADR-1173 intake page-homing: members land on the viewed page (3 asserts)');
+}
+pass += 3;
+assert.ok(html.includes("_pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}}"),'_pgHome stamps curPg / scrubs foreign pg (ADR-1173)');
+assert.ok(html.split('_pgHome(shapes)').length-1===3,'drawio/svg/exc single-page intakes all home via _pgHome (ADR-1173)');
+assert.ok(html.includes("{_pgHome(built);_cmt({op:'addMany',shapes:built})}"),'_placeCopies homes via _pgHome (ADR-1173)');
 pass += 3;
 
 } catch (err) {
