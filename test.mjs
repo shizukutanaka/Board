@@ -21464,6 +21464,44 @@ assert.ok(html.includes("if(nc!==oc){_cancelPointerGesture();_cxO()}"),"_pgAdopt
 assert.ok(html.includes("const mids=[...ptr.dragStartShapes.keys()].filter(id=>{const s=byId(id);return s&&_ul(s)})"),'the move commit re-resolves ids — dead/reborn-absent ids filtered at emit (ADR-1169)');
 pass += 2;
 
+// ---------- ADR-1170: undo-domain purity — history records only self-authored ops ----------
+// state.history is a local-only op log: the sole producers are commit and
+// _recordCommitted (both local funnels). applyRemote applies/dedups/stamps
+// clocks but never pushes — so ⌘Z/⌘Y always replay a self-authored op whose
+// stored `before` is a local snapshot, never a receiver-reinterpreted remote
+// one. Remote arrivals between locals leave the op pointer untouched: undo
+// walks the last LOCAL op, and a redo branch survives ops mid-branch.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const A=Shape.make('rect',{x:0,y:0,w:10,h:10}),B=Shape.make('rect',{x:20,y:0,w:10,h:10}),R=Shape.make('rect',{x:40,y:0,w:10,h:10});
+  E.Store.commit({op:'add',shape:A});
+  const h0=E.state.history.length,i0=E.state.histIdx;
+  E.Store.applyRemote({op:'add',shape:R,clock:{peer:'peerR',seq:1,ts:E.state._lastTs+1}});
+  assert.ok(E.byId(R.id)&&E.state.history.length===h0&&E.state.histIdx===i0,'remote op applies but never touches history/histIdx (ADR-1170)');
+  E.Store.commit({op:'add',shape:B});
+  E.Store.applyRemote({op:'upd',id:R.id,before:{x:40},after:{x:50},clock:{peer:'peerR',seq:2,ts:E.state._lastTs+2}});
+  assert.ok(E.state.history.every(o=>o.clock.peer===E.state.peerId),'every recorded op is self-authored (ADR-1170)');
+  E.Store.undo();
+  assert.ok(!E.byId(B.id)&&E.byId(R.id),'undo walks the last LOCAL op across the remote interleave (ADR-1170)');
+  E.Store.applyRemote({op:'replace',after:[{...A,id:'swapIn'}],clock:{peer:'peerR',seq:3,ts:E.state._lastTs+3}});
+  assert.ok(E.state.history[E.state.histIdx]&&E.state.history[E.state.histIdx].op==='add','remote replace stays out of history (ADR-1170)');
+  E.Store.redo();
+  assert.ok(E.byId(B.id),'redo still applies after remote ops mid-branch — arrivals never chop it (ADR-1170)');
+  console.log('  ✓ ADR-1170 undo-domain purity: local-only op log across remote interleave (6 asserts)');
+}
+pass += 6;
+assert.ok(html.split('_hi().push(op)').length-1===2,'exactly two history producers — commit + _recordCommitted, both local funnels (ADR-1170)');
+{const _ar=html.slice(html.indexOf('  applyRemote(op){'),html.indexOf('  _lwwOp(op)'));assert.ok(!_ar.includes('_hi(')&&!_ar.includes('histIdx'),'applyRemote contains no history write (ADR-1170)');}
+assert.ok(html.split('if(op.clock.peer===_pi())Net.broadcast(op)').length-1===2,'both record funnels re-broadcast only own-clock ops (ADR-1170)');
+pass += 3;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
