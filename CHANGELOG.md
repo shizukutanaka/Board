@@ -1,3 +1,8 @@
+## [1.8.176] - 2026-10-01
+
+### Fixed
+- **round902 / ADR-1152 — find-box Esc fold single-owner**: ADR-1151 introduced a real regression — sqinput's own keydown listener folded the box at the target, then the SAME keydown bubbling to window hit `e.target===sqinput` → `toggleSq()`, which saw `display:none` and reopened the box (Esc closed then immediately reopened). The element-level Esc branch is removed (single owner: the window router), `toggleSq` close also clears `sq.value` (parity with the old manual fold — a reopened box no longer shows a query whose filter is inactive), and the ⌘Enter commit's manual fold nulls `_sqPrev` (slot is spent). 4 pins (1 source + 3 behavioural incl. real element-then-window dispatch order).
+
 ## [1.8.175] - 2026-10-01
 
 ### Fixed

@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.175';   // ADR-1151
+const V='1.8.176';   // ADR-1152
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6120,7 +6120,7 @@ function toggleSq(){
   if(open)_sqPrev=_aE();
   _dsp(sq,open?'block':'none');
   if(open){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
-  else{_setSq('');_ivO();
+  else{_setSq('');sq.value='';_ivO();
     if(_aE()===sq){const p=_sqPrev;if(p&&p.focus)_fc(p.isConnected===false?canvas:p)}
     _sqPrev=null}
 }
@@ -9539,12 +9539,12 @@ async function _onBtnInstall(){
   if(btn)_hdn(btn,!0);
 }
 function wire(){
-  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_setSq(sq.value);_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Escape'){_setSq('');_dsp(sq,'none');sq.value='';_ivO();_fc(canvas);}else if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);
+  {const sq=_ce('input');sq.id='sqinput';sq.type='text';sq.placeholder=T.k.search;_sa(sq,_AL,T.k.search);sq.style.cssText='position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:999;display:none;background:var(--paper);border:2px solid var(--accent-contrast);border-radius:6px;padding:5px 10px;font-size:14px;color:var(--ink);outline:none;box-shadow:0 2px 8px rgba(0,0,0,.18)';_ap(_db,sq);_on(sq,'input',()=>{_setSq(sq.value);_ivO()});_on(sq,_KD,ev=>{if(ev.key==='Enter'&&!ev.isComposing){_pd(ev);   // ADR-1152: Esc is single-owned by the window router — a fold here raced its toggleSq and reopened the box
     // ⌘Enter: commit the match list as the selection, then fold the box.
     if(_mod(ev)){const ms=_sqMatches();if(!_ln(ms))return;
       _ss(ms.map(s=>s.id));_aS();_iv();
       _tst(`${_ln(ms)} ${t(_SM)}`);
-      _setSq('');_dsp(sq,'none');sq.value='';_ivO();_fc(canvas);
+      _setSq('');_dsp(sq,'none');sq.value='';_ivO();_fc(canvas);_sqPrev=null;   // commit lands focus on canvas — the invoker slot is spent
     }else _sqAdvance(_sK(ev)?-1:1);}});}
   // tool buttons
   for(const b of _qsa(document,'.tool'))
