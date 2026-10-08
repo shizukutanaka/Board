@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.195';   // ADR-1171
+const V='1.8.201';   // ADR-1177
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1537,7 +1537,7 @@ const Store={
         _oT('peerReplaced');
       }
       const _connFix=this._remoteDelConnFix(op);
-      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_stubOk(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775/1137
+      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o)_pgHeal(o)};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775/1137
       this._apply(op,true);
       if(_connFix)for(const f of _connFix){
         const sh=byId(f.id);
@@ -1561,7 +1561,7 @@ const Store={
     const filt=(id,after,before)=>{const w=_wc()[id];let kept=0;
       for(const key of _ok(after)){if(key==='id')continue;
         if(this._chg(before,after,key)&&clockNewer(C,w&&w[key]))kept++;
-        else{const _v=after[key];delete after[key];if(before)delete before[key];const s=w&&w[key]&&!clockNewer(C,w[key])&&byId(id);if(s){const _l=s[key];if(_emOK(key,_l)&&_JS(_l)!==_JS(_v))_pu(_txE||(_txE=[]),{id,k:key,b:_v===_ud||validPatch({[key]:_v})?_v:_ud,a:_l})}}}   // ADR-1131: dropped keys leave 'before' too — the op describes only what it applied
+        else{const _v=after[key];delete after[key];if(before)delete before[key];const s=w&&w[key]&&!clockNewer(C,w[key])&&byId(id);if(s){const _l=s[key];if(_emOK(key,_l)&&_JS(_l)!==_JS(_v))_pu(_txE||(_txE=[]),{id,k:key,b:_v===_ud||validPatch({[key]:_v})?_v:_ud,a:_l})}}}   // ADR-1131: dropped keys leave 'before' too
       return kept;};   // ADR-1125
     if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after,op.before)>0;}
     if(op.op==='group'||op.op==='ungroup'){
@@ -2220,9 +2220,11 @@ const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPe
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
 const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009/1071
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg,_pgEq=(a,b)=>!_pgOn()||(a.pg||_pgs()[0].id)===(b.pg||_pgs()[0].id);   // ADR-0646/1145
+const _pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}};   // ADR-1173: home members on the viewed page — pg-less would attribute to pages[0]
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64)&&(p.bts==null||_tsOK(p.bts))&&(p.btp==null||_iS(p.btp)&&_ln(p.btp)<=64))?a:null);   // ADR-0700/0791/1110
 const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)};   // ADR-1137: tomb-dead pages get no '?' stub
-const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110
+const _pgHeal=s=>{if(s.pg&&!_pgById(s.pg)){if(_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1});else delete s.pg}};   // ADR-1175
+const _pgHealS=()=>{if(_pgOn())for(const s of _sh())_pgHeal(s);else for(const s of _sh())delete s.pg};   // ADR-0694/1110
 const _pgClk=m=>validClock(m.rep)?m.rep:{ts:nowTs(),peer:_pi(),seq:0};   // ADR-1093
 function _pgAdopt(pages,cur,clk,und){const v=_vPages(pages);
 let keep=v;
@@ -2269,8 +2271,9 @@ function _pgDup(){   // ADR-0651
     return c;
   });
   _cmt({op:'pageAdd',id,i:si+1,name:_s80(src.name+' '+t('ctxDuplicate')),shapes:sh});   // ADR-0771/0772
-  Net.broadcast({op:'addMany',shapes:sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});   // ADR-0650/0739
+  const _am={op:'addMany',shapes:sh};_fck(_am);let _werr=null;try{Net.broadcast(_am)}catch(e){_werr=e}   // ADR-0650/0739/1172
   switchPage(id);
+  if(_werr)throw _werr;
 }
 function _pgDel(){if(state.ro){_roNo();return}if(!_pgOn()||_ln(_pgs())<2)return;const p=_pgs()[_pgIdx()];if(!confirm(t('pgDelQ')+': '+p.name+'?'))return;_cmt({op:'pageDel',id:p.id,i:_pgIdx(),name:p.name})}
 const _pgIdx=()=>_pgOn()?_pgs().findIndex(p=>p.id===state.curPg):-1;
@@ -2289,7 +2292,7 @@ function _pgDel2(op,firstId,only,viewId,pg0){   // ADR-0646
   state.shapes=_sh().filter(s=>!dead.has(s.id));_iG();_pcC();_pcR();   // ADR-0985
   const land=(viewId!==undefined?viewId:firstId);if(state.curPg===op.id&&land!=null)switchPage(land);   // ADR-0649/0725
 }
-function _pgRename(){if(state.ro){_roNo();return}const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}})}
+function _pgRename(){if(state.ro){_roNo();return}const p=_pgById(state.curPg);if(!p)return;const n=prompt(t('pgRename'),p.name);if(n==null||_trm(n)==='')return;_cmt({op:'pageName',id:p.id,before:p.name,after:_s80(_trm(n)),bts:p.nts})}
 let _pgSig='';
 function _pgBar(){const el=_g('pgBar');if(!el)return;_hdn(el,!_pgOn());if(!_pgOn())return;
 const tb=_g('pgTabs');if(!tb)return;
@@ -2316,7 +2319,7 @@ const _cmt=o=>Store.commit(o),_ann=m=>UI.announce(m),_oURL=b=>URL.createObjectUR
 const _roNo=()=>_wT('readOnlyMode'),_roBadge=()=>_hdn(_g('roBadge'),!state.ro);   // ADR-1057
 const _smk=(t,x)=>Shape.make(t,x),_sT2=(s,dx,dy)=>Shape.translate(s,dx,dy),_rZ=()=>UI.refreshZoom(),_trx=(db,t,n)=>db.transaction(t,n),_fT=(c,s,x,y)=>c.fillText(s,x,y),_pu=(a,...v)=>a.push(...v);   // ADR-0514
 const _sK=e=>e.shiftKey,_aK=e=>e.altKey,_mod=e=>e.metaKey||e.ctrlKey;   // ADR-0515: modifier-key reads
-const _fsS=(c,v)=>c.fillStyle=v,_ssS=(c,v)=>c.strokeStyle=v,_lnW=(c,v)=>c.lineWidth=v,_gaS=(c,v)=>c.globalAlpha=v,_taS=(c,v)=>c.textAlign=v,_tbS=(c,v)=>c.textBaseline=v;   // ADR-0520: canvas prop-assignment setters
+const _fsS=(c,v)=>c.fillStyle=v,_ssS=(c,v)=>c.strokeStyle=v,_lnW=(c,v)=>c.lineWidth=v,_gaS=(c,v)=>c.globalAlpha=v,_taS=(c,v)=>c.textAlign=v,_tbS=(c,v)=>c.textBaseline=v;   // ADR-0520
 const _cPt=e=>({x:e.clientX,y:e.clientY}),_nP=()=>_pointers.size,_osp=e=>({x:e.offsetX,y:e.offsetY}),_spL=s=>s.split('\n');   // ADR-0522: input/coord/lines folds
 const _rm=e=>e.remove(),_nc=()=>navigator.clipboard;   // ADR-0522
 const _tC=(e,v)=>e.textContent=v;   // ADR-0523: textContent setter fold
@@ -6252,7 +6255,7 @@ function _placeCopies(srcShapes,dx,dy,dup){
   let zBase=nextZ();
   for(const orig of srcShapes){
     const sh=clone(orig);
-    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;if(_pgs())sh.pg=state.curPg;else delete sh.pg;
+    sh.id=idMap.get(orig.id);sh.z=zBase++;delete sh.frac;
     if(sh.groupId){
       if(!gidMap.has(sh.groupId))gidMap.set(sh.groupId,uid());
       sh.groupId=gidMap.get(sh.groupId);
@@ -6263,7 +6266,7 @@ function _placeCopies(srcShapes,dx,dy,dup){
     _pu(built,sh);
     _pu(added,sh.id);
   }
-  if(_ln(built))_cmt({op:'addMany',shapes:built});
+  if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}
   _ss(added);   // ADR-0568: _ss filters out hidden copies
   if(dup){state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy}}     // ADR-0080/1139: only ⌘D arms the repeat chain — paste/import placement vectors aren't user transforms
   _iv();
@@ -7239,19 +7242,20 @@ function importDrawioText(txt,wp){
       _pu(per,sh&&_ln(sh)?{sh,nm:_dioNm}:null);
     }
     if(_ln(per.filter(Boolean))>=2){
-      let selId=null,selSh=null;
+      let selId=null,selSh=null,_werr=null;
       for(const p of per){
         if(!p)continue;
         _ctrAt(p.sh,wp);p.sh=p.sh.filter(validShape);
         const id=uid();for(const s of p.sh)s.pg=id;
         _cmt({op:'pageAdd',id,name:_s80(p.nm||t('pgPage')),shapes:p.sh});   // ADR-0772
-        Net.broadcast({op:'addMany',shapes:p.sh,clock:{peer:_pi(),seq:++state.seq,ts:nowTs()}});
+        const _am={op:'addMany',shapes:p.sh};_fck(_am);try{Net.broadcast(_am)}catch(e){if(!_werr)_werr=e}   // ADR-1172
         if(!selId){selId=id;selSh=p.sh}
       }
       if(selId){switchPage(selId);_scl();for(const s of selSh)_sad(s.id)}
       if(pgVp){_vp().x=pgVp.x;_vp().y=pgVp.y;_vp().zoom=pgVp.z;if(pgVp.g!=null)state.showGrid=pgVp.g}
       if(pgNm){_setDocName(_s80(pgNm));_bName()}
       _iv();_oT('dioImported');
+      if(_werr)throw _werr;
       return true;
     }
   }
@@ -7260,7 +7264,7 @@ function importDrawioText(txt,wp){
   if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796: wire parity
   const _vpNull=wp==null;
   _ctrAt(shapes,wp)
-  _cOp({op:'addMany',shapes});
+  _pgHome(shapes);_cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull&&_dioVp){_vp().x=_dioVp.x;_vp().y=_dioVp.y;_vp().zoom=_dioVp.z;if(_dioVp.g!=null)state.showGrid=_dioVp.g}   // ADR-0359/0409: viewport+grid restore
   if(_dioNm){_setDocName(_s80(_dioNm));_bName()}   // ADR-0405
@@ -7570,7 +7574,7 @@ function importSvgText(txt,wp){
   const bb=_bA(shapes);
   if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);
     for(const s of shapes)_sT2(s,dx,dy)}
-  _cOp({op:'addMany',shapes});
+  _pgHome(shapes);_cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   _iv();_oT('svgImported');
   return true;
@@ -7724,7 +7728,7 @@ function importExcText(txt,wp){
   if(!shapes||!_ln(shapes=shapes.filter(validShape))){_wT(_IB);return false}   // ADR-0796
   const _vpNull=wp==null;   // ADR-0409
   _ctrAt(shapes,wp)
-  _cOp({op:'addMany',shapes});
+  _pgHome(shapes);_cOp({op:'addMany',shapes});
   _scl();for(const s of shapes)_sad(s.id);   // ADR-0568: _sad drops hidden imports
   if(_vpNull){try{const ap=_JP(txt).appState;   // ADR-0409: scrollX/Y/zoom → viewport
     if(ap&&_xyOK(+ap.scrollX)&&_xyOK(+ap.scrollY)){_vp().x=-+ap.scrollX;_vp().y=-+ap.scrollY;   // ADR-0796
@@ -7752,9 +7756,7 @@ function importBoardText(txt,wp){
   _o(t('imported')+' '+_ln(added));
   return true;
 }
-// ADR-0115 (outbound half): whole board (or selection via exportSelection)
-// as .board JSON on the clipboard — moves content between boards/tabs without
-// a file round-trip.
+// ADR-0115: whole board → .board JSON on the clipboard
 function copyBoardJSON(shapes=_shWB()){
   if(!_ln(shapes)){_wT(_EM);return}
   _cpT(copyText(_JS({v:V,docName:_dn(),pages:_pgs(),curPg:state.curPg,shapes:roundShapesForExport(shapes)})));
@@ -8350,17 +8352,15 @@ const Net={
     this._lastCursorSend=0;   // let the next real cursor in immediately
     this._bcast(_mk('cursor',{x:0,y:0,h:1,pg:state.curPg,..._nm()}));   // ADR-1053
   },
-  // ADR-0011: ephemeral peer selection presenc
-  // NOT draw() — render must stay side-effect-
-  // resend only when the serialized selection differs (selection changes are
-  // discrete). null forces a resend — set on _touchPeer for latecomers.
-  _lastSelSent:'',
+  // ADR-0011: resend only on serialized selection change; null forces resend.
+  _lastSelSent:'',_lastSelAt:0,_selT:null,
   sendSelectionIfChanged(){
     if(_pr().size===0)return;
     const ids=_selIds();
     const key=_JS(ids.sort())+'|'+(state.curPg||'');   // ADR-0680/0860
     if(key===this._lastSelSent)return;
-    this._lastSelSent=key;
+    const now=_now();if(now-this._lastSelAt<CURSOR_THROTTLE_MS)return this._selT||(this._selT=_stO(()=>{this._selT=null;this.sendSelectionIfChanged()},CURSOR_THROTTLE_MS));   // ADR-1177
+    this._lastSelAt=now;this._lastSelSent=key;
     this._bcast(_mk('selection',{ids,pg:state.curPg,..._nm()}));   // ADR-0647/1053
   },
   _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buf
@@ -8485,7 +8485,7 @@ const Net={
           if(rm){_iG();_iv()}}
         if(_iA(msg.pages)){   // ADR-0773
           if(!_pgs())_pgAdopt(msg.pages,state.curPg,_pgClk(msg));   // ADR-0672/1093
-          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:'';_fTs(p.nts)}if(l){if(l.bts==null&&p.bts!=null){l.bts=p.bts;l.btp=_iS(p.btp)?p.btp:'';_fTs(p.bts)}if(_ln(np)<64)_pu(np,l)}else{const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(_ln(np)<64&&(!w||!w._del||b&&clockNewer(b,w._del))){_pu(np,clone(p));_fTs(p.nts);if(b)_bT(p.id,b)}}}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773/1093
+          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:'';_fTs(p.nts)}if(l){if(l.bts==null&&p.bts!=null){l.bts=p.bts;l.btp=_iS(p.btp)?p.btp:'';_fTs(p.bts)}if(_ln(np)<64)_pu(np,l)}else{const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(_ln(np)<64&&(!w||!w._del||b&&clockNewer(b,w._del))){_pu(np,clone(p));_fTs(p.nts);if(b)_bT(p.id,b)}}}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np;if(!_pgById(state.curPg)){if(_ln(np))switchPage(np[0].id);else state.curPg=null}}_pgHealS();_pgBar()}   // ADR-1174
         }
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep)){state._lastRep=msg.rep;_fTs(msg.rep.ts)}   // ADR-0617/1114
         _ps();   // ADR-0973
@@ -8627,9 +8627,8 @@ const Net={
       if(_pr().size>=MAX_PEERS)return;   // flood cap: new peers wait for a reap
       const colorIdx=[..._pr().keys()].length%_ln(PEER_COLORS);
       _pr().set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:_now()});
-      // ADR-0011: a latecomer would otherwise not
-      // changes — force one resend on the next frame.
-      this._lastSelSent=null;_iv();
+      // ADR-0011/1177: latecomer forces a resend past the throttle.
+      this._lastSelSent=null;this._lastSelAt=0;_iv();
       if(this._onConnChange)this._onConnChange();
     }
   },
@@ -9875,9 +9874,7 @@ function selectFrameContents(){
   _iv();
 }
 // ADR-0110
-// ADR-0109 — text/align/fontSize/w/h carry over; sticky's `color` simply
-// becomes unused on text (text ink = stroke), text's `stroke` unused on
-// sticky (border is fixed). Undo restores the original type wholesale.
+// ADR-0109 — props carry over on conversion; unused ones go inert.
 function toggleStickyText(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='sticky'&&s.type!=='text')||_lk(s))return;

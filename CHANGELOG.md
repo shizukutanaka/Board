@@ -1,3 +1,33 @@
+## [1.8.201] - 2026-10-01
+
+### Fixed
+- **round927 / ADR-1177 — selection presence rides the cursor throttle**: `sendSelectionIfChanged` is invoked every frame by the render-loop hook, and its dedup key only collapses *unchanged* selections — during a marquee drag the id set mutates per frame, so the full selection-id array went out ~16–60 times/second, the last unthrottled presence send (`sendCursor` has had `CURSOR_THROTTLE_MS` since ADR-0010). The send now mirrors the cursor gate: a changed key inside the window arms one trailing `_selT` resend instead of broadcasting (the dedup key stays pending, so the settled selection lands within `CURSOR_THROTTLE_MS` — latest-wins, nothing lost), and `_touchPeer` clears `_lastSelAt` too so a latecomer's forced resend reaches the new peer immediately rather than after a window it never observed. Pinned by 5 behavioural + 2 source asserts; ADR-0011/1031 latecomer literals recalibrated.
+
+## [1.8.200] - 2026-10-01
+
+### Changed
+- **round926 / ADR-1176 — member-pg intake funnel audit (clean)**: a census of every `s.pg` write site confirms the funnel is closed — all six assignment sites either resolve to a page that exists at write time (local births stamp `state.curPg`, `_pgHome`, `_pgDup`, `_pgDel2`'s `firstId` rehome, pageAdd's `c2.pg=op.id`, drawio's per-diagram stamp) or scrub `s.pg` (pages-null tails → `_pgOk` fallback), and everything outside the census routes through `_pgHeal`/`_pgHealS`. The last unpinned fork — a cap-blocked op-carried member when the 64-page cap forbids the `'?'` stub — now has a behavioural pin (scrub + rehome to `pages[0]`, no stub). Pinned by 4 behavioural + 2 source asserts (the census count itself).
+
+## [1.8.199] - 2026-10-01
+
+### Fixed
+- **round925 / ADR-1175 — unhealable member rehome**: both `'?'`-stub producers (`_pgHealS` set-heal and the `applyRemote` op-intake loop) ran the same gate `s.pg && !_pgById && _stubOk && <64` and did nothing when the stub couldn't be produced — a member carrying a tomb-dead or cap-blocked `pg` kept the dead id, `_pgOk` fails on every page → invisible, unreachable, silent. ADR-1174's cap-drop makes the case load-bearing: a snapshot that fills the 64-page cap drops local pages AND forbids the stub that could save their members. New shared `_pgHeal(s)` forks the decision — stub when producible (unknown-no-tomb `pg` is evidence the page is merely in flight), else scrub `s.pg` so the member rehomes to `pages[0]` via the `_pgOk` fallback, identical to `_pgDel2`'s member rehoming on page deletion. `applyRemote` delegates its inline stub loop to the shared rule (same rehome arm, free). Convergent: same input page set → same local decision on every peer; `pg` re-arbitrates as a normal prop. Tomb-dead ids still get no stub (ADR-1137 intact — the member rehomes without reviving the page). Pinned by 3 behavioural + 3 recalibrated source asserts.
+
+## [1.8.198] - 2026-10-01
+
+### Fixed
+- **round924 / ADR-1174 — snapshot union-heal `curPg` re-derivation**: the snapshot page union (already-paged board, `_iA(msg.pages)` merge branch) built `np` under the 64-page cap without re-deriving the view — an incoming set that fills the cap drops every local-only page including `curPg`'s, leaving `curPg` pointing at a dead id. `_pgOk` then fails for **all** members (pg-less ones fall back to `pages[0].id` ≠ stale id) → whole board invisible with data intact, no toast, no crash; `_pgHealS` can't repair it (`np=64` blocks the `'?'` stub, and the dead page's members keep `pg=dead-id` regardless). The union branch now re-derives the view exactly like `_pgAdopt`/`_pgDel2` — `switchPage(np[0].id)` when `curPg` no longer resolves (gesture fold + cursorHide + selection revalidate + SR announce + persist), `curPg=null` defensively for an empty `np` (unreachable: local leftovers always supply ≥1 — stated, not assumed). Pinned by 4 behavioural + 1 source assert.
+
+## [1.8.197] - 2026-10-01
+
+### Fixed
+- **round923 / ADR-1173 — intake page-homing**: the three single-page external-file intakes (`.drawio` single-diagram tail, `.svg`, `.excalidraw`) committed bare `addMany` ops — pg-less members attribute to `pages[0]` via `_pgOk`'s fallback, so on a multi-page board with `curPg≠first` the import landed invisibly yet still toasted success (ADR-1072 sibling), while a payload-carried foreign `pg` stayed live (phantom-page vector). New `_pgHome` helper stamps `s.pg=state.curPg` (or deletes a carried `pg` on a page-less board) at all four local intake seams — the three file importers plus `_placeCopies`, whose identical inline stamp folded into the shared rule. One seam now states the contract: a locally introduced shape homes on the viewed page, or on none. Pinned by 3 behavioural + 3 source asserts; 2 stale literals recalibrated.
+
+## [1.8.196] - 2026-10-01
+
+### Fixed
+- **round922 / ADR-1172 — ad-hoc send-failure parity**: the two remaining unguarded `Net.broadcast` sites were the companion `addMany` sends riding alongside `pageAdd` commits — `_pgDup`'s throw stranded `switchPage` (the duplicate page + members committed locally but the view never followed), and the multi-page `.drawio` paste loop's throw abandoned every later page plus `switchPage`/selection/viewport/docName/repaint (a silent half-import). Both now collect the first send error and rethrow after the bookkeeping lands — ADR-1171 parity. Every `Net.broadcast` site is now try-guarded or terminal; the send-failure contract class is closed. Pinned by 4 behavioural + 3 source asserts (incl. an 8-site census).
+
 ## [1.8.195] - 2026-10-01
 
 ### Fixed

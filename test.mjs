@@ -1151,7 +1151,7 @@ const checks = [
     html.includes("case 'selection':") && html.includes('sendSelectionIfChanged(){')
     && html.includes('function drawPeerSelections(c)') && html.includes('Net.sendSelectionIfChanged();')],
   ['ADR-0011 latecomer resend: _touchPeer resets _lastSelSent',
-    html.includes('this._lastSelSent=null;_iv();')],
+    html.includes('this._lastSelSent=null;this._lastSelAt=0;_iv();')],
   // v1.7.63 robustness audit
   ['SW: navigations are network-first (cache-first pinned users to the first cached version forever)',
     swjs.includes("e.request.mode==='navigate'")
@@ -1343,7 +1343,7 @@ const checks = [
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
   ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!_ln(sel))return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
-  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built))_cmt({op:'addMany',shapes:built})")],
+  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
   ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
@@ -6210,7 +6210,7 @@ try {
       state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}'),'_pgAdopt hides cursor + re-validates selection + announces on page move (ADR-0690/0749/0750)');
-      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110/1137)');
+      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)){if(_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110/1137)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
       {
@@ -7801,25 +7801,26 @@ try {
       A.state.peers.clear();B.state.peers.clear();
       A.state.peers.set('peerB',{color:'#111',lastSeen:Date.now()});
       B.state.peers.set('peerA',{color:'#222',lastSeen:Date.now()});
-      A.Net._lastSelSent='';
+      A.Net._lastSelSent='';A.Net._lastSelAt=0;
       const _bs=B.state.shapes.length;for(const id of['s1','s2','s3','s4','sX','ok','ok2'])B.state.shapes.push({id,type:'rect'});   // ADR-1080: sel ids must resolve
 
       // (a) BC path: A's selection reaches B, keyed by A's real peerId; deselect propagates
+      // (_lastSelAt reset between steps = the throttle window having elapsed, ADR-1177)
       A.state.selection=new Set(['s1','s2']);
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s1','s2'],'ADR-0011a: selection ids propagate A→B via the BC path, keyed by real peerId');
-      A.state.selection=new Set();
+      A.state.selection=new Set();A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,[],'ADR-0011a: deselecting propagates as an empty ids array (clears the highlight)');
 
       // (b) change detection: an unchanged selection is NOT resent. Prove it by planting
       // a sentinel in B's record — a resend would overwrite it.
-      A.state.selection=new Set(['s3']);
+      A.state.selection=new Set(['s3']);A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       B.state.peers.get('peerA').sel=['sentinel'];
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['sentinel'],'ADR-0011b: an unchanged selection is not resent (frame-boundary no-op)');
-      A.state.selection=new Set(['s3','s4']);
+      A.state.selection=new Set(['s3','s4']);A.Net._lastSelAt=0;
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011b: a changed selection is resent');
 
@@ -7831,7 +7832,7 @@ try {
       A.Net._touchPeer('peerC');
       A.Net.sendSelectionIfChanged();
       assert.deepStrictEqual(B.state.peers.get('peerA').sel,['s3','s4'],'ADR-0011c: a new peer joining forces one selection rebroadcast');
-      A.state.peers.delete('peerC');
+      A.state.peers.delete('peerC');clearTimeout(A.Net._selT);A.Net._selT=null;
 
       // (d) viaRtc routing: same _rtcPeerId pitfall as ADR-0010c
       B.state.peers.clear();
@@ -8725,7 +8726,7 @@ try {
     // they raced with (convergent but unfair/unintuitive). nowTs() keeps every
     // stamped clock on the HLC floor.
     assert.ok(!/ts:_now\(\)\}/.test(html),'ADR-0739: no op-clock object stamped with raw _now()');
-    assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length>=4,'ADR-0739: all clock-stamp sites go through nowTs()');
+    assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length===2,'ADR-0739: every stamped clock goes through nowTs() — the _fck mint + _pgClk fallback');
     console.log('  ✓ ADR-0739: clock stamps use the HLC floor everywhere');
 
     // ADR-0740: dead wire fields — hello/ping carried {seq:state.seq} no receiver
@@ -16163,14 +16164,15 @@ try {
       const i2=_snapIndex('resize','["a,b"]',s=>s.id==='a,b');
       assert.ok(i2.xs.length>i1.xs.length,'ADR-0860: distinct snap-index keys hit distinct exclusion sets');
       Net._onRecv({k:'hello',peer:'sig-t'},false);
-      Net._lastSelSent='';
+      Net._lastSelSent='';Net._lastSelAt=0;
       state.selection.add('a');state.selection.add('b');
       Net.sendSelectionIfChanged();
       const k1=Net._lastSelSent;
       state.selection.clear();state.selection.add('a,b');
-      Net.sendSelectionIfChanged();
+      Net._lastSelAt=0;Net.sendSelectionIfChanged();
       assert.notEqual(Net._lastSelSent,k1,'ADR-0860: presence dedup key distinguishes {a,b} from {"a,b"} — resend happens');
       assert.ok(k1.indexOf('"a","b"')>=0,'ADR-0860: presence dedup key is the _JS-encoded sorted id set');
+      clearTimeout(Net._selT);Net._selT=null;
       state.selection.clear();
       const elA=[{id:'a',name:'b,c\x1fd'}],elB=[{id:'a',name:'b'},{id:'c',name:'d'}];
       assert.equal(elA.map(p=>p.id+'\x1f'+p.name).join(),elB.map(p=>p.id+'\x1f'+p.name).join(),'ADR-0860: crafted vs real page sets collided under the old join sig');
@@ -16294,7 +16296,7 @@ try {
     const PSEL=Shape.make('rect',{x:0,y:0,w:10,h:10});
     Store.commit({op:'add',shape:PSEL});
     state.selection.add(PSEL.id);
-    Net._lastSelSent=null;
+    Net._lastSelSent=null;Net._lastSelAt=0;
     Net.sendSelectionIfChanged();
     assert.ok(sent3.some(m=>m&&m.k==='selection'&&Array.isArray(m.ids)&&m.ids.includes(PSEL.id)),'selection change broadcasts a selection op to peers (ADR-0011)');
     sent3.length=0;
@@ -16834,7 +16836,7 @@ try {
       // dedup keys must self-correct across a room switch; a newly-seen peer
       // forces a resend; the pg rides the selection key; init rebases _pCt.
       assert.ok(html.includes("const key=_JS(ids.sort())+'|'+(state.curPg||'')"),'selection presence key carries the viewed page');
-      assert.ok(html.includes("this._lastSelSent=null;_iv();"),'a newly-seen peer forces a selection resend');
+      assert.ok(html.includes("this._lastSelSent=null;this._lastSelAt=0;_iv();"),'a newly-seen peer forces a selection resend');
       assert.ok(html.includes("this._pCt=_pr().size"),'init rebases the presence-count baseline');
       assert.ok(html.includes("if(now-this._lastCursorSend<CURSOR_THROTTLE_MS)return"),'cursor send is throttle-gated');
       Net._lastSelSent='stale';
@@ -16846,6 +16848,31 @@ try {
       assert.ok(selSent>=1,'selection presence emitted after peer touch');
       Net._bcast=_ob;Net._lastSelSent='';state.selection.delete('sel780');state.peers.delete('p780x');
       console.log('  ✓ presence-channel signature lifecycle (ADR-1031)');
+    }
+    {
+      // ADR-1177: selection presence rides the cursor throttle — a marquee drag
+      // mutates the set every rendered frame, so each frame emitted the full
+      // id list (~16-60/s). Throttled skips arm a trailing resend so the
+      // settled selection lands within one window; a latecomer resend clears
+      // the window so the new peer hears the selection immediately.
+      assert.ok(html.includes("if(now-this._lastSelAt<CURSOR_THROTTLE_MS)"),'selection presence is throttle-gated (ADR-1177)');
+      assert.ok(html.includes("this._selT=_stO(()=>{this._selT=null;this.sendSelectionIfChanged()},CURSOR_THROTTLE_MS)"),'throttled selection change arms a trailing resend');
+      Net._lastSelSent='';Net._lastSelAt=0;Net._selT=null;
+      const _ob2=Net._bcast;let selN=0;Net._bcast=m=>{if(m&&m.k==='selection')selN++;return _ob2.call(Net,m)};
+      state.peers.set('p1177x',{color:'#123',lastSeen:Date.now()});
+      state.selection.add('selA');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,1,'first selection change sends immediately');
+      state.selection.add('selB');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,1,'mid-drag change inside the window coalesces');
+      assert.ok(Net._selT,'trailing resend armed for the skipped change');
+      Net._lastSelAt=0;
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN,2,'the settled selection lands after the window');
+      Net._bcast=_ob2;Net._lastSelSent='';Net._lastSelAt=0;clearTimeout(Net._selT);Net._selT=null;
+      state.selection.delete('selA');state.selection.delete('selB');state.peers.delete('p1177x');
+      console.log('  ✓ selection presence throttle contract (ADR-1177)');
     }
     {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
@@ -19279,7 +19306,7 @@ pass += 1;
   state.pages=null;state.curPg=null;state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();state.dupIds=new Set();_invalidateGrid();
   pass += 3;
 }
-assert.ok(html.includes("else delete sh.pg;"),"_placeCopies drops a foreign pg on a page-less doc");
+assert.ok(html.includes("else delete s.pg}}"),"pg scrub lives in the shared _pgHome helper (ADR-1173)");
 pass += 1;
 
 {
@@ -20660,13 +20687,14 @@ pass += 7;
 // _stubOk; both stub producers now gate on it.
 {
   assert.ok(html.includes("const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)}"),'ADR-1137: shared tomb-dead stub predicate');
-  assert.ok(html.includes("!_pgById(o.pg)&&_stubOk(o.pg)"),'ADR-1137: op-intake heal gates on the tomb');
-  assert.ok(html.includes("!_pgById(s.pg)&&_stubOk(s.pg)"),'ADR-1137: _pgHealS shares the gate');
+  assert.ok(html.includes("if(o)_pgHeal(o)"),'ADR-1137: op-intake heal shares the tomb gate (ADR-1175)');
+  assert.ok(html.includes("for(const s of _sh())_pgHeal(s)"),'ADR-1137: _pgHealS shares the gate');
   state.pages=[{id:'p1',name:'a',nts:0}];state.curPg='p1';
   const mkP=(id,pg)=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.pg=pg;return s};
   state.wclock['pd']={_del:{peer:'zz',seq:1,ts:1}};
   Store.applyRemote({op:'add',shape:mkP('sX','pd'),clock:{peer:'zz',seq:2,ts:2}});
   assert.ok(!_pgById('pd'),'ADR-1137: tomb-dead pg gets no stub');
+  assert.ok(!byId('sX').pg,'ADR-1175: unhealable member rehomes (pg scrubbed) instead of dead-pg invisibility');
   state.wclock['pb']={_del:{peer:'zz',seq:1,ts:1},_born:{peer:'zz',seq:3,ts:3}};
   Store.applyRemote({op:'add',shape:mkP('sY','pb'),clock:{peer:'zz',seq:4,ts:4}});
   assert.ok(_pgById('pb'),'ADR-1137: a born-newer page id still heals');
@@ -21540,6 +21568,120 @@ assert.ok(html.includes("if(op.clock.peer===_pi()){try{Net.broadcast(op)}catch(e
 assert.ok(html.includes("let _werr=null;try{Net.broadcast(op)}catch(e){_werr=e}")&&html.includes("if(_werr)throw _werr"),'redo send failure runs follow/flush/repaint then rethrows — ADR-1135 parity (ADR-1171)');
 {const _rc=html.slice(html.indexOf('  _recordCommitted(op){'),html.indexOf('  undo(){'));assert.ok(_rc.indexOf('Net.broadcast(op)')>_rc.indexOf('_rdb()'),'_recordCommitted broadcast is the last statement — nothing left to strand (ADR-1171)');}
 pass += 3;
+
+// ---------- ADR-1172: ad-hoc companion sends strand nothing — bookkeeping first, error after ----------
+// The two remaining unguarded Net.broadcast sites were the companion addMany
+// sends riding alongside pageAdd commits: _pgDup's throw could strand
+// switchPage (duplicate exists, view never follows) and the multi-page drawio
+// paste loop's throw abandoned every later page plus switchPage/selection/
+// viewport/docName/repaint — a silent half-import. Both now collect the first
+// send error and rethrow after the bookkeeping lands; every broadcast site is
+// try-guarded or terminal.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const ob=E.Net.broadcast;
+  E.state.pages=[{id:'p1',name:'P1',nts:0}];E.state.curPg='p1';
+  E.state.shapes.push(Shape.make('rect',{x:0,y:0,w:10,h:10}));
+  // fail only the companion addMany — the pageAdd commit itself still lands
+  E.Net.broadcast=o=>{if(o&&o.op==='addMany')throw new Error('send fail')};
+  let threw=null;try{E._pgDup()}catch(e){threw=e}finally{E.Net.broadcast=ob}
+  const dupId=E.state.pages[E.state.pages.length-1].id;
+  assert.ok(threw&&threw.message==='send fail','_pgDup rethrows the companion-send failure (ADR-1172)');
+  assert.ok(E.state.pages.length===2&&E.state.curPg===dupId,'switchPage lands on the duplicate before the error surfaces (ADR-1172)');
+  assert.ok(E.state.shapes.filter(s=>s.pg===dupId).length===1,'dup members installed by the pageAdd commit (ADR-1172)');
+  let calls=0;E.Net.broadcast=o=>{if(o&&o.op==='addMany')calls++};
+  threw=null;try{E._pgDup()}catch(e){threw=e}finally{E.Net.broadcast=ob}
+  assert.ok(!threw&&calls===1&&E.state.pages.length===3,'companion send intact on the success path (ADR-1172)');
+  console.log('  ✓ ADR-1172 ad-hoc send-failure parity: page ops land, error surfaces (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes("{_werr=e}   // ADR-0650/0739/1172\n  switchPage(id);"),'_pgDup switchPage lands before the error surfaces (ADR-1172)');
+assert.ok(html.includes("{if(!_werr)_werr=e}   // ADR-1172"),'multi-page paste companion send is best-effort (ADR-1172)');
+assert.ok(html.split("Net.broadcast(").length-1===8&&html.split("try{Net.broadcast(").length-1===5,'every Net.broadcast site is try-guarded or terminal — _txC outer-try + 2 terminal (ADR-1172)');
+pass += 3;
+
+// ---------- ADR-1173: single-page external intakes home on the viewed page ----------
+// pg-less intake attributes to pages[0] via _pgOk's fallback — invisible on a
+// multi-page board when curPg≠first page (ADR-1072 sibling). _pgHome stamps
+// s.pg=state.curPg (or scrubs a foreign pg) at every local intake: the
+// _placeCopies funnel plus the three external-file single-page paths (drawio
+// tail / svg / excalidraw).
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const doc='{"type":"excalidraw","version":2,"elements":[{"type":"rectangle","id":"r1","x":0,"y":0,"width":10,"height":10}]}';
+  E.state.pages=[{id:'p1',name:'P1',nts:0},{id:'p2',name:'P2',nts:0}];E.state.curPg='p2';
+  assert.ok(E.importExcText(doc)===true,'exc import commits on a paged board (ADR-1173)');
+  const s=E.state.shapes[E.state.shapes.length-1];
+  assert.ok(s&&s.pg==='p2'&&E._pgOk(s),'exc members home on the viewed page — not pages[0] (ADR-1173)');
+  E.state.pages=null;E.state.curPg=null;
+  assert.ok(E.importExcText(doc)===true,'exc import commits on a page-less board');
+  const s2=E.state.shapes[E.state.shapes.length-1];
+  assert.ok(s2&&s2.pg===undefined,'page-less intake scrubs any foreign pg (ADR-1173)');
+  console.log('  ✓ ADR-1173 intake page-homing: members land on the viewed page (3 asserts)');
+}
+pass += 3;
+assert.ok(html.includes("_pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}}"),'_pgHome stamps curPg / scrubs foreign pg (ADR-1173)');
+assert.ok(html.split('_pgHome(shapes)').length-1===3,'drawio/svg/exc single-page intakes all home via _pgHome (ADR-1173)');
+assert.ok(html.includes("{_pgHome(built);_cmt({op:'addMany',shapes:built})}"),'_placeCopies homes via _pgHome (ADR-1173)');
+pass += 3;
+
+// ---- ADR-1174: snapshot union re-derives a cap-dropped curPg ----
+{
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _snap=m=>{m.mac=E.Net._mac(m);E.Net._onRecv(m,false)};
+  E.state.pages=[{id:'lp1',name:'L1',nts:0},{id:'lp2',name:'L2',nts:0}];E.state.curPg='lp2';
+  E.state.shapes=[{id:'s1',type:'rect',x:0,y:0,w:10,h:10,pg:'lp2'}];   // non-empty → union path, not wholesale adopt
+  const pp=[];for(let i=0;i<64;i++)pp.push({id:'pa'+i,name:'P'+i,nts:0});
+  _snap({k:'snapshot',peer:'p9',pages:pp});
+  assert.strictEqual(E.state.pages.length,64,'page union honours the 64-page cap');
+  assert.ok(!E.state.pages.some(p=>p.id==='lp2'),'the cap drops the viewed local page');
+  assert.strictEqual(E.state.curPg,'pa0','a dropped curPg re-derives to the first merged page');
+  assert.ok(E._pgOk({pg:'pa0'}),'a member of the landed page stays visible (ADR-1174)');
+  assert.strictEqual(E.byId('s1').pg,undefined,'a cap-dropped member rehomes — pg scrubbed, not dead (ADR-1175)');
+  assert.ok(E._pgOk(E.byId('s1')),'the rehomed member stays visible on the landed page (ADR-1175)');
+  console.log('  ✓ ADR-1174 snapshot-union curPg re-derivation + member rehome (6 asserts)');
+  pass += 6;
+}
+assert.ok(html.includes("if(!_pgById(state.curPg)){if(_ln(np))switchPage(np[0].id);else state.curPg=null}"),'union heal re-derives curPg like _pgAdopt (ADR-1174)');
+assert.ok(html.includes("const _pgHeal=s=>{if(s.pg&&!_pgById(s.pg))"),'member heal shared as _pgHeal (ADR-1175)');
+pass += 2;
+
+// ---- ADR-1176: member-pg intake funnel — every writer resolves or heals ----
+{
+  const pp=[];for(let i=0;i<64;i++)pp.push({id:'pa'+i,name:'P'+i,nts:0});
+  state.pages=pp;state.curPg='pa0';
+  const mkS=(id,pg)=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.pg=pg;return s};
+  Store.applyRemote({op:'add',shape:mkS('sC','pgX'),clock:{peer:'zz',seq:9,ts:9}});
+  assert.ok(byId('sC'),'op-carried member installs');
+  assert.strictEqual(byId('sC').pg,undefined,'cap-blocked intake member rehomes — pg scrubbed (ADR-1176)');
+  assert.ok(!_pgById('pgX'),'no stub past the 64-page cap (ADR-1176)');
+  assert.ok(_pgOk(byId('sC')),'the rehomed member stays visible on pages[0]');
+  state.pages=null;state.curPg=null;state.shapes=[];
+  console.log('  ✓ ADR-1176 cap-blocked op-intake member rehome (4 asserts)');
+  pass += 4;
+}
+assert.ok((html.match(/\bs\.pg=[^=]/g)||[]).length===6,'member-pg write census — resolving writers only (ADR-1176)');
+assert.ok(html.includes("if(_pgs())base.pg=state.curPg"),'local births stamp the viewed page (ADR-1176)');
+pass += 2;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
