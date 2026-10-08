@@ -1,3 +1,8 @@
+## [1.8.172] - 2026-10-01
+
+### Fixed
+- **round898 / ADR-1148 — help grid × keymap parity**: the `?` shortcut grid now documents every live binding — ten deltas found: ⌘⇧G ungroup, ⌘⇧I select-inverse, ⌘Y redo, ⌘Enter (present / search select-all / sticky chain), ⇧+wheel horizontal pan, ⇧+click selection toggle, ⌥+drag's dual meaning (duplicate on a shape / lasso on empty — the row said lasso only), ⌥+hover gap measure, ⌥+click route edits, touch long-press → ctx menu. Seven new i18n keys (selAllMatch, stickyChainKey, hPan, gapMeasure, waypointEdit, selToggle, ctxMenuKey) in ja+en; group/redo/drag rows folded rather than duplicated. 12 behavioural pins keep the grid from drifting in either direction — each documented binding must have a live handler.
+
 ## [1.8.171] - 2026-10-01
 
 ### Fixed
