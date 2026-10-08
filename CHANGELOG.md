@@ -1,3 +1,8 @@
+## [1.8.155] - 2026-10-01
+
+### Fixed
+- **round881 / ADR-1131 — dropped keys leave `before` too**: `_lwwDrop` filtered `op.after` but left the matching `op.before` baseline behind (upd prop key / multi-shape element), so the op no longer described only what it applied — an asymmetric contract group/ungroup already honour. Any future backward/recorded consumer of such an op would revert props the op never wrote, clobbering a locally-newer LWW winner. `before` now drops each dead key (and dead before-elements for the array form). Also verified: remote ops never enter `state.history` (undo replays local commits only — pushes live solely in `commit`/`_recordCommitted`), and page intake (`_vPages`) rejects the `[null]` sentinel, so `state.pages` only ever holds validated objects — `curPg` re-resolves on every producer path. 10 behavioural pins.
+
 ## [1.8.154] - 2026-10-01
 
 ### Fixed

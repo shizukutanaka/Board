@@ -20261,6 +20261,36 @@ pass += 9;
 }
 pass += 8;
 
+// ADR-1131 — a dropped key leaves 'before' too: the filtered op describes only
+// what it applied (parity with group/ungroup's before filter). An unfiltered
+// baseline would let any future backward/recorded consumer revert props the
+// op never wrote. Also: remote ops never enter the undo log, and page intake
+// rejects the [null] sentinel — 'pages' only ever holds validated objects.
+{
+  state.shapes=[{id:'r1',type:'rect',x:1,y:0,w:1,h:1,z:1},{id:'r2',type:'rect',x:2,y:0,w:1,h:1,z:1}];
+  state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  Store._stampWrites({op:'upd',id:'r1',after:{x:1},before:{x:0},clock:{peer:'zz',seq:1,ts:9e15}});
+  const o={op:'upd',id:'r1',after:{x:5,y:7},before:{x:0,y:0},clock:{peer:'zz',seq:1,ts:1}};
+  assert.strictEqual(Store._lwwDrop(o),true,'ADR-1131: a partially-dropped op stays alive on the kept key');
+  assert.ok(!('x' in o.after)&&!('x' in o.before),'ADR-1131: a dropped key leaves after AND before');
+  assert.strictEqual(o.before.y,0,'ADR-1131: the surviving key keeps its baseline');
+  Store._stampWrites({op:'upd',id:'r2',after:{x:2,y:2},before:{x:0,y:0},clock:{peer:'zz',seq:2,ts:9e15}});
+  const m={op:'move',ids:['r1','r2'],dx:1,dy:1,
+    after:[{id:'r1',x:9,y:9},{id:'r2',x:9,y:9}],
+    before:[{id:'r1',x:1,y:0},{id:'r2',x:2,y:0}],clock:{peer:'zz',seq:3,ts:1}};
+  assert.strictEqual(Store._lwwDrop(m),true,'ADR-1131: move survives on the r1 element');
+  assert.strictEqual(m.before.length,1,'ADR-1131: a fully-dropped shape leaves before too');
+  assert.ok(!('x' in m.before[0]),'ADR-1131: the surviving before element drops the dead key');
+  const h0=state.history.length;
+  Store.applyRemote({op:'upd',id:'r1',after:{x:5,y:7},before:{x:0,y:0},clock:{peer:'zz',seq:4,ts:1}});
+  assert.strictEqual(state.history.length,h0,'ADR-1131: remote ops never enter the undo log');
+  assert.strictEqual(_vPages([null]),null,'ADR-1131: page intake rejects the null sentinel');
+  assert.strictEqual(_vPages([{id:'p1',name:'P'}]).length,1,'ADR-1131: valid page objects pass intake');
+  state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ ADR-1131 dropped-key before parity (10 asserts)');
+}
+pass += 10;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
