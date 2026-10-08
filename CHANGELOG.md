@@ -1,3 +1,8 @@
+## [1.8.178] - 2026-10-01
+
+### Fixed
+- **round904 / ADR-1154 — invoker capture skips elements inside the closing ctx menu**: the ctx-search path broke the focus contract — the `ctxSearch` item is focused when its `fn()` runs, so `toggleSq` recorded `_sqPrev` as a `.ctx-item` that dies with the menu (`display:none`, still `isConnected` — the fallback gate can't see it). Esc then restored focus to a non-rendered element (`focus()` no-ops) and left `activeElement` on `<body>` — the same stranded-focus defect ADR-1150..1153 closed elsewhere. The capture now substitutes `UI._prevFocus` (the menu's own recorded invoker) when the captured element sits inside `#ctx`. Audit: all three invoker slots — `_prevFocus` can't capture a menu item (capture runs before items are focusable), `_edPrev` is unreachable via ctx (no menu item opens an editor), `_sqPrev` was the sole ctx→overlay transition. 5 pins (1 source + 4 behavioural).
+
 ## [1.8.177] - 2026-10-01
 
 ### Fixed

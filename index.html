@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.177';   // ADR-1153
+const V='1.8.178';   // ADR-1154
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6126,7 +6126,7 @@ let _sqPrev=null;
 function toggleSq(){
   const sq=_g('sqinput');if(!sq)return;
   const open=sq.style.display==='none';
-  if(open)_sqPrev=_aE();
+  if(open){const e=_aE(),m=_g('ctx');_sqPrev=e&&m.contains(e)?UI._prevFocus:e}   // ADR-1154: a menu item dies with the menu — record the invoker it stood in for
   _dsp(sq,open?'block':'none');
   if(open){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
   else{_setSq('');sq.value='';_ivO();
