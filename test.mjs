@@ -21638,6 +21638,24 @@ assert.ok(html.includes("if(!_pgById(state.curPg)){if(_ln(np))switchPage(np[0].i
 assert.ok(html.includes("const _pgHeal=s=>{if(s.pg&&!_pgById(s.pg))"),'member heal shared as _pgHeal (ADR-1175)');
 pass += 2;
 
+// ---- ADR-1176: member-pg intake funnel — every writer resolves or heals ----
+{
+  const pp=[];for(let i=0;i<64;i++)pp.push({id:'pa'+i,name:'P'+i,nts:0});
+  state.pages=pp;state.curPg='pa0';
+  const mkS=(id,pg)=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.pg=pg;return s};
+  Store.applyRemote({op:'add',shape:mkS('sC','pgX'),clock:{peer:'zz',seq:9,ts:9}});
+  assert.ok(byId('sC'),'op-carried member installs');
+  assert.strictEqual(byId('sC').pg,undefined,'cap-blocked intake member rehomes — pg scrubbed (ADR-1176)');
+  assert.ok(!_pgById('pgX'),'no stub past the 64-page cap (ADR-1176)');
+  assert.ok(_pgOk(byId('sC')),'the rehomed member stays visible on pages[0]');
+  state.pages=null;state.curPg=null;state.shapes=[];
+  console.log('  ✓ ADR-1176 cap-blocked op-intake member rehome (4 asserts)');
+  pass += 4;
+}
+assert.ok((html.match(/\bs\.pg=[^=]/g)||[]).length===6,'member-pg write census — resolving writers only (ADR-1176)');
+assert.ok(html.includes("if(_pgs())base.pg=state.curPg"),'local births stamp the viewed page (ADR-1176)');
+pass += 2;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

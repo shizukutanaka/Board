@@ -1,3 +1,8 @@
+## [1.8.200] - 2026-10-01
+
+### Changed
+- **round926 / ADR-1176 — member-pg intake funnel audit (clean)**: a census of every `s.pg` write site confirms the funnel is closed — all six assignment sites either resolve to a page that exists at write time (local births stamp `state.curPg`, `_pgHome`, `_pgDup`, `_pgDel2`'s `firstId` rehome, pageAdd's `c2.pg=op.id`, drawio's per-diagram stamp) or scrub `s.pg` (pages-null tails → `_pgOk` fallback), and everything outside the census routes through `_pgHeal`/`_pgHealS`. The last unpinned fork — a cap-blocked op-carried member when the 64-page cap forbids the `'?'` stub — now has a behavioural pin (scrub + rehome to `pages[0]`, no stub). Pinned by 4 behavioural + 2 source asserts (the census count itself).
+
 ## [1.8.199] - 2026-10-01
 
 ### Fixed

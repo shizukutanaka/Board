@@ -1202,6 +1202,7 @@ Board/
 │   ├── ADR-1173-intake-page-homing.md  # 単頁外部取込の pg 帰属 — drawio 単頁尾/svg/exc が bare addMany で pg-less メンバーが pages[0] 帰属し curPg≠先頭で不可視 (成功 toast 付き、ADR-1072 同型) + 外来 pg 残留の幻影頁ベクタを、共有 `_pgHome` (閲覧頁スタンプ/頁なしで pg 抹消) で4ローカル取込経路 (3 importer + _placeCopies 畳込) へ閉塞、3+3ピン
 │   ├── ADR-1174-snapshot-union-curpg.md  # snapshot union-heal の curPg 再導出 — 64頁上限でローカル頁 (curPg 含む) が落ちると curPg が死 id となり全メンバー `_pgOk` 失敗→盤面全体不可視の静黙発散 (`_pgHealS` は np<64+メンバー参照でしか修復不能) — `_pgAdopt`/`_pgDel2` 同型に `switchPage(np[0].id)` 着地へ、4+1ピン
 │   ├── ADR-1175-unhealable-member-rehome.md  # 修復不能メンバーの pg 抹消 — stub 生成不能 (tomb-dead/64頁満杯) なら `pg=<死id>` のまま全頁で不可視の実害を、共有 `_pgHeal` (stub 可能→'?'頁、不可→pg 削除で pages[0] 再帰属、_pgDel2 同型) へ2生成サイト (_pgHealS + applyRemote op-intake) 集約で閉塞、3+3ピン
+│   ├── ADR-1176-member-pg-intake-funnel.md  # member-pg 取込漏斗監査 (clean 完走) — 全 `s.pg` 書込みサイト census: 6 代入サイト全て書込時点の実在頁へ解決 or 抹消 (null→_pgOk fallback)、残余は `_pgHeal`/`_pgHealS` へ。64頁満杯で stub 不能の op 取込フォークを4挙動+2ソースピンで固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
