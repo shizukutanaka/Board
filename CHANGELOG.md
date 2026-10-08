@@ -1,3 +1,8 @@
+## [1.8.201] - 2026-10-01
+
+### Fixed
+- **round927 / ADR-1177 — selection presence rides the cursor throttle**: `sendSelectionIfChanged` is invoked every frame by the render-loop hook, and its dedup key only collapses *unchanged* selections — during a marquee drag the id set mutates per frame, so the full selection-id array went out ~16–60 times/second, the last unthrottled presence send (`sendCursor` has had `CURSOR_THROTTLE_MS` since ADR-0010). The send now mirrors the cursor gate: a changed key inside the window arms one trailing `_selT` resend instead of broadcasting (the dedup key stays pending, so the settled selection lands within `CURSOR_THROTTLE_MS` — latest-wins, nothing lost), and `_touchPeer` clears `_lastSelAt` too so a latecomer's forced resend reaches the new peer immediately rather than after a window it never observed. Pinned by 5 behavioural + 2 source asserts; ADR-0011/1031 latecomer literals recalibrated.
+
 ## [1.8.200] - 2026-10-01
 
 ### Changed
