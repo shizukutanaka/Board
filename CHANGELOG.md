@@ -1,3 +1,8 @@
+## [1.8.186] - 2026-10-01
+
+### Fixed
+- **round912 / ADR-1162 — wholesale-swap imports get the ro contract**: the three swap paths (`importBoard` .board file, `importFromHash` #b= link, `Persist.restoreBackup`) adopted `state.ro=d.ro===1` **before** `_repC` recorded the replace — so a `ro:1` payload made the commit unconditional collateral: swap applied, op dropped, **no undo, no wire broadcast**, the local view silently diverging from peers (live ops merging into the imported doc, `_sz` persisting it, snapshot heal leaking it back). Two changes: (1) entry gate `state.ro&&d.ro===1` rejects ro→ro swaps before any mutation (hash cleared, backup slot kept); (2) the adoption moved after `_repC` — `state.ro=false` keeps the commit writable, then the payload's flag lands. A writable doc importing a read-only payload now records a real replace. `_mergeImport` gets the same entry gate as its siblings. Recalibrated 2 pins that asserted the silent-swap behaviour; 28 asserts + 7 source pins.
+
 ## [1.8.185] - 2026-10-01
 
 ### Fixed

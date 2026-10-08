@@ -1188,6 +1188,7 @@ Board/
 │   ├── ADR-1159-button-owns-activation.md  # フォーカス中コントロールは活性化キーを所有する — focused `<button>` の Enter/Space がネイティブ click とキャンバス shortcut を二重発火していた残穴を dialog trap 直後の `button` ガードで閉塞、6ピンで固定
 │   ├── ADR-1160-pres-activation-keys.md  # 活性化キー契約はプレゼンにも適用 — pres 内で Space が nav key のため focused exit button の Space が `_pd`+`next()` でハイジャックされていた残穴を、ガードを `_pA()` 直上へホイストして閉塞、5ピンで固定
 │   ├── ADR-1161-window-drop-target.md  # ドロップ標的は window 全体 — toolbar/stylePanel 等 chrome へのファイルドロップがブラウザ既定でアプリからナビゲーション離脱していた残穴を canvas→window ホイストで閉塞 (input へのテキストドロップは native 維持・pres は view-only)、4ピンで固定
+│   ├── ADR-1162-ro-swap-gate.md  # 総入替 import の ro 契約 — `state.ro=d.ro===1` の repC 前採用が全 ro:1 payload の swap を「op なし」で着地させていた残穴を、入口ゲート (ro→ro 拒否) + 採用順序反転 (writable commit → ro 採用) で閉塞、28+7ピンで固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
