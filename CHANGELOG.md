@@ -1,3 +1,8 @@
+## [1.8.188] - 2026-10-01
+
+### Fixed
+- **round914 / ADR-1164 — replace undo/redo restores the document's viewport**: the three wholesale-swap paths adopt the payload's saved `viewport`, but the `replace` op recorded none of it — undoing an import returned the old board while the camera stayed parked on the imported doc's view (old shapes possibly off-screen). `bvp`/`avp` now ride the op alongside `bro`/`aro` (ADR-1163 idiom): captured at the `_bpg`/`_bcp` pre-swap seam, restored on backward, re-landed on own redo only (`op.clock.peer===_pi()`); `_slimOp`'s whitelist rebuild keeps both fields off the wire, so a peer's swap never moves your camera. Doc-scalar adopt-vs-restore map audited: docName converges on its own channel (ADR-0696), `rs` reseed stays (ADR-1056/1133), `d.rep`/`d.nts` are not adopted by import paths — viewport was the last unrecorded scalar. +4 behavioural asserts, 2 source pins.
+
 ## [1.8.187] - 2026-10-01
 
 ### Fixed
