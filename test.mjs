@@ -21611,6 +21611,29 @@ assert.ok(html.split('_pgHome(shapes)').length-1===3,'drawio/svg/exc single-page
 assert.ok(html.includes("{_pgHome(built);_cmt({op:'addMany',shapes:built})}"),'_placeCopies homes via _pgHome (ADR-1173)');
 pass += 3;
 
+// ---- ADR-1174: snapshot union re-derives a cap-dropped curPg ----
+{
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _snap=m=>{m.mac=E.Net._mac(m);E.Net._onRecv(m,false)};
+  E.state.pages=[{id:'lp1',name:'L1',nts:0},{id:'lp2',name:'L2',nts:0}];E.state.curPg='lp2';
+  E.state.shapes=[{id:'s1',type:'rect',x:0,y:0,w:10,h:10,pg:'lp2'}];   // non-empty → union path, not wholesale adopt
+  const pp=[];for(let i=0;i<64;i++)pp.push({id:'pa'+i,name:'P'+i,nts:0});
+  _snap({k:'snapshot',peer:'p9',pages:pp});
+  assert.strictEqual(E.state.pages.length,64,'page union honours the 64-page cap');
+  assert.ok(!E.state.pages.some(p=>p.id==='lp2'),'the cap drops the viewed local page');
+  assert.strictEqual(E.state.curPg,'pa0','a dropped curPg re-derives to the first merged page');
+  assert.ok(E._pgOk({pg:'pa0'}),'a member of the landed page stays visible (ADR-1174)');
+  console.log('  ✓ ADR-1174 snapshot-union curPg re-derivation (4 asserts)');
+  pass += 4;
+}
+assert.ok(html.includes("if(!_pgById(state.curPg)){if(_ln(np))switchPage(np[0].id);else state.curPg=null}"),'union heal re-derives curPg like _pgAdopt (ADR-1174)');
+pass += 1;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
