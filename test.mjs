@@ -18964,18 +18964,22 @@ pass += 7;
   const _r=(id,z)=>{return{id,type:'rect',x:0,y:0,w:10,h:10,z,stroke:'#000',fill:null,size:2,opacity:1}};
   // (a) ro session + editable share link → ro adopted FIRST → repC records
   //     (was: swap applied, op dropped under stale ro → no undo, no broadcast).
-  fakeWin.location.hash=await _z({v:1,shapes:[_r('imp9',0)]});
-  E.state.ro=true;
+  fakeWin.location.hash=await _z({v:1,shapes:[_r('imp9',0)],viewport:{x:100,y:200,zoom:2}});
+  E.state.ro=true;E.state.viewport.x=5;E.state.viewport.y=6;E.state.viewport.zoom=1.5;
   const h0=E.state.history.length;
   assert.strictEqual(await E.Share.importFromHash(),true,'ro session: editable link imports');
   assert.strictEqual(E.state.ro,false,'ro session: editable payload adopted');
   assert.strictEqual(E.state.history.length,h0+1,'ro→editable import records the replace (was dropped)');
+  assert.strictEqual(E.state.viewport.x,100,'swap adopts the payload viewport (ADR-1164 baseline)');
   E.Store.undo();
   assert.ok(!E.byId('imp9'),'ro→editable import swap is undoable');
   assert.strictEqual(E.state.ro,true,'undo restores the pre-swap ro (ADR-1163)');
+  assert.strictEqual(E.state.viewport.x,5,'undo restores the pre-swap camera (ADR-1164)');
+  assert.strictEqual(E.state.viewport.zoom,1.5,'undo restores the pre-swap zoom (ADR-1164)');
   assert.strictEqual(E.Store.redo(),false,'ro-gated: the re-locked doc cannot redo (ADR-1057)');
   E.state.ro=false;E.Store.redo();
   assert.strictEqual(E.state.ro,false,'redo re-adopts the editable payload flag (ADR-1163)');
+  assert.strictEqual(E.state.viewport.x,100,'redo re-lands the adopted viewport (ADR-1164)');
   // (b) ADR-1162: ro session + ro:1 link → REJECTED before the swap — was:
   //     the swap applied silently while repC dropped the op (no undo, live
   //     ops merging into the imported doc, snapshot heal leaking it back).
@@ -19072,8 +19076,8 @@ pass += 7;
     assert.strictEqual(await E.Persist.checkBackup(),true,'rejected restore keeps the backup slot');
   }finally{E.Persist.db=_prevDb;E.state.ro=false;E.state.shapes.length=0;E._invalidateGrid()}
 }
-console.log('  ✓ ADR-1069/1162/1163 doc-switch ro adoption (34 asserts)');
-pass += 34;
+console.log('  ✓ ADR-1069/1162/1163/1164 doc-switch ro+viewport adoption (38 asserts)');
+pass += 38;
 assert.ok(html.includes("state.ro=data.ro===1;_roBadge();   // ADR-1057/1069/1162"),'hash import adopts ro after repC');
 assert.ok(html.includes("state.ro=false;   // ADR-1162"),'swap commits while writable before adopting ro');
 assert.ok(html.includes("ro:state.ro?1:0,shapes:roundShapesForExport"),'.board export carries ro');
@@ -19083,7 +19087,9 @@ assert.ok(html.includes("if(state.ro&&d.ro===1){_roNo();return}   // ADR-1162")&
 assert.ok(html.includes("function _mergeImport(shapes){\n  if(state.ro){_roNo();return}   // ADR-1162"),'merge-import is ro-gated like every sibling');
 assert.ok(html.includes("const r0=state.ro;state.ro=false;"),'swap paths capture pre-swap ro for the op (ADR-1163)');
 assert.ok(html.includes("'bro' in op")&&html.includes("'aro' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores ro from the op (ADR-1163)');
-pass += 9;
+assert.ok(html.includes(",bvp=clone(_vp());")&&(html.match(/d\.ro===1,bvp\)/g)||[]).length>=2&&html.includes("data.ro===1,bvp)"),'swap paths record the pre-swap camera on the op (ADR-1164)');
+assert.ok(html.includes("'bvp' in op")&&html.includes("'avp' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores the camera from the op (ADR-1164)');
+pass += 11;
 
 // ---- ADR-1070: wire-secret lifecycle — SDP codec + `k` intake bound ----
 {
