@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.184';   // ADR-1160
+const V='1.8.185';   // ADR-1161
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -4831,9 +4831,15 @@ function _textCascade(s,wp){
   _iv();_oT('textPasted');
   return true;
 }
-_on(canvas,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
-_on(canvas,'drop',e=>{
+// ADR-1161: the drop target is the whole window, not just the canvas — a file
+// dropped on the toolbar/stylePanel/page-strip otherwise hits the browser's
+// default (navigate away to the file, losing the app). Text drops into a
+// field stay native; presentation stays view-only (block the nav, skip import).
+_on(window,'dragover',e=>{_pd(e);e.dataTransfer.dropEffect='copy'});
+_on(window,'drop',e=>{
+  if(!_ln(e.dataTransfer.files)&&e.target?.matches?.('input,textarea'))return;
   _pd(e);
+  if(_pA())return;
   const bf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.board'));
   if(bf){importBoard(bf);return}
   const xf=[...e.dataTransfer.files].find(f=>_ew(f.name,'.excalidraw'));
