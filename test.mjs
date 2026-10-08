@@ -22374,6 +22374,33 @@ pass += 2;
   console.log('  ✓ ADR-1199: orphan-group census — ≥2 live members or the groupId goes');
   pass += 9;
 }
+{
+  // ADR-1200: census funnel parity — caller-mutated membership ops recorded via
+  // _recordCommitted must land the same terminal state the remote _apply tail
+  // produces: doUngroup's locked sole survivor, and _nugLock-shrunk group flushes.
+  const a=Shape.make('rect',{x:0,y:0,w:10,h:10}),b=Shape.make('rect',{x:20,y:0,w:10,h:10});
+  a.id='fA';b.id='fB';a.groupId=b.groupId='gF1';b.locked=true;
+  state.shapes=[a,b];state.seenOps=new Set();state.wclock={};state.history=[];state.histIdx=-1;state.selection=new Set(['fA']);_invalidateGrid();
+  doUngroup();
+  assert.ok(!('groupId' in a)&&!('groupId' in b),'local doUngroup strips the locked sole survivor — remote-parity terminal state');
+  assert.ok(state.wclock.fB&&state.wclock.fB.groupId,'the funnel-parity strip stamps the group-channel clock');
+  const c=Shape.make('rect',{x:40,y:0,w:10,h:10}),d=Shape.make('rect',{x:60,y:0,w:10,h:10});
+  c.id='fC';d.id='fD';
+  state.shapes=[c,d];state.seenOps=new Set();state.history=[];state.histIdx=-1;state.selection=new Set(['fC','fD']);_invalidateGrid();
+  doGroup();                  // gid live-assigned to both; pending 'group' op armed
+  d.locked=true;              // a lock lands mid-run
+  _nugEnd();                  // _nugLock drops fD + restores it; commits ids:['fC']
+  assert.ok(!('groupId' in c),'a group shrunk to one member by mid-run locks sheds the gid at record time');
+  const e=Shape.make('rect',{x:80,y:0,w:10,h:10}),f=Shape.make('rect',{x:100,y:0,w:10,h:10});
+  e.id='fE';f.id='fF';
+  state.shapes=[e,f];state.seenOps.clear();state.selection=new Set(['fE','fF']);_invalidateGrid();
+  doGroup();_nugEnd();
+  assert.ok(e.groupId&&e.groupId===f.groupId,'a still-≥2 group survives the record-time census');
+  assert.ok(html.includes("if(/^(?:del|add|addMany|pageDel|pageAdd|clear|replace|group|ungroup)$/.test(op.op))_grpSweep(op.clock);   // ADR-1200"),'_recordCommitted sweeps the same 9-op regex as the _apply tail');
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
+  console.log('  ✓ ADR-1200: census funnel parity — _recordCommitted shares the _apply regex');
+  pass += 5;
+}
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.223';   // ADR-1199
+const V='1.8.224';   // ADR-1200
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1628,7 +1628,7 @@ const Store={
     try{
     if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock);for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:op.clock)}   // ADR-0616/0736/0927/1109/1111
     this._stampWrites(op);                 // change already applied by caller; record clock
-    if(op.op==='replace')_grpSweep(op.clock);   // ADR-1199: caller-swapped boards get the same census as the _apply path
+    if(/^(?:del|add|addMany|pageDel|pageAdd|clear|replace|group|ungroup)$/.test(op.op))_grpSweep(op.clock);   // ADR-1200: caller-mutated membership ops get the same census as the _apply tail — a locked sole survivor (doUngroup) or a group shrunk to 1 by mid-run locks (_nugLock) would otherwise keep a ghost gid locally while every remote peer strips it
     }catch(e){_sO().delete(k);throw e}     // ADR-1129
     _hi().length=_hx()+1;
     _hi().push(op);
