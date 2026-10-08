@@ -1,3 +1,8 @@
+## [1.8.189] - 2026-10-01
+
+### Fixed
+- **round915 / ADR-1165 — delta-snapshot intake contract pinned**: audit of the `'snap:'` seq channel (ADR-1055) came back clean on every gate — this round records the contract so a future change can't silently weaken it. Pinned: (a) `dels` entries need bounded ids + `validClock`, stamp the tomb, honour the born-newer escape (`!_tAlive`) and the locked-shape skip, and get `del`-parity page splicing via `_pgDel2` with the sender's rehome `firstId`; (b) merge `ops` stay 'add'-only, each `op.clock.peer` bound to the wire envelope `msg.peer` (ADR-0932), per-prop LWW off `op.wc` with local-winner divergence emitting a convergence `upd`; (c) `_applySnapshot` stamps carried existence clocks via `_wAdopt` (ADR-0927); (d) a snapshot whose `rep` loses to `_lastRep` is rejected wholesale; (e) the sender advertises only live tombs beyond the asker's horizon (`_bN`+`validClock`+`clockNewer`, ADR-1093). 13 behavioural asserts through real `_onRecv` (MAC-stamped) + 3 source pins.
+
 ## [1.8.188] - 2026-10-01
 
 ### Fixed

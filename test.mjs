@@ -19091,6 +19091,70 @@ assert.ok(html.includes(",bvp=clone(_vp());")&&(html.match(/d\.ro===1,bvp\)/g)||
 assert.ok(html.includes("'bvp' in op")&&html.includes("'avp' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores the camera from the op (ADR-1164)');
 pass += 11;
 
+// ---- ADR-1165: delta-snapshot intake — dels/ops/rep gates ----
+{
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _r=(id,x)=>({id,type:'rect',x,y:0,w:10,h:10,z:1,stroke:'#000',fill:null,size:2,opacity:1});
+  const _ck=(p,s,ts)=>({peer:p,seq:s,ts});
+  const _snap=m=>{m.mac=E.Net._mac(m);E.Net._onRecv(m,false)};   // ADR-1056: every wire msg authenticates
+  // (1) 'dels' tomb kills a live shape + records the tomb clock
+  E.state.shapes=[_r('s1',0)];E._invalidateGrid();
+  _snap({k:'snapshot',peer:'p9',ops:[],dels:{s1:_ck('p9',1,Date.now())}});
+  assert.ok(!E.byId('s1'),'delta dels removes a live shape');
+  assert.ok(E.state.wclock.s1&&E.state.wclock.s1._del,'dels stamps the tomb clock');
+  // (2) a newer _born outranks the incoming tomb → the shape survives
+  const s2=_r('s2',5);
+  E.state.shapes=[s2];E._invalidateGrid();
+  E.Store.applyRemote({op:'add',shape:s2,clock:_ck('p8',9,Date.now())});   // stamps _born newer
+  _snap({k:'snapshot',peer:'p9',ops:[],dels:{s2:_ck('p9',2,Date.now()-1000)}});
+  assert.ok(E.byId('s2'),'born-newer shape survives a stale dels entry');
+  // (3) dels on a page id splices the page out (del parity)
+  E.state.pages=[{id:'pgX',name:'X',nts:0},{id:'pgY',name:'Y',nts:0}];E.state.curPg='pgX';
+  _snap({k:'snapshot',peer:'p9',ops:[],dels:{pgX:_ck('p9',3,Date.now())}});
+  assert.ok(!E.state.pages||E.state.pages.every(p=>p.id!=='pgX'),'delta dels splices a page id');
+  E.state.pages=null;E.state.curPg=null;
+  // (4) junk dels entries are bounded away — over-cap and proto keys inert
+  E.state.shapes=[_r('s4',0)];E._invalidateGrid();
+  const bad={['x'.repeat(100)]:_ck('p9',4,1)};bad['__proto__']=_ck('p9',4,1);
+  _snap({k:'snapshot',peer:'p9',ops:[],dels:bad});
+  assert.ok(E.byId('s4'),'junk dels ids leave live shapes alone');
+  // (5) merge ops take 'add' only — a forged 'del' cannot delete through the delta channel
+  _snap({k:'snapshot',peer:'p9',ops:[{op:'del',id:'s4',clock:_ck('p9',5,Date.now())}]});
+  assert.ok(E.byId('s4'),'non-add ops are skipped at the merge path');
+  // (6) the embedded op clock binds to the envelope peer (ADR-0932)
+  _snap({k:'snapshot',peer:'p9',ops:[{op:'add',shape:_r('f1',0),clock:_ck('evil',1,Date.now())}]});
+  assert.ok(!E.byId('f1'),'op clock.peer!=envelope peer rejected');
+  // (7) merge LWW both ways: remote-newer prop adopts, local-newer prop survives
+  const s7=_r('s7',0);E.state.shapes=[s7];E._invalidateGrid();
+  _snap({k:'snapshot',peer:'p9',ops:[{op:'add',shape:{..._r('s7',99)},clock:_ck('p9',6,Date.now()),wc:{x:_ck('p9',6,Date.now())}}]});
+  assert.strictEqual(E.byId('s7').x,99,'remote-newer prop merges');
+  E.state.wclock.s7.x=_ck('me',1,9e15);   // local prop clock far ahead
+  _snap({k:'snapshot',peer:'p9',ops:[{op:'add',shape:{..._r('s7',55)},clock:_ck('p9',7,Date.now()),wc:{x:_ck('p9',7,Date.now())}}]});
+  assert.strictEqual(E.byId('s7').x,99,'local-newer prop survives the merge');
+  // (8) empty-board adoption: _applySnapshot + _wAdopt stamps the carried clocks
+  E.state.shapes=[];E._invalidateGrid();E.state.wclock={};
+  const s8=_r('s8',7);
+  _snap({k:'snapshot',peer:'p9',shapes:[s8],ops:[{op:'add',shape:s8,clock:_ck('p9',8,Date.now()),wc:{_born:_ck('p9',8,5)}}]});
+  assert.ok(E.byId('s8'),'empty board adopts snapshot shapes');
+  assert.ok(E.state.wclock.s8&&E.state.wclock.s8._born&&E.state.wclock.s8._born.ts===5,'adopt stamps the carried _born');
+  // (9) rep gate: a stale-generation snapshot is rejected wholesale
+  E.state.shapes=[];E._invalidateGrid();E.state._lastRep=_ck('a',1,9999);
+  _snap({k:'snapshot',peer:'p9',shapes:[_r('s9',0)],ops:[],rep:_ck('a',1,1)});
+  assert.strictEqual(E.state.shapes.length,0,'stale-rep snapshot rejected wholesale');
+  E.state._lastRep=null;
+  console.log('  ✓ ADR-1055/1093/1114 delta-snapshot intake contract (13 asserts)');
+  pass += 13;
+}
+assert.ok(html.includes("_idOK(id)&&validClock(c)")&&html.includes("if(s.locked||!_tAlive(id))continue")&&html.includes("_pgDel2({id,clock:c}"),'dels intake: bounded ids, born/locked escapes, page parity (ADR-1093/1165)');
+assert.ok(html.includes("!_bN(id,w._del)&&validClock(w._del)&&clockNewer(w._del,c)"),'sender advertises only live tombs to the asker horizon (ADR-1055/1165)');
+assert.ok(html.includes("for(const s of valid)_wAdopt(s.id,wm.get(s.id))"),'empty-board adopt stamps carried existence clocks (ADR-0927/1165)');
+pass += 3;
+
 // ---- ADR-1070: wire-secret lifecycle — SDP codec + `k` intake bound ----
 {
   const _hadR=Object.prototype.hasOwnProperty.call(globalThis,'RTCSessionDescription'),_prevR=globalThis.RTCSessionDescription;
