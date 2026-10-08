@@ -1,3 +1,13 @@
+## [1.8.201] - 2026-10-01
+
+### Fixed
+- **round927 / ADR-1177 — selection presence rides the cursor throttle**: `sendSelectionIfChanged` is invoked every frame by the render-loop hook, and its dedup key only collapses *unchanged* selections — during a marquee drag the id set mutates per frame, so the full selection-id array went out ~16–60 times/second, the last unthrottled presence send (`sendCursor` has had `CURSOR_THROTTLE_MS` since ADR-0010). The send now mirrors the cursor gate: a changed key inside the window arms one trailing `_selT` resend instead of broadcasting (the dedup key stays pending, so the settled selection lands within `CURSOR_THROTTLE_MS` — latest-wins, nothing lost), and `_touchPeer` clears `_lastSelAt` too so a latecomer's forced resend reaches the new peer immediately rather than after a window it never observed. Pinned by 5 behavioural + 2 source asserts; ADR-0011/1031 latecomer literals recalibrated.
+
+## [1.8.200] - 2026-10-01
+
+### Changed
+- **round926 / ADR-1176 — member-pg intake funnel audit (clean)**: a census of every `s.pg` write site confirms the funnel is closed — all six assignment sites either resolve to a page that exists at write time (local births stamp `state.curPg`, `_pgHome`, `_pgDup`, `_pgDel2`'s `firstId` rehome, pageAdd's `c2.pg=op.id`, drawio's per-diagram stamp) or scrub `s.pg` (pages-null tails → `_pgOk` fallback), and everything outside the census routes through `_pgHeal`/`_pgHealS`. The last unpinned fork — a cap-blocked op-carried member when the 64-page cap forbids the `'?'` stub — now has a behavioural pin (scrub + rehome to `pages[0]`, no stub). Pinned by 4 behavioural + 2 source asserts (the census count itself).
+
 ## [1.8.199] - 2026-10-01
 
 ### Fixed

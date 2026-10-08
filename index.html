@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.199';   // ADR-1175
+const V='1.8.201';   // ADR-1177
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8352,17 +8352,15 @@ const Net={
     this._lastCursorSend=0;   // let the next real cursor in immediately
     this._bcast(_mk('cursor',{x:0,y:0,h:1,pg:state.curPg,..._nm()}));   // ADR-1053
   },
-  // ADR-0011: ephemeral peer selection presenc
-  // NOT draw() — render must stay side-effect-
-  // resend only when the serialized selection differs (selection changes are
-  // discrete). null forces a resend — set on _touchPeer for latecomers.
-  _lastSelSent:'',
+  // ADR-0011: resend only on serialized selection change; null forces resend.
+  _lastSelSent:'',_lastSelAt:0,_selT:null,
   sendSelectionIfChanged(){
     if(_pr().size===0)return;
     const ids=_selIds();
     const key=_JS(ids.sort())+'|'+(state.curPg||'');   // ADR-0680/0860
     if(key===this._lastSelSent)return;
-    this._lastSelSent=key;
+    const now=_now();if(now-this._lastSelAt<CURSOR_THROTTLE_MS)return this._selT||(this._selT=_stO(()=>{this._selT=null;this.sendSelectionIfChanged()},CURSOR_THROTTLE_MS));   // ADR-1177
+    this._lastSelAt=now;this._lastSelSent=key;
     this._bcast(_mk('selection',{ids,pg:state.curPg,..._nm()}));   // ADR-0647/1053
   },
   _sendDC(m){   // ADR-0432: single dc funnel — full SCTP buf
@@ -8629,9 +8627,8 @@ const Net={
       if(_pr().size>=MAX_PEERS)return;   // flood cap: new peers wait for a reap
       const colorIdx=[..._pr().keys()].length%_ln(PEER_COLORS);
       _pr().set(peerId,{color:PEER_COLORS[colorIdx],lastSeen:_now()});
-      // ADR-0011: a latecomer would otherwise not
-      // changes — force one resend on the next frame.
-      this._lastSelSent=null;_iv();
+      // ADR-0011/1177: latecomer forces a resend past the throttle.
+      this._lastSelSent=null;this._lastSelAt=0;_iv();
       if(this._onConnChange)this._onConnChange();
     }
   },
