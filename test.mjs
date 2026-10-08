@@ -22261,6 +22261,49 @@ pass += 2;
   pass += 3;
 }
 
+{
+  // ADR-1197: the shape-version epoch — _invalidateGrid is the sole writer,
+  // _apply's head _iG is the single funnel for every op (both directions,
+  // prop-only included), every consumer shares the epoch, img blobs bypass it.
+  assert.ok(html.includes("_apply(op,forward){\n    _iG();"),'_apply head bumps the epoch for every op');
+  assert.strictEqual((html.match(/_gridVer=[^=]|_gridVer\+\+/g)||[]).length,2,'_gridVer has exactly two write sites (init + _iG bump)');
+  assert.ok(html.includes("img.onload=()=>{_iv();Minimap.invalidateCache();}"),'img blob arrival stays on the out-of-band bitmap channel');
+  // behavioural: a prop-only remote op must invalidate the mirror + search
+  // caches too — they derive from props, not geometry.
+  const fakeUl={children:[],firstChild:null,
+    appendChild(c){this.children.push(c);this.firstChild=this.children[0];},
+    removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);this.firstChild=this.children[0]||null;},
+    contains(x){const w=e=>e===x||e.children.some(w);return w(this)},
+    querySelectorAll(s){const r=[];(function w(e){for(const c of e.children){if(c.tagName==='BUTTON')r.push(c);w(c)}})(this);return r}};
+  const mk=tag=>({tagName:tag.toUpperCase(),children:[],textContent:'',onclick:null,type:'',
+    appendChild(c){this.children.push(c);},focus(){fakeDoc.activeElement=this}});
+  const _og=fakeDoc.getElementById,_oce=fakeDoc.createElement;
+  fakeDoc.getElementById=id=>id==='shapeMirrorList'?fakeUl:_og(id);
+  fakeDoc.createElement=mk;
+  const rv=Shape.make('rect',{id:'sv1',x:0,y:0,w:10,h:10});rv.label='Alpha';
+  state.shapes=[rv];state.seenOps=new Set();_invalidateGrid();
+  _mirrorSync();
+  assert.ok(/Alpha/.test(fakeUl.children[0].children[0].textContent),'mirror shows the pre-update label');
+  Store.applyRemote({op:'upd',id:'sv1',before:{label:'Alpha'},after:{label:'Beta'},clock:{peer:'pSV',seq:1,ts:1}});
+  _mirrorSync();
+  assert.ok(/Beta/.test(fakeUl.children[0].children[0].textContent),'prop-only remote op rebuilds the mirror (epoch bumped)');
+  _setSq('Beta');
+  assert.strictEqual(_sqMatches().length,1,'search sees the bumped epoch after a prop-only op');
+  _setSq('');
+  // backward direction bumps too: local commit → undo reverts the label.
+  rv.label='Gamma';   // callers apply before committing (_recordCommitted records)
+  Store._recordCommitted({op:'upd',id:'sv1',before:{label:'Beta'},after:{label:'Gamma'}});
+  _mirrorSync();
+  assert.ok(/Gamma/.test(fakeUl.children[0].children[0].textContent),'local commit rebuilds the mirror');
+  assert.ok(Store.undo(),'undo applies the local upd');
+  _mirrorSync();
+  assert.ok(/Beta/.test(fakeUl.children[0].children[0].textContent),'backward _apply bumps the epoch (mirror reverts)');
+  fakeDoc.getElementById=_og;fakeDoc.createElement=_oce;
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history.length=0;state.histIdx=-1;state.wclock={};_invalidateGrid();
+  console.log('  ✓ ADR-1197: _gridVer epoch — single writer, _apply funnel, bitmap OOB');
+  pass += 9;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

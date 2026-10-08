@@ -1,3 +1,8 @@
+## [1.8.221] - 2026-10-01
+
+### Docs+Test
+- **round947 / ADR-1197 — `_gridVer` 図形バージョンエポック契約の規約化 + ピン (5軸監査 clean 完走)**: 全派生キャッシュを駆動する単一版カウンタの契約を文書化 — `_invalidateGrid()` が唯一のライター (init+`++` の2サイトのみ)、`_apply` 冒頭 `_iG()` が全 op (forward/backward 双方・prop-only 含む全17種) の bump 漏斗、`_rs`/`_pgAdopt`/`switchPage`/消去復元の非 op 変異も直接 bump、消費者 (mirror/検索/ハロー/snap/minimap) は全てこのエポックを共有。意図的な帯外: 画像 blob 到着は `_iv()`+`Minimap.invalidateCache()` で bitmap のみ無効化し `_iG()` しない (blob ごとの O(n) 索引/ミラー再構築回避)。行動変更なし — 3ソース+6挙動ピン (prop-only remote op で mirror/検索再構築・local commit/undo で双方向 bump) で契約固定。
+
 ## [1.8.220] - 2026-10-01
 
 ### Fix
