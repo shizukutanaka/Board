@@ -1230,7 +1230,7 @@ const checks = [
   ['drag-drop image import has img.onerror toast', html.includes("img.onerror=()=>_wT('imgErr');") ],
   ['image import (shared _imgImportFile) has reader.onerror toast', html.includes("function _imgImportFile(") && html.includes("reader.onerror=()=>_wT('imgErr');")],
   ['context menu deduplicates consecutive separators', html.includes(".filter((it,i,a)=>!(it==='sep'&&(i===0||i===_ln(a)-1||a[i-1]==='sep')))")],
-  ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
+  ['doDuplicate does not clobber clipboard (uses _placeCopies, not state.clipboard=)', html.includes("_placeCopies(sel,_dd().x,_dd().y,1):_placeCopies(sel,_ud,_ud,1);   // independent of _cl()") && html.includes("function _placeCopies(srcShapes")],
   // v1.6.71: import sites clear stale selection + wclock (mirror replace op's _apply)
   ['dc.onclose drops _dcQ backlog so reconnect sends (ADR-0446)', /dcRef\.onclose=\(\)=>\{[\s\S]*?this\._dcQ=null/.test(html)],
   ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();   // ADR-1111\n      _pgAdopt(d.pages,d.curPg);")],
@@ -19125,18 +19125,19 @@ assert.ok(html.includes("importMerge:'読み込んだ内容")&&html.includes("im
 pass += 3;
 
 {
-  // ADR-1074: a {0,0} seeded dupDelta is no chain — the first ⌘D after an
-  // in-place placement (merge import, paste-in-place) uses the default offset
-  // instead of stacking invisible copies on the placed set.
+  // ADR-1074/1139: placement paths (merge import, paste-in-place) don't arm
+  // the dup chain at all — the first ⌘D after a placement uses the default
+  // offset instead of repeating a placement vector or stacking invisibly.
+  state.dupIds=new Set();state.dupDelta=null;
   const s1=Shape.make('rect',{x:0,y:0,w:10,h:10});s1.id='h1';state.shapes=[s1];
   _placeCopies([s1],0,0);
-  assert.deepStrictEqual(state.dupDelta,{x:0,y:0},'in-place placement seeds a {0,0} delta');
+  assert.strictEqual(state.dupDelta,null,'in-place placement does not arm the chain');
   const n0=state.shapes.length;
   doDuplicate();
-  assert.strictEqual(state.shapes.length,n0+1,'⌘D still duplicates after a {0,0} delta');
+  assert.strictEqual(state.shapes.length,n0+1,'⌘D still duplicates after a placement');
   const c1=state.shapes[n0];
-  assert.ok(c1.x>s1.x&&c1.y>s1.y,'⌘D after a {0,0} delta offsets instead of stacking invisibly');
-  assert.ok(state.dupDelta.x>0,'chain reseeded with the default offset');
+  assert.ok(c1.x>s1.x&&c1.y>s1.y,'⌘D after a placement offsets instead of stacking invisibly');
+  assert.ok(state.dupDelta.x>0,'chain seeded by the ⌘D itself');
   state.shapes.length=0;state.history=[];state.histIdx=-1;state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;_invalidateGrid();
   pass += 4;
 }
@@ -20504,6 +20505,30 @@ pass += 7;
   console.log('  ✓ ADR-1138 peer-name staleness closure (8 asserts)');
 }
 pass += 8;
+
+// ---- ADR-1139: paste/import placement vectors can't arm the dup chain ----
+{
+  assert.ok(html.includes("if(dup){state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy}}"),'ADR-1139: reseed gated on the ⌘D flag');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();state.dupIds=new Set();state.dupDelta=null;
+  state.viewport={x:0,y:0,zoom:1};
+  const pA=Shape.make('rect',{x:0,y:0,w:50,h:50});pA.id='pA1';pA.z=1;
+  Store.commit({op:'add',shape:pA});
+  state.clipboard={shapes:[JSON.parse(JSON.stringify(pA))]};
+  state.dupIds=new Set(['sent']);state.dupDelta={x:1,y:2};
+  doPaste();                                        // lands at viewport center (~395,~295)
+  const pasted=state.shapes.find(s=>s.id!=='pA1');
+  assert.ok(pasted,'ADR-1139: paste landed a copy');
+  assert.deepStrictEqual(state.dupDelta,{x:1,y:2},'ADR-1139: paste does not arm the chain');
+  assert.deepStrictEqual([...state.dupIds],['sent'],'ADR-1139: dupIds untouched by paste');
+  doDuplicate();                                    // ⌘D after ⌘V: default offset, not the paste vector
+  const dupC=state.shapes[state.shapes.length-1];
+  assert.ok(Math.abs(dupC.x-(pasted.x+20))<1e-9&&Math.abs(dupC.y-(pasted.y+20))<1e-9,'ADR-1139: ⌘D after ⌘V uses the default offset');
+  assert.deepStrictEqual(state.dupDelta,{x:20,y:20},'ADR-1139: the ⌘D itself arms the chain');
+  importBoardText(JSON.stringify({shapes:[{id:'ix1',type:'rect',x:0,y:0,w:10,h:10,z:5}]}));
+  assert.deepStrictEqual(state.dupDelta,{x:20,y:20},'ADR-1139: merge-import does not re-arm the chain');
+  console.log('  ✓ ADR-1139 dup-chain arming closed to real duplicates (7 asserts)');
+}
+pass += 7;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

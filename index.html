@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.162';   // ADR-1137
+const V='1.8.163';   // ADR-1139
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6152,7 +6152,7 @@ function doPasteAt(wx,wy){
 // select the copies. Shared by paste and duplicate. Duplicate must NOT route
 // through _cl() — it would clobber the copy buffer (Copy A, select B, ⌘D → ⌘V
 // wrongly pastes B). dx/dy default 20/zoom; paste supplies centering offsets.
-function _placeCopies(srcShapes,dx,dy){
+function _placeCopies(srcShapes,dx,dy,dup){
   if(dx===_ud){const o=20/_vp().zoom;dx=o;dy=o;}
   if(state.ro){_roNo();return[]}   // ADR-1057/1073: gate before dup reseed
   const added=[];
@@ -6178,7 +6178,7 @@ function _placeCopies(srcShapes,dx,dy){
   }
   if(_ln(built))_cmt({op:'addMany',shapes:built});
   _ss(added);   // ADR-0568: _ss filters out hidden copies
-  state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy};     // ADR-0080: reseed chain
+  if(dup){state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy}}     // ADR-0080/1139: only ⌘D arms the repeat chain — paste/import placement vectors aren't user transforms
   _iv();
   return added;
 }
@@ -6196,7 +6196,7 @@ function doDuplicate(){
   // ADR-0080/1074
   // chain at all — repeat at the default offset instead of invisible stacking.
   const smart=state.dupIds.size&&_dd()&&(_dd().x||_dd().y)&&sel.every(s=>state.dupIds.has(s.id));
-  const added=smart?_placeCopies(sel,_dd().x,_dd().y):_placeCopies(sel);   // independent of _cl()
+  const added=smart?_placeCopies(sel,_dd().x,_dd().y,1):_placeCopies(sel,_ud,_ud,1);   // independent of _cl()
   _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }

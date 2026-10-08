@@ -1,7 +1,12 @@
+## [1.8.163] - 2026-10-01
+
+### Fixed
+- **round889 / ADR-1139 — dup-chain arming closed to real duplicates**: `_placeCopies` reseeded `state.dupIds`/`state.dupDelta` on *every* call — including paste and import placement, whose (dx,dy) is an arbitrary centering offset of hundreds of pixels, not a user transform. One ⌘V then armed the smart-duplicate chain: the next ⌘D duplicated at the paste vector, landing copies far offscreen where they were invisible but committed and broadcast. `_placeCopies` now takes a `dup` flag; only `doDuplicate` passes it. Supersedes ADR-0080's "harmless" claim (which only reasoned about the ~20/zoom default offset). 7 behavioural pins.
+
 ## [1.8.162] - 2026-10-01
 
 ### Fixed
-- **round888 / ADR-1138 — peer-name staleness closure**: `_nIn` only ever *set* `p.n` — a peer who cleared their display name (the sender omits `n` from every presence envelope) kept the revoked name on every other board for the rest of the session, and a rename never repainted the DOM avatar tooltip (only `p.pg` flips did). `_nIn` now re-derives unconditionally — absent `n` means anonymous — and calls `UI.refreshPeers()` whenever the stored name changes, covering ping/cursor/selection uniformly. 6 behavioural pins.
+- **round888 / ADR-1138 — peer-name staleness closure**: `_nIn` only ever *set* `p.n` — a peer who cleared their display name (the sender omits `n` from every presence envelope) kept the revoked name on every other board for the rest of the session, and a rename never repainted the DOM avatar tooltip (only `p.pg` flips did). `_nIn` now re-derives unconditionally — absent `n` means anonymous — and calls `UI.refreshPeers()` whenever the stored name changes, covering ping/cursor/selection uniformly. 8 behavioural pins.
 
 ## [1.8.161] - 2026-10-01
 
