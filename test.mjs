@@ -19045,7 +19045,7 @@ assert.ok(html.includes("Share._b64uEnc(new TextEncoder().encode(_JS({type:sdp.t
 assert.ok(!html.includes("this._b64u"),'no Net-internal _b64u references remain');
 assert.ok(html.includes("k:_iS(j.k)&&_ln(j.k)<=64?j.k:null"),'token k bounded at intake');
 assert.ok(html.includes("if(_iS(v)&&_ln(v)<=64&&v!==state.roomSecret)"),'localStorage rs bounded');
-assert.ok((html.match(/if\(_iS\(d\.rs\)&&_ln\(d\.rs\)<=64\)state\.roomSecret=d\.rs/g)||[]).length===2,'both IDB rs adoption sites bounded');
+assert.ok((html.match(/if\(_iS\(d\.rs\)&&_ln\(d\.rs\)<=64\)\{state\.roomSecret=d\.rs/g)||[]).length===2,'both IDB rs adoption sites bounded');
 assert.ok(html.includes("rs:state.roomSecret,ro:state.ro?1:0,savedAt"),'backup record carries rs+ro');
 assert.ok((html.match(/_dcKey=null/g)||[]).length>=3,'_dcKey resets on init/handshake/close');
 assert.ok(!html.includes("rs:state.roomSecret,shapes")&&!html.includes("data.rs="),'no rs in export payloads');
@@ -20323,6 +20323,42 @@ pass += 10;
   console.log('  ✓ ADR-1132 existence-clock helper equivalence (12 asserts)');
 }
 pass += 12;
+
+// ADR-1133 — the room secret's authority model: `board.rs` in localStorage
+// wins while live (same-origin tabs converge on one key); a doc-carried `rs`
+// restores the key only when the origin store is dead, and adoption now
+// reseeds `board.rs` — before, the adopted key stayed in-memory and the first
+// later tab to mint clobbered it origin-wide, silently abandoning the doc's
+// recovered secret. Live-ls adoption remains a dead write by design.
+{
+  const _lsd=fakeWin.localStorage;
+  Net._mac({});   // settle _sec() against the stub store
+  const settled=state.roomSecret;
+  _lsd.removeItem('board.rs');state.roomSecret='rsA';
+  Net._mac({});
+  assert.strictEqual(state.roomSecret,'rsA','ADR-1133: adopted doc secret survives _sec with a dead origin store');
+  _lsd.setItem('board.rs','rsB');
+  Net._mac({});
+  assert.strictEqual(state.roomSecret,'rsB','ADR-1133: a live origin store wins over an adopted doc secret');
+  _lsd.removeItem('board.rs');
+  _lsd.setItem('board.rs','rsA');state.roomSecret=null;   // what the new reseed writes
+  Net._mac({});
+  assert.strictEqual(state.roomSecret,'rsA','ADR-1133: a reseeded origin store reproduces the doc key');
+  _lsd.removeItem('board.rs');state.roomSecret=null;
+  Net._mac({});
+  assert.ok(typeof state.roomSecret==='string'&&state.roomSecret.length>0,'ADR-1133: dead store + dead state mints a key');
+  assert.strictEqual(_lsd.getItem('board.rs'),state.roomSecret,'ADR-1133: the minted key persists to the origin store');
+  _lsd.setItem('board.rs','x'.repeat(200));
+  const keep=state.roomSecret;
+  Net._mac({});
+  assert.strictEqual(state.roomSecret,keep,'ADR-1133: an oversized ls value cannot displace the live key');
+  assert.strictEqual(_lsd.getItem('board.rs').length,200,'ADR-1133: the oversized value is ignored, not adopted');
+  assert.strictEqual((html.match(/_ls\('board\.rs',d\.rs\)/g)||[]).length,2,'ADR-1133: both restore paths reseed');
+  assert.ok(html.includes("if(_iS(d.rs)&&_ln(d.rs)<=64){state.roomSecret=d.rs;try{if(!_lg('board.rs'))_ls('board.rs',d.rs)}catch(_){}}"),'ADR-1133: adoption reseeds only when the origin store is dead');
+  _lsd.setItem('board.rs',settled);state.roomSecret=settled;
+  console.log('  ✓ ADR-1133 room-secret authority + reseed (9 asserts)');
+}
+pass += 9;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

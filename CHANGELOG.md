@@ -1,3 +1,8 @@
+## [1.8.157] - 2026-10-01
+
+### Fixed
+- **round883 / ADR-1133 — doc-carried `rs` reseeds a dead origin store**: the room-secret adoption at both IDB restore paths (`Persist.load`, `restoreBackup`) set `state.roomSecret=d.rs` but never wrote `board.rs` — so in the one scenario `d.rs` exists for (localStorage wiped, IDB intact), the recovered key stayed in-memory only and the first later tab to mint clobbered it origin-wide. Adoption now also `_ls('board.rs',d.rs)` — gated on the origin store being dead, so the "ls wins" authority rule is untouched: a doc restore can never rotate a live room's key. `.board`/share-link exports verified to carry no `rs` (no secret leak); `_dcKey` lifecycle resets on close/room-switch already complete. 9 behavioural pins.
+
 ## [1.8.156] - 2026-10-01
 
 ### Verified
