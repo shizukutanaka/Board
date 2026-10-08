@@ -20661,6 +20661,32 @@ pass += 8;
 }
 pass += 7;
 
+{
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
+  const tgt=Shape.make('rect',{x:200,y:200,w:100,h:80,label:'TGTNAME',pg:'pB'});
+  Store.commit({op:'add',shape:tgt});
+  const arr=Shape.make('arrow',{x1:10,y1:10,x2:400,y2:400,pg:'pA'});
+  arr.a=tgt.id;
+  Store.commit({op:'add',shape:arr});
+  const e0=connEnds(arr);
+  assert.strictEqual(e0.x1,10,'ADR-1145: off-page bound target resolves unbound — stored x1, not live bbox edge');
+  assert.strictEqual(e0.y1,10,'ADR-1145: off-page bound target resolves unbound — stored y1');
+  assert.strictEqual(byId(arr.id).a,tgt.id,'ADR-1145: the binding survives a cross-page target');
+  _setSq('TGTNAME');
+  assert.ok(!_sqMatches().some(s=>s.id===arr.id),'ADR-1145: an off-page target name does not hit via _bt');
+  assert.ok(describeShape(byId(arr.id)).includes("bound: ?→"),'ADR-1145: SR announce does not name an off-page bound target');
+  byId(tgt.id).pg='pA';_invalidateGrid();
+  const e1=connEnds(arr);
+  assert.ok(e1.x1>150,'ADR-1145: re-paging the target onto the conn page re-activates live tracking');
+  const d1=describeShape(byId(arr.id));
+  assert.ok(d1.includes('bound: Rectangle→')&&!d1.includes('?→'),'ADR-1145: same-page target names its type again in SR announce');
+  _setSq('');
+  state.shapes=[];_invalidateGrid();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1145 bound-connector page parity (7 asserts)');
+}
+pass += 7;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.168';   // ADR-1144
+const V='1.8.169';   // ADR-1145
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2028,7 +2028,7 @@ function connEnds(s){
   if(_ceD>15||(!s.a&&!s.b))return s;   // ADR-0976
   _ceD++;
   try{
-  const _bnd=id=>{const t=id&&id!==s.id?byId(id):null;return t&&!_hd(t)?t:null};   // ADR-1144: hidden targets don't anchor — stored endpoints stand in, the binding survives
+  const _bnd=id=>{const t=id&&id!==s.id?byId(id):null;return t&&!_hd(t)&&_pgEq(t,s)?t:null};   // ADR-1144/1145: hidden or off-page targets don't anchor — stored endpoints stand in, the binding survives
   const a=_bnd(s.a),b=_bnd(s.b);
   const ba=a&&_bb(a),bb=b&&_bb(b);
   const ac=ba?{x:ba.x+ba.w/2,y:ba.y+ba.h/2}:{x:s.x1,y:s.y1};
@@ -2211,7 +2211,7 @@ let _penCachePx=0;
 const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
 const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009/1071
-const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg;   // ADR-0646
+const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg,_pgEq=(a,b)=>!_pgOn()||(a.pg||_pgs()[0].id)===(b.pg||_pgs()[0].id);   // ADR-0646/1145
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64)&&(p.bts==null||_tsOK(p.bts))&&(p.btp==null||_iS(p.btp)&&_ln(p.btp)<=64))?a:null);   // ADR-0700/0791/1110
 const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)};   // ADR-1137: tomb-dead pages get no '?' stub
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110
@@ -2660,7 +2660,8 @@ function describeShape(s){
   if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440
   if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
-    const A=s.a&&byId(s.a),B=s.b&&byId(s.b);
+    const _ep=id=>{const t=id&&byId(id);return t&&!_hd(t)&&_pgEq(t,s)?t:null};   // ADR-1145: don't name hidden/off-page targets
+    const A=_ep(s.a),B=_ep(s.b);
     d+=` ${t('srBound')}: ${A?(T.k?.[A.type]??A.type):'?'}→${B?(T.k?.[B.type]??B.type):'?'}`;
   }
   if(_rt(s))d+=` ${_rt(s)}°`;
@@ -4085,7 +4086,7 @@ function _sqMatches(){
   _sqList=[];
   // ADR-0381
   // "arrow into the Login button" should match
-  const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t&&!_hd(t))o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};   // ADR-1144
+  const _bt=s=>{let o='';for(const id of [s.a,s.b]){const t=id&&byId(id);if(t&&!_hd(t)&&_pgEq(t,s))o+=(t.label||'')+(t.text||'')+(t.type||'')}return o};   // ADR-1144/1145
   for(const s of _sh()){if(_sv(s)&&_pgOk(s)&&_lc((_lb(s)||'')+(_txx(s)||'')+(s.type||'')+(s.link||'')+(_conn(s.type)?_bt(s):'')).includes(q))_pu(_sqList,s)}   // ADR-0346/0353/0381
   _sqVer=_gridVer;_sqQ=q;
   return _sqList;

@@ -1,3 +1,8 @@
+## [1.8.169] - 2026-10-01
+
+### Fixed
+- **round895 / ADR-1145 — bound connectors stop pinning an off-page target's live position**: the page-parity extension of ADR-1144. `connEnds` resolved bound endpoints regardless of the target's `pg`, so a connector bound to a shape living on another page (reachable via forged ops, snapshot imports, or cross-page '?'-stub heals) tracked its live bbox — an arrow leaking a shape the viewer cannot see, drifting on that page's remote edits. Off-page targets now resolve unbound like hidden ones: stored `x1`/`y1` stand in, `s.a`/`s.b`/`aF`/`bF` survive, and re-paging the target onto the connector's page re-activates tracking. Same parity in `_bt` (off-page bound names don't hit via search) and `describeShape` (SR announces `?` instead of naming a hidden/off-page endpoint type). New `_pgEq` effective-page comparator shared by all three sites. 7 behavioural pins.
+
 ## [1.8.168] - 2026-10-01
 
 ### Fixed
