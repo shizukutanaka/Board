@@ -1,3 +1,12 @@
+## [1.8.139] - 2026-10-01
+
+### Fixed
+- **round865 / ADR-1115 — persisted causal markers fold into the HLC floor on reload**: `Persist.load` restored `d.wc` via `_wAdopt` and page stamps via `_pgAdopt` (both fold via `_fTs`), but restored the causal markers `d.rep`/`d.nts` verbatim — leaving persisted foreign stamps above the floor. Worst on single-page docs (`pages:null`, the common case) where `_pgAdopt`'s incidental fold never runs and `rep.ts` bypassed entirely. A post-reload mint — a `_bName` rename or the next 'replace' op clock — could then be *older* than a stamp a peer already holds: the peer reads our own writes as stale (rep-marker rejection / name LWW loss) → divergence. `_fTs` now folds both markers on restore; `validClock`/`_tsOK` bounds unchanged.
+
+### Tests
+- 4 behavioural pins via the fake-IDB `Persist.load` path: paged restore folds rep+name clocks; rep marker restores verbatim; a post-reload `nowTs()` mint outranks every restored stamp; `pages:null` restore still folds rep+name clocks.
+- ADR-1114 source-pin count updated 17 → 19 `_fTs` admission sites (17 wire + 2 persisted markers).
+
 ## [1.8.138] - 2026-10-01
 
 ### Fixed

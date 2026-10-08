@@ -19641,11 +19641,44 @@ pass += 6;
   Net._onRecv({k:'name',name:'NN2',ts:T0+70,peer:'p9'},false);
   assert.ok(state._lastTs>=T0+70,'name msg ts advances the floor');
   // source pin: every embedded clock channel folds via _fTs
-  assert.strictEqual((html.match(/_fTs\(/g)||[]).length,17,'all 17 embedded-clock admission sites fold via _fTs');
+  assert.strictEqual((html.match(/_fTs\(/g)||[]).length,19,'all 19 foreign-clock admission sites fold via _fTs (17 wire + 2 persisted markers)');
   state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
   console.log('  ✓ ADR-1114 HLC floor coverage (9 asserts)');
 }
 pass += 9;
+
+// ---- ADR-1115: the disk-admission boundary completes HLC-floor coverage —
+// Persist.load folds d.wc via _wAdopt and page stamps via _pgAdopt, but the
+// persisted causal markers restored raw (d.rep, d.nts) left foreign stamps
+// above the floor — worst on single-page docs (pages:null) where _pgAdopt's
+// incidental fold never runs and rep.ts bypasses entirely. A post-reload mint
+// (_bName rename, a 'replace' op clock) could then be OLDER than a stamp a
+// peer already holds: the peer reads our own writes as stale → divergence.
+{
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;state.history=[];state.histIdx=-1;state._lastTs=0;_invalidateGrid();
+  const T0=Date.now()-1e5;
+  const rH=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));rH.id='rH';
+  const mkDoc=(pages)=>({shapes:[rH],viewport:{x:0,y:0,zoom:1},docName:'D',pages,curPg:pages?'pH':null,
+    wc:{rH:{x:{ts:T0+10,peer:'q',seq:0}}},rep:{ts:T0+60,peer:'q',seq:0},nts:T0+70,ntp:'q',ro:0,savedAt:1});
+  const db=makeFakeIdb();
+  db.transaction(['docs'],'readwrite').objectStore('docs').put(mkDoc([{id:'pH',name:'P',nts:T0+50,ntp:'q',bts:T0+40,btp:'q'}]),DOC_KEY);
+  const _odb=Persist.db;Persist.db=db;
+  try{
+    await Persist.load();
+    assert.ok(state._lastTs>=T0+70,'persisted rep/name clocks fold into the floor on reload');
+    assert.strictEqual(state._lastRep.ts,T0+60,'rep marker restores verbatim');
+    assert.ok(nowTs()>T0+70,'a post-reload mint outranks every restored stamp');
+    // single-page docs — _pgAdopt's incidental fold never runs; rep/nts still fold
+    state._lastTs=0;state.wclock={};state.pages=null;state.curPg=null;state._lastRep=null;
+    db.transaction(['docs'],'readwrite').objectStore('docs').put(mkDoc(null),DOC_KEY);
+    await Persist.load();
+    assert.ok(state._lastTs>=T0+70,'pages:null restore still folds rep+name clocks');
+  }finally{Persist.db=_odb}
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
+  console.log('  ✓ ADR-1115 HLC floor rehydration (4 asserts)');
+}
+pass += 4;
 
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
