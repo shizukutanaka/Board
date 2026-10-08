@@ -20742,6 +20742,24 @@ pass += 8;
 }
 pass += 8;
 
+// ---- ADR-1148: help grid × keymap parity — every real shortcut is documented ----
+{
+  assert.ok(html.includes("['⌘G / ⌘⇧G / ⌘⌥G'"),'ADR-1148: help documents ungroup (⌘⇧G)');
+  assert.ok(html.includes("['⌘⇧I',t('ctxSelectInverse')]"),'ADR-1148: help documents select-inverse (⌘⇧I)');
+  assert.ok(html.includes("['⌘⇧Z / ⌘Y'"),'ADR-1148: help documents the ⌘Y redo alias');
+  assert.ok(html.includes("['⌘Enter'"),'ADR-1148: help documents ⌘Enter (present / search-all / sticky chain)');
+  assert.ok(html.includes("['⇧ + wheel',t('hPan')]"),'ADR-1148: help documents ⇧+wheel horizontal pan');
+  assert.ok(html.includes("['⌥ + hover',t('gapMeasure')]"),'ADR-1148: help documents ⌥+hover gap measure');
+  assert.ok(html.includes("['⌥ + click',t('waypointEdit')]"),'ADR-1148: help documents ⌥+click route edits');
+  assert.ok(html.includes("['⇧ + click',t('selToggle')]"),'ADR-1148: help documents ⇧+click selection toggle');
+  assert.ok(html.includes("['⌥ + drag',k.dup+' / '+k.lasso]"),'ADR-1148: ⌥+drag row covers duplicate AND lasso');
+  assert.ok(html.includes("['long press',t('ctxMenuKey')]"),'ADR-1148: help documents touch long-press → ctx menu');
+  assert.ok(html.includes("hPan:'水平パン'")&&html.includes("hPan:'Horizontal pan'")&&html.includes("ctxMenuKey:'コンテキストメニュー'")&&html.includes("ctxMenuKey:'Context menu'"),'ADR-1148: new help keys exist in ja+en');
+  assert.ok(html.includes("k==='g'&&_sK(e)")&&html.includes("k==='i'&&_sK(e)&&meta")&&html.includes("k==='y'||")&&html.includes("meta&&k===_EN")&&html.includes("_longPressTimer")&&html.includes("state.measure"),'ADR-1148: each documented shortcut has a live handler');
+  console.log('  ✓ ADR-1148 help grid × keymap parity (12 asserts)');
+}
+pass += 12;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
