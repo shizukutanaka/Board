@@ -1,3 +1,8 @@
+## [1.8.205] - 2026-10-01
+
+### Test
+- **round931 / ADR-1181 — presence 受信側契約の監査完走 + ピン**: peer row の生成・採用・描画経路を監査し clean 完走 (ADR-1177..1180 の send-side 閉塞の対称面)。契約を13ピンで固定 — BC 未知ピアの cursor が行を mint しない / ping で生成 / pg ≤64 截断 / 非配列 ids 拒否 / 死 id+非 wire id の intake フィルタ / 過長・自己・偽造 `rtc:` peer 拒否 (MAC より先) / viaRtc 行復活 / `h:1`→null / `_s0(,4096)` キャップ / 両 presence kind の pg bound。修正なし (docs+pin ラウンド)。
+
 ## [1.8.204] - 2026-10-01
 
 ### Fixed
