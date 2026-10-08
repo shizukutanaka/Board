@@ -698,7 +698,7 @@ const checks = [
   // harness (FileReader has no fake), so its trigger wiring is presence-checked; the backup
   // mechanism itself (Persist.saveBackup/checkBackup/restoreBackup) is behaviourally tested.
   ['ADR-0004: doClearAll backs up pre-clear board before the destructive commit',
-    html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  _cmt({op:'clear'")],
+    html.includes("Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004\n  const co={op:'clear'")],
   ['ADR-0004: importBoard backs up pre-import board before the whole-board swap',
     html.includes("if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004\n      _rs(shapes.map(s=>Net._attachShape(clone(s))));")],
   ['ADR-0004: importFromHash backs up pre-import board before the whole-board swap',
@@ -894,7 +894,7 @@ const checks = [
   ['describeShape announces link badge (ADR-0315)', html.includes("if(s.link)d+=' 🔗'")],
   ['mod+click opens shape link (ADR-0314)', html.includes("navigator.platform)?e.metaKey:e.ctrlKey")],
   ['drawio link attr round-trip (ADR-0313)', html.includes("_ga(c,'link')||(_uo&&_ga(_uo,'link'));if(_lk&&/^https?:\\/\\/")&&html.includes('` link="${esc(s.link)}"`')],
-  ['_keepSel() origSel write-back (ADR-0312)', html.includes("const _keepSel=arr=>")],
+  ['_keepSel() origSel write-back (ADR-0312)', html.includes("const _keepSel=(op,arr)=>")],
   ['_selR() origSel restore helper (ADR-0309)', html.includes("const _selR=op=>")],
   ['_selL() selection-list shorthand (ADR-0308)', html.includes("const _selL=f=>")],
   ['_so() style-op commit tail (ADR-0307)', html.includes("const _so=(b,a)=>")],
@@ -1343,7 +1343,7 @@ const checks = [
   // v1.7.06: doCopy excludes locked shapes (parity with doDelete/doMove/doAlign)
   ['doCopy expands frame children and excludes locked shapes', html.includes("const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));\n  if(!_ln(sel))return;\n  state.clipboard={shapes:clone(sel)}")],
   // v1.6.77: paste/duplicate is one atomic undo — _placeCopies commits a single addMany op
-  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}")],
+  ['_placeCopies commits one addMany (not per-shape add)', html.includes("if(_ln(built)){_pgHome(built);const o={op:'addMany',shapes:built}")],
   ['addMany op has an _apply case', /case 'addMany':/.test(html)],
   ['addMany in REMOTE_OPS allow-list', /REMOTE_OPS[\s\S]{0,160}'addMany'/.test(html)],
   ['addMany validated in validRemotePayload (with MAX_OP_SHAPES cap)', /case 'addMany':/.test(html)&&html.includes("case 'addMany':    return _iA(op.shapes)&&_ln(op.shapes)<=MAX_OP_SHAPES&&op.shapes.every(validShape)")],
@@ -1401,7 +1401,7 @@ const checks = [
   // v1.7.24a: _apply clear backward must restore pre-clear selection
   ['_apply clear backward restores origSel (mirror of del undo)',
     html.includes("_selR(op);") &&
-    html.includes("_keepSel(origSel);")],
+    html.includes("_keepSel(co,origSel);")],
   // v1.7.24b: validRemotePayload must block locked key in remote style/resize ops
   ['remote style/resize ops cannot set locked (noLock guard extended)',
     html.includes("const noLock=p=>!('locked' in p);")&&html.includes("op.after.every(noLock)&&op.before.every(noLock)")],
@@ -1433,7 +1433,7 @@ const checks = [
   // v1.7.35: text-blur del origSel pattern must exist at the existing-text-empty path
   ['text-blur del: origSel captured and patched before and after Store.commit del',
     html.includes("const origSel=_selIds();\n        const connClears=computeConnClears(_sT([orig.id]));")&&
-    html.includes("_cmt(delOp);\n        _keepSel(origSel);")],
+    html.includes("_keepSel(delOp,origSel);\n        _cmt(delOp);")],
   // v1.7.36/ADR-0964: flushErase must capture origSel before del commit and patch after
   ['flushErase del: origSel captured before commit and patched after (parity with doDelete)',
     html.includes("const origSel=_selIds();\n  const op={op:'del',shapes:clone(live)};")],
@@ -1509,7 +1509,7 @@ const checks = [
     html.includes("_cOp({op:'add',shape:s});\n  openTextEditor")],
   // v1.7.43→1.7.986: _zCommit captures origSel; the op commits through the _nug coalescer (ADR-0960)
   ['_zCommit: origSel captured before zorder commit and patched onto history entry',
-    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
+    html.includes("_nugPush({op:'zorder',changes});")&&html.includes("Store._recordCommitted(o);_keepSel(o,n.sel)")],
   // v1.7.44→1.7.629: MAX_OP_SHAPES == board ceiling (ADR-0602: 500-cap silently dropped bulk ops >500 shapes)
   ['MAX_OP_SHAPES equals SHARE_MAX_SHAPES (ops may address the whole board)',
     html.includes("const MAX_OP_SHAPES=SHARE_MAX_SHAPES;")],
@@ -1524,7 +1524,7 @@ const checks = [
     html.includes("if(!forward)_selR(op);\n        break;}\n      case 'style':")],
   // v1.7.43: keyboard resize (Alt+Arrow) captures origSel around resize _recordCommitted
   ['keyboard resize (Alt+Arrow): origSel captured before resize commit',
-    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(o);_keepSel(n.sel)")],
+    html.includes("_nugPush({op:'resize',before,after});")&&html.includes("Store._recordCommitted(o);_keepSel(o,n.sel)")],
   // v1.7.43: drag-resize upd captures origSel (mirrors endSelect/nudgeSelection pattern)
   ['drag-resize: origSel captured before upd _recordCommitted (ptr.resizeOrig path)',
     html.includes("_rcOp({op:'upd',id:rsh.id,before,after});")],
@@ -21868,7 +21868,7 @@ pass += 3;
 pass += 3;
 assert.ok(html.includes("_pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}}"),'_pgHome stamps curPg / scrubs foreign pg (ADR-1173)');
 assert.ok(html.split('_pgHome(shapes)').length-1===3,'drawio/svg/exc single-page intakes all home via _pgHome (ADR-1173)');
-assert.ok(html.includes("{_pgHome(built);_cmt({op:'addMany',shapes:built})}"),'_placeCopies homes via _pgHome (ADR-1173)');
+assert.ok(html.includes("{_pgHome(built);const o={op:'addMany',shapes:built}"),'_placeCopies homes via _pgHome (ADR-1173)');
 pass += 3;
 
 // ---- ADR-1174: snapshot union re-derives a cap-dropped curPg ----
@@ -22399,6 +22399,30 @@ pass += 2;
   assert.ok(html.includes("if(/^(?:del|add|addMany|pageDel|pageAdd|clear|replace|group|ungroup)$/.test(op.op))_grpSweep(op.clock);   // ADR-1200"),'_recordCommitted sweeps the same 9-op regex as the _apply tail');
   state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
   console.log('  ✓ ADR-1200: census funnel parity — _recordCommitted shares the _apply regex');
+  pass += 5;
+}
+
+{
+  // ADR-1201: the mid-arm ro flip boundary — _nugLock's `gone` partition must
+  // cover op.orig too (_roRe would restore a stale snapshot over a remote-reborn
+  // member), and _keepSel must stamp the op object, not the history tip (a
+  // rejected commit never lands — stamping the tip clobbers the previous op's
+  // origSel / crashes on an empty history).
+  const a=Shape.make('rect',{x:0,y:0,w:10,h:10}),b=Shape.make('rect',{x:20,y:0,w:10,h:10});
+  a.id='nA';b.id='nB';
+  state.shapes=[a,b];state.seenOps=new Set();state.wclock={};state.history=[{op:'upd',id:'z0',origSel:['k0']}];state.histIdx=0;state.selection=new Set(['nA','nB']);state.ro=false;_invalidateGrid();
+  nudgeSelection(10,0);                      // armed move op carries orig{nA,nB}
+  b.x=999;                                   // the remote reborn's own geometry
+  _bT('nB',{ts:nowTs(),peer:'PX',seq:1});    // marks _nug.reborn (foreign peer)
+  state.ro=true;_nugEnd();                   // flush → _recordCommitted → ro reject → _roRe
+  assert.ok(byId('nB').x===999,'the remote-reborn member keeps remote geometry — stale orig is not reverted over it');
+  assert.ok(byId('nA').x===0,'the surviving member still reverts to its orig snapshot (ro contract intact)');
+  assert.ok(state.history[0].origSel[0]==='k0'&&state.history.length===1,'a ro-rejected pending op neither lands nor clobbers the previous op origSel');
+  assert.ok(html.includes("if(op.orig)for(const g of gone)delete op.orig[g]"),'_nugLock purges gone ids from op.orig');
+  assert.ok(html.includes("_keepSel=(op,arr)=>{if(_ln(arr))op.origSel=arr}"),'_keepSel stamps the op object, never the history tip');
+  state.ro=false;
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
+  console.log('  ✓ ADR-1201: ro-mid-arm — gone purges orig; _keepSel stamps the op, never the tip');
   pass += 5;
 }
 
