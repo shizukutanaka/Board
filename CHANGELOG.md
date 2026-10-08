@@ -1,3 +1,8 @@
+## [1.8.211] - 2026-10-01
+
+### Fixed
+- **round937 / ADR-1187 — `Persist.load` の imgs-store 読取失敗が doc 全体のロードを沈めていた残穴を閉塞**: `load()` は doc read 成功後、imgs ストアの `getAll`/`getAllKeys` を無防備なまま `await` していたため、imgs ストア読取だけが失敗 (store 破損・tx abort) しても `load()` 全体が reject — 図形ゼロで立ち上がり、次回 `save()` が復旧可能な doc を空盤面で上書きするデータ喪失経路。img attach を nested try で隔離: 失敗時は図形をそのまま採用し、`Net._attachShape` (ADR-0840) が ref 保持 img を `Net._imgPending` へ留めて imgq heal へ送る — load 正常系・失敗系いずれでも「有効な図形リストは沈めない」契約。3挙動ピン (fake IDB で getAll/getAllKeys 拒否 → 図形生存・ref 駐留・無損失) で固定。
+
 ## [1.8.210] - 2026-10-01
 
 ### Fixed
