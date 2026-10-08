@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.173';   // ADR-1149
+const V='1.8.174';   // ADR-1150
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -9217,6 +9217,7 @@ const UI={
   openCtxMenu(x,y,customItems){
     if(ptr.down)_cancelPointerGesture();   // ADR-0948
     const m=_g('ctx');
+    if(m.dataset.open!=='true')this._captureFocus();   // ADR-1150
     const _cr=_cbr(),_wp=_s2({x:x-_cr.left,y:y-_cr.top});
     m._wx=_wp.x;m._wy=_wp.y;   // ADR-0103: paste-at-cursor anchor
     const has=_selN()>0;
@@ -9346,7 +9347,10 @@ const UI={
     m.style.top=_max(8,_min(y,innerHeight-m.offsetHeight-20))+'px';
     _fc(_qs(m,'.ctx-item'));
   },
-  closeCtxMenu(){_g('ctx').dataset.open='false'},
+  // ADR-1150: the menu joins the overlays' focus contract — restore the
+  // invoker's focus on close, but only while the menu still holds it:
+  // an item that focused elsewhere itself (ctxSearch → sqinput) keeps it.
+  closeCtxMenu(){const m=_g('ctx');m.dataset.open='false';if(m.contains(_aE()))this._restoreFocus()},
   // FT-07: reuses openCtxMenu render/position/nav/focus-trap wholesale
   // (all of it operates on #ctx generically, no fork needed):
   // touch users get every export format + the import picker
