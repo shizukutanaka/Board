@@ -21906,6 +21906,33 @@ assert.ok((html.match(/\bs\.pg=[^=]/g)||[]).length===6,'member-pg write census �
 assert.ok(html.includes("if(_pgs())base.pg=state.curPg"),'local births stamp the viewed page (ADR-1176)');
 pass += 2;
 
+// ---- ADR-1185: off-canvas pointers clear the tracked cursor point ----
+// _curSp is stamped by the CANVAS pointermove only — but overlay chrome
+// (minimap, toolbar, panels, editors, ctx menu) sits inside the canvas box,
+// so hovering it never fires pointerleave: _curSp froze at the last canvas
+// point while sendCursorMoved() kept re-deriving world points under it. Every
+// viewport change during a minimap scrub (or ⌘± zoom while hovering chrome)
+// emitted a ghost cursor jump to peers. A document-level pointermove now
+// clears _curSp when the hit target isn't the canvas (pointer capture still
+// targets the canvas, so live drags keep tracking).
+{
+  const _ob9=Net._bcast;let _cN=0;Net._bcast=m=>{if(m&&m.k==='cursor')_cN++;return _ob9.call(Net,m)};
+  state.peers.set('p1185x',{color:'#123',lastSeen:Date.now()});
+  Net._curSp={x:10,y:10};
+  const _pmD=fakeDoc._L['pointermove']||[];
+  assert.ok(_pmD.length>0,'a document pointermove listener exists');
+  for(const f of _pmD)f({target:{tagName:'BUTTON'}});
+  assert.strictEqual(Net._curSp,null,'hover over overlay chrome clears _curSp — no ghost re-derive');
+  Net.sendCursorMoved();
+  assert.strictEqual(_cN,0,'no cursor emit while the pointer sits over chrome');
+  Net._curSp={x:10,y:10};
+  for(const f of _pmD)f({target:canvas});
+  assert.strictEqual(Net._curSp.x,10,'canvas-target pointermove keeps _curSp (drag capture survives)');
+  Net._bcast=_ob9;Net._curSp=null;Net._lastCurKey=null;state.peers.delete('p1185x');
+  console.log('  ✓ ADR-1185 off-canvas pointer clears the cursor point (4 asserts)');
+  pass += 4;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

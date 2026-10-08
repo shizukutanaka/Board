@@ -1,3 +1,8 @@
+## [1.8.209] - 2026-10-01
+
+### Fixed
+- **round935 / ADR-1185 — オーバーレイ chrome 上の `_curSp` 陳腐化が幽霊カーソルを送出していた残穴を閉塞**: `_curSp` は canvas `pointermove` のみがスタンプするが、minimap/ツールバー/パネル/編集 overlay は canvas ボックス内の兄弟要素のため `pointerleave` が発火せず、ポインタが chrome 上にある間 `_curSp` が最後の canvas 点で凍結。`frame()` の `sendCursorMoved` がその陳腐点を新 viewport で再導出し、minimap スクラブ毎フレーム・chrome hover 中のズーム/頁送りのたびにピアへ幽霊カーソルジャンプを送出していた。document レベル `pointermove` で `e.target!==canvas` 時に `_curSp` を null 化 (broadcast せず、pointer capture 中のドラッグは存続)。4挙動ピン (実リスナ経路) で固定。
+
 ## [1.8.208] - 2026-10-01
 
 ### Fixed

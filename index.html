@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.208';   // ADR-1184
+const V='1.8.209';   // ADR-1185
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -9165,6 +9165,7 @@ _on(document,'visibilitychange',()=>{if(document.visibilityState==='hidden'){_nu
 // pagehide is iOS Safari's last reliable signal …
 // swipe-away / frozen-tab eviction); route it through the same tested flush.
 _on(window,'pagehide',()=>{_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))});   // ADR-0453+0456/0604/0608/0959
+_on(document,_PM,e=>{if(e.target!==canvas)Net._curSp=null});   // ADR-1185
 
 // ====================== UI ======================
 const UI={
