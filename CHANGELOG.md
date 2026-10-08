@@ -1,3 +1,8 @@
+## [1.8.194] - 2026-10-01
+
+### Fixed
+- **round920 / ADR-1170 — undo-domain purity: history is a local-only op log**: audit of the undo-target selection seam resolved clean — `state.history` is written by exactly two producers (`commit` + `_recordCommitted`, both local funnels running dedup → redo-chop → `_hi().push(op)` → `histIdx++` → outbound-only re-broadcast), while `applyRemote` applies/dedups/stamps clocks but never pushes, so ⌘Z/⌘Y always replay a self-authored op whose `before` is a local snapshot and peer edits stay reversible only through the undo-wire protocol (a peer's own ⌘Z emits inverses). Remote arrivals between locals leave `histIdx` untouched: undo walks the last LOCAL op across the interleave and a redo branch is never chopped by remote traffic. A regression here (recording remote ops "for auditability") would silently flip ⌘Z to global undo — any user could revert a peer's op and re-broadcast the inverse — so the local-only contract is now pinned with 6 behavioural asserts + 3 source pins.
+
 ## [1.8.193] - 2026-10-01
 
 ### Fixed
