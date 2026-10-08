@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.207';   // ADR-1183
+const V='1.8.208';   // ADR-1184
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -2216,7 +2216,7 @@ let _penCachePx=0;
 // ADR-0424
 // wholesale `state.shapes=` replacement — dead entries would otherwise sit
 // until the global caps evict them.
-const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear()},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985
+const _pcC=()=>{_penCache.clear();_penCachePx=0;_penBboxCache.clear();Net._imgPending.clear();_pinchSnap=null;_pinchVp=null},_pcR=()=>{for(const s of _sh())if(_iS(s.img)&&!_du(s))_park(Net._imgPending,s.id,s.img)};   // ADR-0445/0985/1184
 const _uniq=a=>{const se=_sT();for(let i=_ln(a)-1;i>=0;i--)if(se.has(a[i].id))a.splice(i,1);else se.add(a[i].id);return a};   // ADR-0790
 const _rs=arr=>{if(ptr.down)_cancelPointerGesture();_eraseBatch=[];state.measure=null;state.shapes=_uniq(arr);_iG();_pcC();_pcR()}   // ADR-0493/0790/0953/0985/1009/1071
 const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id===id),_pgOk=s=>!_pgOn()||(s.pg||_pgs()[0].id)===state.curPg,_pgEq=(a,b)=>!_pgOn()||(a.pg||_pgs()[0].id)===(b.pg||_pgs()[0].id);   // ADR-0646/1145

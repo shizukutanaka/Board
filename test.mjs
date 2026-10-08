@@ -11406,6 +11406,39 @@ try {
     pass += 6;
   }
 
+  // ADR-1184: an armed zoom preview is derived state of the OLD board — a
+  // wholesale swap landing while _pinchSnap is armed (ctrl+wheel's trailing
+  // window, or an iOS gesture where ptr.down stays false) used to keep
+  // blitting stale pixels for the whole preview window. _pcC — the purge
+  // every wholesale path runs — now drops the armed preview too.
+  {
+    state.shapes.length=0;_invalidateGrid();state.history=[];state.histIdx=-1;
+    state.pages=null;state.curPg=null;state.ro=false;
+    state.viewport={x:0,y:0,zoom:1};ptr.down=false;
+    const hs=api.Shape.make('rect',{x:370,y:270,w:60,h:40});   // near the cursor so zoom keeps it in view
+    api.Store.commit({op:'add',shape:hs});
+    assert.strictEqual(state.shapes.length,1,'precondition: the rect committed');
+    for(const f of canvas._L['wheel']||[])f({offsetX:400,offsetY:300,ctrlKey:true,deltaY:-100,deltaX:0,deltaMode:0,preventDefault(){},stopPropagation(){}});
+    let _tot=0,_blit=0;
+    const _rc=new Proxy({},{get(t,p){
+      if(p==='measureText')return()=>({width:10});
+      if(p in t)return t[p];
+      return()=>{_tot++;if(p==='drawImage')_blit++};
+    },set(t,p,v){t[p]=v;return true}});
+    const _pc0=api._setCtx(_rc);
+    try{api.draw()}finally{api._setCtx(_pc0)}
+    assert.strictEqual(_blit,1,'armed preview blits exactly the snapshot, early-returning the scene pass (tot='+_tot+')');
+    _pcC();   // the seam every wholesale-swap path runs (_rs/replace/clear/pageDel)
+    _tot=0;_blit=0;
+    api._setCtx(_rc);
+    try{api.draw()}finally{api._setCtx(_pc0)}
+    assert.strictEqual(_blit,0,'after _pcC the stale snapshot no longer blits');
+    assert.ok(_tot>5,'after _pcC draw() runs the real scene pass again (tot='+_tot+')');
+    state.shapes.length=0;_invalidateGrid();
+    console.log('  ✓ ADR-1184 wholesale swap drops the armed zoom preview (4 asserts)');
+    pass += 4;
+  }
+
   // v1.6.94: _esc single-quote encoding — must fail before fix, pass after
   // Before fix: stroke "' onmouseover='xss()" passes through _esc unmodified → XSS vector
   // After fix: single quote encoded as &#39; → attribute value closed safely
