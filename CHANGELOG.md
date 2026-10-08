@@ -1,3 +1,8 @@
+## [1.8.174] - 2026-10-01
+
+### Fixed
+- **round900 / ADR-1150 — ctx menu joins the overlays' focus contract**: the context menu was the only overlay that didn't capture/restore focus — closing it left `activeElement` on `<body>` (the focused item is inside a `display:none` region), so keyboard/SR users lost their focus context after every menu interaction (dialogs already did `_captureFocus`/`_restoreFocus` via ADR-0215/0982). `openCtxMenu` now captures the invoker on a closed→open transition only (a re-open keeps the first invoker), and `closeCtxMenu` restores it — but only while the menu still holds focus (`m.contains(_aE())`), so an item that focuses elsewhere itself (ctxSearch → the search input) keeps its target. 7 pins (2 source + 5 behavioural).
+
 ## [1.8.173] - 2026-10-01
 
 ### Fixed

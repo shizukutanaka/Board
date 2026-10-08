@@ -1176,6 +1176,7 @@ Board/
 │   ├── ADR-1147-keyboard-only-ops-reachability.md  # 最後のキーボード専用 op (⌘B/I/U/⇧X テキスト修飾 + ⇧2 zoom-to-selection) を ctx メニューへ — ADR-0135 罠の残存面を閉塞、apply は同一 fn へ委譲
 │   ├── ADR-1148-help-grid-keymap-parity.md  # ? ヘルプグリッド × 実キーマップ parity — 未掲載の live バインド10件を行追加 (⌘⇧G/⌘⇧I/⌘Y/⌘Enter/⇧wheel/⇧click/⌥drag二重意味/⌥hover計測/⌥click経路/long-press) + 新 i18n キー7件 (ja+en)、片方向に過剰記載しない契約を12ピンで固定
 │   ├── ADR-1149-ctx-menu-keyboard-reach.md  # ctx メニューへのキーボード経路 — ContextMenu(≣)/⇧F10 で開放 (右クリ/long-press のみだった残穴)、選択 union bbox 中心 or キャンバス中心にアンカー、ヘルプ行3経路集約、10ピンで固定
+│   ├── ADR-1150-ctx-menu-focus-contract.md  # ctx メニューのフォーカス契約 — closed→open で呼出元捕捉、contains ゲートでメニュー保持時のみ復元 (fn が別要素へ移す ctxSearch は据置)、7ピンで固定
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

@@ -20787,6 +20787,35 @@ pass += 12;
 }
 pass += 10;
 
+// ---- ADR-1150: ctx menu focus contract — capture on open, restore while menu holds focus ----
+{
+  assert.ok(html.includes("if(m.dataset.open!=='true')this._captureFocus()"),'ADR-1150: open captures the invoker only on a closed→open transition');
+  assert.ok(html.includes('if(m.contains(_aE()))this._restoreFocus()'),'ADR-1150: close restores only while the menu still holds focus');
+  const cm=fakeDoc.getElementById('ctx');cm.dataset.open='false';
+  const invoker={f:0,focus(){invoker.f++},isConnected:true};
+  const menuItem={f:0,focus(){menuItem.f++}};
+  fakeDoc.activeElement=invoker;
+  UI.openCtxMenu(100,100);
+  assert.strictEqual(UI._prevFocus,invoker,'ADR-1150: open captures the invoker');
+  fakeDoc.activeElement={focus(){}};
+  UI.openCtxMenu(120,120);
+  assert.strictEqual(UI._prevFocus,invoker,'ADR-1150: re-open keeps the first invoker');
+  cm.contains=(el)=>el===menuItem;fakeDoc.activeElement=menuItem;
+  UI.closeCtxMenu();
+  assert.strictEqual(cm.dataset.open,'false','ADR-1150: close still hides the menu');
+  assert.strictEqual(invoker.f,1,'ADR-1150: focus inside the menu restores the invoker');
+  const invoker2={f:0,focus(){invoker2.f++},isConnected:true};
+  const outside={focus(){}};
+  cm.contains=()=>false;
+  fakeDoc.activeElement=invoker2;UI.openCtxMenu(100,100);
+  fakeDoc.activeElement=outside;UI.closeCtxMenu();
+  assert.strictEqual(invoker2.f,0,'ADR-1150: an item that focused elsewhere keeps it (ctxSearch parity)');
+  UI._prevFocus=null;fakeDoc.activeElement=null;
+  state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1150 ctx menu focus contract (7 asserts)');
+}
+pass += 7;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
