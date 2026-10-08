@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.179';   // ADR-1155
+const V='1.8.180';   // ADR-1156
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -5938,7 +5938,9 @@ const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog; else native Tab moves.
 function _focusables(root){
   return [..._qsa(root,'button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
-    .filter(el=>!el.disabled&&!el.hidden);
+    .filter(el=>{if(el.disabled||el.hidden)return false;const d=el.closest?.('details:not([open])');return !d||el===_qs(d,'summary');});
+  // ADR-1156: children of a closed <details> are not rendered/focusable —
+  // keeping them strands the wrap sentinel on an unfocusable element.
 }
 function _trapStep(items,active,back){
   if(!_ln(items))return null;
