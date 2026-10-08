@@ -1,3 +1,8 @@
+## [1.8.195] - 2026-10-01
+
+### Fixed
+- **round921 / ADR-1171 — send-failure bookkeeping parity**: ADR-1135 gave undo's inverse-wire loop best-effort sends (collect `_werr`, run `_pgFollow`/`_txFlush`/`_rdb`, rethrow), but the same class survived at the two other propagation sites — redo's unguarded `Net.broadcast` could strand `_pgFollow`/`_txFlush`/`_rdb` after `histIdx++` had already consumed the op (local re-applied, peers never told, follow-up skipped → silent divergence), and commit's could strand `_txFlush` (armed convergence queue drains late, out of order). Both now complete bookkeeping before surfacing the error; `_recordCommitted`'s send was already terminal and `_txC` sends last in its try — no change. Pinned by 4 behavioural + 3 source asserts.
+
 ## [1.8.194] - 2026-10-01
 
 ### Fixed

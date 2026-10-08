@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.194';   // ADR-1170
+const V='1.8.195';   // ADR-1171
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1489,7 +1489,7 @@ const Store={
       state.histIdx++;
     }
     _rdb();
-    if(op.clock.peer===_pi())Net.broadcast(op);   // outbound only
+    if(op.clock.peer===_pi()){try{Net.broadcast(op)}catch(e){_txFlush();throw e}}   // outbound only (ADR-1171)
     _txFlush();   // ADR-1123
   },
   // ADR-0760
@@ -1667,10 +1667,11 @@ const Store={
     _fck(op);   // ADR-0718
     this._apply(op,true);
     state.histIdx++;                  // ADR-1129: advance after apply — a throw must not skip the op
-    if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615
-    _pgFollow(op);   // ADR-0652/1135: after propagation — a follow throw can't abort the broadcast
+    if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);let _werr=null;try{Net.broadcast(op)}catch(e){_werr=e}   // ADR-0615/1171
+    _pgFollow(op);   // ADR-0652/1135
     _txFlush();   // ADR-1123
     _rdb();
+    if(_werr)throw _werr;
     return true;
   },
   _apply(op,forward){
