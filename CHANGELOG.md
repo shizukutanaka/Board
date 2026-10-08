@@ -1,3 +1,8 @@
+## [1.8.226] - 2026-10-01
+
+### Fix
+- **round952 / ADR-1202 — remote-reborn メンバーへのローカル mutation 全面閉塞**: ADR-0964→1201 の `_rb` 保護チェーンは復元系 (undo/cancel) のみを覆い、mutation 系は裸だった — (a) `_bT` で remote 誕生を採用した図形が `ptr.down` ジェスチャ中の `dragStartShapes`/`gOrig`/`gAnc` に残り続け、doMove/gresize/grot の毎フレーム `_geoR` が remote 幾何を stale 値で上書き + commit が自クロックで LWW 勝利して peer の新幾何を静黙破壊していた残穴を、マーク時の **map 削除** で閉塞 (変異ループが orig map を走査するため削除=以後非訪問、commit の `[...keys()]`/`mids` 側も自動除外)。(b) スカラ orig ジェスチャ (resize/rotate/ebend/cbend/lblpos/way) の変異ループを `!_rb` ゲートで閉塞。(c) `_nug` producer 全域 (nudgeSelection/Alt+arrow/unlockedSelectionIds/doFlip/doLock/doRotate/fontSizeStep/toggleTextFlag/swapFillStroke) の member 導出を新 `_nrb`/`_unrb` ゲートで reborn 除外し、`_xFS` フレーム子拡張の直後に再除外 — reborn-前の arm は収束済み、reborn-中の member は gone-purge と整合。undo 側の stale-before 復元も `before` 配列が `_unrb` 済みから生成されるため一致。
+
 ## [1.8.225] - 2026-10-01
 
 ### Fix

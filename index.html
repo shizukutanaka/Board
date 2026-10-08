@@ -855,7 +855,7 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries,_fTs=t=>{if(_iN(t))state._lastTs=_max(state._lastTs,t)};   // ADR-0788/1114
 const _wD=(id,c)=>{_fTs(c&&c.ts);_wc()[id]=_wM({_del:c})},_wK=k=>k!=='id'&&k!=='type'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&k[0]!=='_',_wR=(id,w)=>{const n=_wM();if(_iO(w)&&_ln(_ok(w))<=64)for(const k of _ok(w))if((_wK(k)||k==='frac'||k==='groupId'||k==='_born'||k==='_del')&&validClock(w[k])){n[k]=clone(w[k]);_fTs(w[k].ts)}_wc()[id]=n},_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id))){const n=_wM({_del:clockNewer(w._del,c)?w._del:c});_fTs(w._del.ts);if(validClock(w._born)){n._born=w._born;_fTs(w._born.ts)}_wc()[id]=n}};   // ADR-0789/1039/1096: tomb restores keep _born
-const _bT=(id,c)=>{if(!c)return;_fTs(c.ts);const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born)){w._born=c;if(c.peer!==_pi()){if(ptr.down)(ptr.reborn||(ptr.reborn=new Set())).add(id);if(_nug)(_nug.reborn||(_nug.reborn=new Set())).add(id)}}},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926/0970/0984/1116
+const _bT=(id,c)=>{if(!c)return;_fTs(c.ts);const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born)){w._born=c;if(c.peer!==_pi()){if(ptr.down){(ptr.reborn||(ptr.reborn=new Set())).add(id);for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc])if(m)m.delete(id)}if(_nug)(_nug.reborn||(_nug.reborn=new Set())).add(id)}}},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926/0970/0984/1116
 const _wAdopt=(id,rw)=>{   // ADR-0927
   if(!rw||!_iO(rw))return;
   const ks=_ok(rw);if(_ln(ks)>64)return;
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.225';   // ADR-1201
+const V='1.8.226';   // ADR-1202
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -3758,7 +3758,7 @@ function _grotDrag(wp,shift){
         const nb=_bb(A);if(!sh[fk])sh[fk]={fx:0,fy:0};
         sh[fk].fx=_c01((spx-nb.x)/(nb.w||1));sh[fk].fy=_c01((spy-nb.y)/(nb.h||1));
       }
-    }}                                                       // ADR-0587: anchors ride the rotated bound shape
+    }}                                                       // ADR-0587
   const _nb=_bA(live);
   if(_nb&&deg)state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${deg>0?'+':''}${_rnd(deg)}°`};
   let _gd=_dmgPair(_b0,_nb,ptr.gPad||40);
@@ -4133,6 +4133,7 @@ const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.drag
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
 // ADR-0964
 const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970
+const _nrb=id=>!!(_nug&&_nug.reborn&&_nug.reborn.has(id)),_unrb=a=>{for(let i=a.length-1;i>=0;i--)if(_nrb(a[i].id))a.splice(i,1)};   // ADR-1202
 const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&!_rb(id))_geoR(s,o)}};
 const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s&&!_rb(o.id)){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
 const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};
@@ -4403,7 +4404,7 @@ _on(canvas,_PM,e=>{
     case 'select':
       if(_dk('resize')){
         const rsh=byId(ptr.resizeOrig.id);   // ADR-0635
-        if(rsh){
+        if(rsh&&!_rb(rsh.id)){
           const _b0=_bb(ptr.resizeOrig);
           const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
           _geoR(rsh,ptr.resizeOrig);
@@ -4418,7 +4419,7 @@ _on(canvas,_PM,e=>{
         _grotDrag(wp,_sK(e));                                      // ADR-0057
       }else if(_dk('rotate')){
         const rsh=byId(ptr.rotOrig.id);   // ADR-0635
-        if(rsh){
+        if(rsh&&!_rb(rsh.id)){
           const _b0=_bb(rsh);
           const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
           let deg=_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI+90; // knob-up = 0°
@@ -4436,23 +4437,23 @@ _on(canvas,_PM,e=>{
       else if(_dk('qline'))contLineLike(wp,_sK(e));   // ADR-0070
       else if(_dk('ebend')&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
-        if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);_iv()}   // ADR-0088: trunk drag honours grid snap
+        if(tr&&!_rb(sh.id)){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);_iv()}   // ADR-0088: trunk drag honours grid snap
       }
       else if(_dk('cbend')&&ptr.cbendOrig){               // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
-        if(sh){const e=_cE(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
+        if(sh&&!_rb(sh.id)){const e=_cE(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
           mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
           sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));_iv()}
       }
       else if(_dk('lblpos')&&ptr.lblOrig){                // ADR-0117
         const sh=byId(ptr.lblOrig.id);
-        if(sh){let t=_pathNearestT(_connPathPts(sh),wp);
+        if(sh&&!_rb(sh.id)){let t=_pathNearestT(_connPathPts(sh),wp);
           for(const slot of[0,0.25,0.5,0.75,1])if(_abs(t-slot)<0.03){t=slot;break}   // ADR-0216: magnetic slots
           sh.labelPos=+t.toFixed(3);_iv()}
       }
       else if(_dk('way')&&ptr.wayOrig){                   // ADR-0090
         const sh=byId(ptr.wayOrig.id);
-        if(sh){
+        if(sh&&!_rb(sh.id)){
           const wa=_wayArr(sh),i=ptr.wayIdx|0;
           if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts vertex
           else{
@@ -5346,7 +5347,7 @@ function withFrameChildren(ids){
 }
 // Arrow-key nudge: frame children follow, locked filtered
 function nudgeSelection(dx,dy){
-  const ids=[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621 parity
+  const ids=[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)&&!_nrb(id)});   // ADR-0621/1202 parity
   if(!_ln(ids))return;
   const orig={};   // ADR-0965
   for(const id of ids){const sh=byId(id);if(sh){orig[id]=clone(sh);_sT2(sh,dx,dy)}}
@@ -6070,7 +6071,7 @@ _on(window,_KD,e=>{
   else if((k===_AU||k===_AD||k===_AL2||k===_AR2)&&_aK(e)){
     // Alt+arrow = keyboard resize (a11y: pointer
     // top-left anchored; ⇧ = ×10 step. Box shapes only
-    const sel=_selL(s=>s&&!_lk(s)&&_hb(s));
+    const sel=_selL(s=>s&&!_lk(s)&&_hb(s)&&!_nrb(s.id));
     if(_ln(sel)){
       _pd(e);
       const step=_sK(e)?10:1;
@@ -6095,7 +6096,7 @@ _on(window,_KD,e=>{
       const dy=k===_AU?-step:k===_AD?step:0;
       nudgeSelection(dx,dy);
     }
-    else{                                   // ADR-0165: no selection → arrows pan the view
+    else{                                   // ADR-0165
       _pd(e);                    // (Excalidraw scroll parity; keyboard-only nav)
       const step=(_sK(e)?200:40)/_vp().zoom;
       _vp().x=_xC(_vp().x+(k===_AL2?-step:k===_AR2?step:0));
@@ -6317,12 +6318,12 @@ function _zCommit(changes){
   if(!_ln(changes)){_iv();return}
   if(_sh().some(s=>_ln(s.frac)>48)){const m=_mP(changes.map(c=>[c.id,c.before])),o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:m.has(s.id)?m.get(s.id):o[i],after:s.frac}))}
   _sz();
-  _nugPush({op:'zorder',changes});   // ADR-0960: held [ ] folds into one zorder op
+  _nugPush({op:'zorder',changes});   // ADR-0960
   _ivp();
 }
 // Shared by doBringFront/doSendBack/doBring
 // take part in a z-order op
-function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}   // ADR-0623: dead ids must not leak into op id lists
+function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)&&!_nrb(id)});}   // ADR-0623/1202
 function _zSelShapes(){const ids=_usI(),sel=_sT(ids);return[sel,_ln(ids)?_sh().filter(s=>sel.has(s.id)):[]]}
 function doBringFront(){
   const ids=_usI();if(!_ln(ids))return;
@@ -6464,7 +6465,7 @@ function doGroup(){
   const gid=uid();
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
   for(const id of ids){const sh=byId(id);if(sh)sh.groupId=gid}
-  _nugPush({op:'group',ids,gid,before});   // ADR-0961: held ⌘G folds into one group op
+  _nugPush({op:'group',ids,gid,before});   // ADR-0961
   _oT('grouped');
   _iv();
 }
@@ -6633,13 +6634,14 @@ function flipShape(s,axis,c){
 }
 function doFlip(axis){
   if(state.ro){_roNo();return}
-  const sel=_selUL();
+  const sel=_selUL().filter(s=>!_nrb(s.id));
   if(!_ln(sel))return;
   const bb=_bA(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   // Frame-aware: shapes inside a selected frame orbit with it
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
+  _unrb(sel);
   const before=sel.map(clone);
   const flipIds=_sT(sel.map(s=>s.id));
   for(const s of sel)flipShape(s,axis,c);
@@ -6657,20 +6659,20 @@ function doFlip(axis){
   }
   const after=sel.map(clone);
   for(const s of _mC)after.push(clone(s));
-  _nugPush({op:'align',dir:'flip',before,after});   // ADR-0961: held ⇧H/⇧V folds into one flip op
+  _nugPush({op:'align',dir:'flip',before,after});   // ADR-0961
   _ivp();
   _ann(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
 
 function doLock(){
   if(state.ro){_roNo();return}
-  const sel=_selL(Boolean);
+  const sel=_selL(s=>!_nrb(s.id));
   if(!_ln(sel))return;
   const lk=!sel[0].locked;
   const before=sel.map(s=>({id:s.id,locked:_lk(s)??null}));
   for(const s of sel)s.locked=lk||null;
   const after=sel.map(s=>({id:s.id,locked:_lk(s)??null}));
-  _nugPush({op:'align',dir:'lock',before,after});   // ADR-0961: held ⌘⇧L folds into one lock op
+  _nugPush({op:'align',dir:'lock',before,after});   // ADR-0961
   _ivp();
   _ann(t(lk?'ctxLock':'ctxUnlock'));
 }
@@ -6728,11 +6730,12 @@ function _rotPtsAbout(s,gx,gy,cs,sn){
 }
 function doRotate(d){
   if(state.ro){_roNo();return}   // ADR-1106
-  const sel=_selL(s=>s&&!_lk(s)&&_rotatable(s));
+  const sel=_selL(s=>s&&!_lk(s)&&_rotatable(s)&&!_nrb(s.id));
   if(!_ln(sel))return;
   const bb=_bA(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   const frameOf=_frameOf(sel,s=>_rotatable(s));   // frame children orbit along
   _xFS(sel,frameOf)
+  _unrb(sel);
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone(_hb(s)?{...s,rotate:_rt(s)||0}:s));
   // ADR-0586
@@ -6758,7 +6761,7 @@ function doRotate(d){
   }
   const after=sel.map(clone);
   for(const c of _bC)if(!selIds.has(c.id))after.push(clone(c));
-  _nugPush({op:'align',dir:'rotate',before,after});   // ADR-0961: held ,/. folds into one rotate op
+  _nugPush({op:'align',dir:'rotate',before,after});   // ADR-0961
   _ivp();
   _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. rotate announce (0055)
 }
@@ -7102,7 +7105,7 @@ function drawioToShapes(txt){
     }}
   const _off=_mP();
   const off=id=>{if(_off.has(id))return _off.get(id);
-    _off.set(id,{x:0,y:0});                                            // ADR-0357: provisional — breaks parent cycles
+    _off.set(id,{x:0,y:0});                                            // ADR-0357
     const p=_par.get(id);let o={x:0,y:0};
     if(p&&p!=='0'){const po=off(p),pg=_geo.get(p);
       o={x:po.x+(+((pg&&_ga(pg,'x'))||0)),y:po.y+(+((pg&&_ga(pg,'y'))||0))}}
@@ -7338,7 +7341,7 @@ function _dioCells(shapes){
     const lbl=_lb(s)!=null?_lb(s):_txx(s);
     if(t==='image'&&_lb(s))sty+='verticalAlign=bottom;';                 // ADR-0353
     const _gc=_gbx[_gi(s)];                                          // ADR-0336
-    const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
+    const _pf=_gc?null:_fOf(s);                                         // ADR-0345
     _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_dioEsc(_gi(s))}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   // ADR-0354
@@ -10079,7 +10082,7 @@ function unbindSelection(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s)||(!s.a&&!s.b))return;
     _pu(before,{id,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
-    const e=_cE(s);                                          // ADR-0591: freeze the resolved endpoint —
+    const e=_cE(s);                                          // ADR-0591
     s.x1=e.x1;s.y1=e.y1;s.x2=e.x2;s.y2=e.y2;                 // coords drift while bound
     s.a=null;s.b=null;s.aF=null;s.bF=null;                     // ADR-0209
     _pu(after,{id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
@@ -10095,7 +10098,7 @@ function cycleVAlign(){
     const cur=_va(s)||null,nxt=sq[(_ix(sq,cur)+1)%3];
     _pp(before,after,id,'valign',cur,nxt);
     if(nxt==null)delete s.valign;else s.valign=nxt;
-    _st().valign=nxt;                                     // ADR-0417: parity with every sibling style cycle
+    _st().valign=nxt;                                     // ADR-0417
   })
   _so(before,after)
 }
@@ -10133,12 +10136,13 @@ function cycleLineH(){
 function fontSizeStep(d){
   const before=[],after=[];
   _forTxt((s,id)=>{   // ADR-0169/0298: labels+frames honour fontSize
+    if(_nrb(id))return;
     const cur=_fS(s)||14,nxt=_min(64,_max(8,cur+d*2));
     if(nxt===cur)return;
     _pp(before,after,id,'fontSize',cur,nxt);s.fontSize=nxt;
     _st().fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
   })
-  if(_ln(before)){_nugPush({op:'style',before,after});_iv()}   // ADR-0960: held ⌘⇧,/. folds into one style op
+  if(_ln(before)){_nugPush({op:'style',before,after});_iv()}   // ADR-0960
 }
 // ADR-0078
 const _rdb=()=>{_md(!0);_ru();_ps()},
@@ -10226,6 +10230,7 @@ function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/
 function toggleTextFlag(k){
   const before=[],after=[];
   _forTxt((s,id)=>{   // ADR-0170/0204
+    if(_nrb(id))return;
     const nxt=!s[k];
     _pu(before,{id,[k]:s[k]||null});_pu(after,{id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
@@ -10255,7 +10260,7 @@ function cycleFillStyle(){
 function swapFillStroke(){
   if(state.ro){_roNo();return}   // ADR-1106
   const before=[],after=[];
-  _forSel((s,id)=>{if(_lk(s))return;
+  _forSel((s,id)=>{if(_lk(s)||_nrb(id))return;
     const fk=_stk(s)?'color':'fill';
     if(!(_BOXF.has(s.type)))return;
     _pu(before,{id,stroke:_sk(s)??null,[fk]:s[fk]??null});
@@ -10263,7 +10268,7 @@ function swapFillStroke(){
     const t2=s[fk];s[fk]=_sk(s);s.stroke=t2;
     if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
   })
-  if(_ln(before)){_nugPush({op:'style',before,after});_iv();_oT('swapDone')}   // ADR-0961: held ⇧X folds into one swap op
+  if(_ln(before)){_nugPush({op:'style',before,after});_iv();_oT('swapDone')}   // ADR-0961
 }
 // ADR-0173
 // shapes via style op (Excalidraw font-switch parity).
