@@ -21992,6 +21992,37 @@ pass += 2;
   pass += 3;
 }
 
+// ---- ADR-1188: restoreBackup also isolates the imgs-store read
+{
+  const imgShape={id:'i2',type:'image',img:'img:K10',x:0,y:0,w:10,h:10,z:1};
+  const bdoc={shapes:[imgShape],viewport:{x:0,y:0,zoom:1},docName:'B',pages:null,curPg:null,ro:0,savedAt:1};
+  const _errRq=()=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.error=new Error('imgs dead');rq.onerror&&rq.onerror()});return rq};
+  const _okRq=v=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.result=v;rq.onsuccess&&rq.onsuccess()});return rq};
+  const brokenImgs={transaction(){
+    const tx={
+      oncomplete:null,onerror:null,onabort:null,
+      objectStore(n){return{
+        get(k){return _okRq(k==='main:prev'?bdoc:undefined)},
+        getAll(){return _errRq()},
+        getAllKeys(){return _errRq()},
+        put(){},delete(){}
+      }}
+    };
+    queueMicrotask(()=>tx.oncomplete&&tx.oncomplete());
+    return tx;
+  }};
+  const _ldb=Persist.db;Persist.db=brokenImgs;Net._imgPending.clear();
+  try{
+    const ok=await Persist.restoreBackup();
+    assert.strictEqual(ok,true,'restoreBackup lands the backup shapes despite an imgs-store read failure (ADR-1188)');
+    assert.strictEqual(byId('i2')?.id,'i2','the restored shape survives (ADR-1188)');
+    assert.ok(Net._imgPending.has('i2'),'the unresolved img ref parks for imgq heal instead of blocking the restore (ADR-1188)');
+  }finally{Persist.db=_ldb;Net._imgPending.clear()}
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;state.docName='';_invalidateGrid();
+  console.log('  ✓ ADR-1188 backup-restore imgs failure isolation (3 asserts)');
+  pass += 3;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
