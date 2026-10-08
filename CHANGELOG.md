@@ -1,3 +1,8 @@
+## [1.8.149] - 2026-10-01
+
+### Fixed
+- **round875 / ADR-1125 — op-path local-winner propagation**: `_lwwDrop`'s `filt` silently `delete after[key]` on props where the local clock beat the remote op's — the local value stayed put but the sender (and every other peer) kept their stale value forever. Same one-directional asymmetry class ADR-1124 closed on the snapshot channel, here on the live op channel: the drop branch now queues a convergence `upd` (`before` = the dropped remote value, `after` = the local winner) into `_txE`, drained by `_txFlush()` — including the whole-op-drops early return, which previously discarded the queue. Emitted ops are real commits (`Store.commit`, fresh local clock) so the exchange converges: the losing side re-arbitrates and, if it still wins, emits back — the clock winner settles both sides. Exclusions mirror `_emOK`/`_stripStruct` (structural/`img`/`dataUrl`/`locked`/`type` keys never emit; equal values emit nothing); `state.ro` still swallows the drain without broadcasting. 21 behavioural pins; three pre-1125 pins re-calibrated to the two-directional contract (the emit's fresh clock legitimately restamps the prop's write clock). Comment-tail reclaim keeps raw under the ceiling.
+
 ## [1.8.148] - 2026-10-01
 
 ### Fixed
