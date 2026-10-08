@@ -20482,6 +20482,29 @@ pass += 7;
 }
 pass += 7;
 
+// ---- ADR-1138: a cleared/changed peer name can't stay stale ----
+{
+  assert.ok(html.includes("p.n=_iS(msg.n)&&_s0(_trm(msg.n),24)||_ud;if(p.n!==o)UI.refreshPeers()"),'ADR-1138: presence name re-derives and repaints on change');
+  state.peers.set('peerN',{color:'#222',lastSeen:Date.now(),pg:null});
+  let rp=0;const _rp=UI.refreshPeers;UI.refreshPeers=()=>{rp++};
+  try{
+    const c=(m)=>{m.mac=Net._mac(m);Net._onRecv(m,false)};
+    c({k:'cursor',peer:'peerN',x:1,y:2,n:'Alice'});
+    assert.strictEqual(state.peers.get('peerN').n,'Alice','ADR-1138: a name lands on the peer row');
+    assert.strictEqual(rp,1,'ADR-1138: a first name repaints the avatars');
+    c({k:'cursor',peer:'peerN',x:3,y:4,n:'Alice'});
+    assert.strictEqual(rp,1,'ADR-1138: the same name does not repaint');
+    c({k:'cursor',peer:'peerN',x:3,y:4});
+    assert.strictEqual(state.peers.get('peerN').n,undefined,'ADR-1138: clearing the name clears the row');
+    assert.strictEqual(rp,2,'ADR-1138: a cleared name repaints the avatars');
+    c({k:'ping',peer:'peerN',n:'Bob'});
+    assert.strictEqual(rp,3,'ADR-1138: a ping rename repaints too');
+    assert.strictEqual(state.peers.get('peerN').n,'Bob','ADR-1138: ping carries the name');
+  }finally{UI.refreshPeers=_rp;state.peers.clear()}
+  console.log('  ✓ ADR-1138 peer-name staleness closure (8 asserts)');
+}
+pass += 8;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

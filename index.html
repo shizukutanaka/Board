@@ -914,7 +914,7 @@ const _nameWin=(ts,peer)=>clockNewer({ts,peer,seq:0},{ts:_nameTs,peer:_namePeer}
 // ephemeral like the carrier — latest wins, no LWW.
 const _pnm=()=>{try{return _s0(_trm(_lg('board.name')||''),24)}catch(_){return ''}};
 const _nm=()=>{const n=_pnm();return n?{n}:null};
-const _nIn=(p,msg)=>{if(p&&_iS(msg.n))p.n=_s0(_trm(msg.n),24)||_ud};
+const _nIn=(p,msg)=>{if(p){const o=p.n;p.n=_iS(msg.n)&&_s0(_trm(msg.n),24)||_ud;if(p.n!==o)UI.refreshPeers()}};   // ADR-1138
 const _setDocName=n=>{state.docName=n||_UT;const d=_g('docName');if(d&&d!==document.activeElement)d.value=_dn();_syncDocTitle();};   // ADR-0609
 const _pr=()=>state.peers;
 const _hi=()=>state.history;
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.161';   // ADR-1137
+const V='1.8.162';   // ADR-1137
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
