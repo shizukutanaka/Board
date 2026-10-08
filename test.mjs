@@ -22022,6 +22022,47 @@ pass += 2;
   console.log('  ✓ ADR-1188 backup-restore imgs failure isolation (3 asserts)');
   pass += 3;
 }
+// ---- ADR-1189: imgq miss consults the durable imgs store (_imgDbGet) ----
+{
+  // The pending→ask→answer→resolve heal contract (ADR-0835/0836/1045/1049/
+  // 1063/1064/1077/1078) was audited end-to-end; every seam is pinned except
+  // the answer's third tier — a key missing from both in-memory stores
+  // (_imgIn/_imgSent) now reaches the persisted imgs store. Contract: _idOK
+  // before any query, string payloads only, inside the same 64MB _stgOK cap
+  // as memory hits, and store errors swallowed — a failed consult must not
+  // wedge intake.
+  const _db0=Persist.db;
+  try{
+    Persist.db=makeFakeIdb();
+    Persist.db.transaction(['imgs'],'rw').objectStore('imgs').put('data:image/png;base64,DB','kDb');
+    const net={_imgOuts:[],_flushed:0,_stgOK:Net._stgOK,_imgDbGet:Net._imgDbGet,_flushImgOuts(){this._flushed++}};
+    Net._imgDbGet.call(net,'kDb');
+    assert.strictEqual(net._imgOuts.length,0,'the answer stages asynchronously');
+    await new Promise(r=>queueMicrotask(r));await new Promise(r=>queueMicrotask(r));
+    assert.deepStrictEqual(net._imgOuts,[['kDb','data:image/png;base64,DB']],'a persisted blob stages for the answer');
+    assert.strictEqual(net._flushed,1,'a staged answer flushes to the wire');
+    net._imgOuts.length=0;net._flushed=0;
+    Net._imgDbGet.call(net,'kGone');
+    await new Promise(r=>queueMicrotask(r));
+    assert.strictEqual(net._imgOuts.length+net._flushed,0,'a missing key stages no answer');
+    Persist.db={transaction(){throw new Error('quota')}};
+    let _threw=false;try{Net._imgDbGet.call(net,'kDb')}catch(_){_threw=true}
+    assert.strictEqual(_threw,false,'a throwing transaction is swallowed');
+    Persist.db=makeFakeIdb();
+    Net._imgDbGet.call(net,'x'.repeat(65));
+    await new Promise(r=>queueMicrotask(r));
+    assert.strictEqual(net._imgOuts.length,0,'a non-id key never reaches IDB');
+    net._imgOuts=[['a',{length:67_200_000}]];
+    Net._imgDbGet.call(net,'kDb');
+    await new Promise(r=>queueMicrotask(r));await new Promise(r=>queueMicrotask(r));
+    assert.strictEqual(net._imgOuts.length,1,'an answer over the 64MB stage cap is refused');
+    net._imgOuts.length=0;
+    assert.ok(html.includes('if(!Persist.db||!_idOK(k))return'),'the consult is guarded before any query');
+    assert.ok(html.includes('this._imgDbGet(msg.key)'),'an in-memory miss falls back to the durable store');
+  }finally{Persist.db=_db0}
+  console.log('  ✓ ADR-1189 imgq miss consults the durable store (9 asserts)');
+  pass += 9;
+}
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
