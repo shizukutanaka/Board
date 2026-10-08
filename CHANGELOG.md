@@ -1,3 +1,8 @@
+## [1.8.182] - 2026-10-01
+
+### Fixed
+- **round908 / ADR-1158 — the presentation folds the remaining interactive chrome**: `enter()` covered the screen at `z-index:8999` and hid toolbar/topbar/statusbar/minimap, but `#stylePanel` (swatches/colors/ranges → `applyStyleToSelection` = mutation ops + broadcast), `.zoom-badge` (4 live viewport writes vs `_goto` slide-fit) and `#shapeMirror` (`_mirrorGo` → `_ss`+`_fitViewport`) stayed **tabbable** — visual coverage is not reachability. Pointer input was `_pA()`-gated (ADR-0640) and non-nav keys swallowed, but an element focused *at enter time* kept DOM focus and Space/Enter activation still fired mid-slide. `enter()` now folds ctx/stylePanel/zoom-badge/mirror in one block; `leave()` restores them — exactly one reachable control during pres (the exit button). 10 pins (2 source + 8 behavioural).
+
 ## [1.8.181] - 2026-10-01
 
 ### Fixed

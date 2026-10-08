@@ -21026,6 +21026,36 @@ pass += 8;
 }
 pass += 7;
 
+// ---- ADR-1158: the presentation leaves only the exit button reachable ----
+{
+  assert.ok(html.includes("UI.closeCtxMenu();\n    _dsp(_g('stylePanel'),'none');\n    _dsp(_qs(document,'.zoom-badge'),'none');\n    _dsp(_g('shapeMirror'),'none');"),'ADR-1158: enter folds menu/panel/zoom/mirror in one block');
+  assert.ok(html.includes("_dsp(_g('stylePanel'),'');\n    _dsp(_qs(document,'.zoom-badge'),'');\n    _dsp(_g('shapeMirror'),'');"),'ADR-1158: leave restores the folded surfaces');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  const f1=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  Store.commit({op:'addMany',shapes:[f1]});
+  const sp=fakeDoc.getElementById('stylePanel');sp.style.display='';
+  const sm=fakeDoc.getElementById('shapeMirror');sm.style.display='';
+  const ctxEl=fakeDoc.getElementById('ctx');ctxEl.dataset.open='true';
+  const _oQS=fakeDoc.querySelector;
+  const zb={style:{display:'',removeProperty(){},setProperty(){}}};
+  fakeDoc.querySelector=s=>s==='.zoom-badge'?zb:_oQS.call(fakeDoc,s);
+  Presentation.enter();
+  assert.ok(Presentation.isActive(),'ADR-1158: presentation entered');
+  assert.strictEqual(sp.style.display,'none','ADR-1158: style panel folded on enter');
+  assert.strictEqual(sm.style.display,'none','ADR-1158: SR mirror folded on enter');
+  assert.strictEqual(zb.style.display,'none','ADR-1158: zoom badge folded on enter');
+  assert.strictEqual(ctxEl.dataset.open,'false','ADR-1158: ctx menu closed on enter');
+  Presentation.leave();
+  assert.strictEqual(sp.style.display,'','ADR-1158: style panel restored on leave');
+  assert.strictEqual(sm.style.display,'','ADR-1158: SR mirror restored on leave');
+  assert.strictEqual(zb.style.display,'','ADR-1158: zoom badge restored on leave');
+  fakeDoc.querySelector=_oQS;
+  ctxEl.dataset.open='false';
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1158 presentation folds style panel/zoom badge/SR mirror (10 asserts)');
+}
+pass += 10;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

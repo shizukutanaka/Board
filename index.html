@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.181';   // ADR-1157
+const V='1.8.182';   // ADR-1158
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -10435,6 +10435,13 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'none');
     _dsp(_qs(document,'.statusbar'),'none');
     _qs(document,'.minimap-wrap')?.style.setProperty('display','none');
+    // ADR-1158: the fullscreen canvas only covers these visually — they
+    // stay in the tab order, so a keyboard/SR user could mutate style or
+    // re-fit the viewport mid-slide in a view-only mode. Fold them too.
+    UI.closeCtxMenu();
+    _dsp(_g('stylePanel'),'none');
+    _dsp(_qs(document,'.zoom-badge'),'none');
+    _dsp(_g('shapeMirror'),'none');
     canvas.style.position='fixed';canvas.style.inset='0';canvas.style.zIndex='8999';
     ocanvas.style.position='fixed';ocanvas.style.inset='0';ocanvas.style.zIndex='8999';   // ADR-0024
     // The CSS box just changed to fullscreen but the backing buffer
@@ -10457,6 +10464,9 @@ const Presentation=(()=>{
     _dsp(_qs(document,'.topbar'),'');
     _dsp(_qs(document,'.statusbar'),'');
     _qs(document,'.minimap-wrap')?.style.removeProperty('display');
+    _dsp(_g('stylePanel'),'');
+    _dsp(_qs(document,'.zoom-badge'),'');
+    _dsp(_g('shapeMirror'),'');
     // Mirror enter(): box shrank without a native resize event
     resize();
     if(_savedVp){_oa(_vp(),_savedVp);_savedVp=null;_rZ();_ps()}
