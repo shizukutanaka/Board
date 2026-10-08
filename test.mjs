@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3, toggleSq,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3 } = api;
+          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3, toggleSq } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -20815,6 +20815,30 @@ pass += 10;
   console.log('  ✓ ADR-1150 ctx menu focus contract (7 asserts)');
 }
 pass += 7;
+
+// ---- ADR-1151: find box Esc folds + own invoker slot ----
+{
+  assert.ok(html.includes("e.target===_g('sqinput'))toggleSq()"),'ADR-1151: Esc in the find box folds it instead of blurring');
+  assert.ok(html.includes('let _sqPrev=null'),'ADR-1151: the find box keeps its own invoker slot');
+  const sq=fakeDoc.getElementById('sqinput');sq.select=()=>{};sq.matches=()=>true;sq.style.display='none';
+  const inv={f:0,focus(){inv.f++},isConnected:true};
+  fakeDoc.activeElement=inv;
+  toggleSq();
+  assert.strictEqual(sq.style.display,'block','ADR-1151: ⌘F opens the find box');
+  fakeDoc.activeElement=sq;
+  const _fk=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
+  _fk('Escape',{target:sq});
+  assert.strictEqual(sq.style.display,'none','ADR-1151: Esc folds the find box');
+  assert.strictEqual(inv.f,1,'ADR-1151: focus returns to the invoker');
+  const inv2={f:0,focus(){inv2.f++},isConnected:true};
+  fakeDoc.activeElement=inv2;toggleSq();
+  fakeDoc.activeElement={focus(){}};toggleSq();
+  assert.strictEqual(inv2.f,0,'ADR-1151: closing while unfocused steals nothing');
+  sq.matches=()=>false;sq.style.display='none';fakeDoc.activeElement=null;
+  state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1151 find box Esc fold + focus contract (6 asserts)');
+}
+pass += 6;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

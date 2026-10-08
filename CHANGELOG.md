@@ -1,3 +1,8 @@
+## [1.8.175] - 2026-10-01
+
+### Fixed
+- **round901 / ADR-1151 — find box Esc fold + focus contract**: Esc inside the find box (`sqinput`) only blurred the input — the box stayed open and visible while focus fell to `<body>` (the input early-return swallowed Esc before the overlay router could see it). Esc now folds the box via `toggleSq`, which also joins the focus contract: the invoker is captured on open into a dedicated `_sqPrev` slot (the find box can outlive a menu/dialog cycle, which the shared `_prevFocus` cannot represent) and restored on close only while the box still holds focus — closing it unfocused steals nothing. 6 pins (2 source + 4 behavioural).
+
 ## [1.8.174] - 2026-10-01
 
 ### Fixed
