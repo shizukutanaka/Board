@@ -19841,6 +19841,33 @@ pass += 9;
 }
 pass += 7;
 
+// ADR-1123: concurrent text edits resolve whole-string LWW — a remote win
+// replays the winning op's disjoint hunks into local text so both edits
+// survive; overlapping hunks still lose wholesale (LWW parity). A
+// union-preserving merge emits a corrective 'upd' (before = the remote's
+// text) so every peer's own disjoint diff lands on the same union.
+{
+  const t1=Shape.make('text',{id:'t1',x:0,y:0});t1.text='Hello world';
+  state.shapes=[t1];state.seenOps=new Set();state.wclock={};_invalidateGrid();
+  t1.text='Hi world';   // local edit raced the incoming remote edit
+  const ops=[],_ob=Net.broadcast;Net.broadcast=o=>{ops.push(o);return _ob.call(Net,o)};
+  Store.applyRemote({op:'upd',id:'t1',before:{text:'Hello world'},after:{text:'Hello universe'},clock:{peer:'pX',seq:1,ts:state._lastTs+1000}});
+  assert.strictEqual(t1.text,'Hi universe','ADR-1123: disjoint concurrent edits union');
+  const emit=ops.find(o=>o.op==='upd'&&o.id==='t1');
+  assert.ok(emit&&emit.after.text==='Hi universe'&&emit.before.text==='Hello universe','ADR-1123: union-preserving merge emits the convergence op');
+  assert.ok(state.wclock.t1&&state.wclock.t1.text&&state.wclock.t1.text.peer===state.peerId,'ADR-1123: emit stamps the local writer clock');
+  t1.text='Hi world';state.wclock={};ops.length=0;
+  Store.applyRemote({op:'upd',id:'t1',before:{text:'Hello world'},after:{text:'Hey world'},clock:{peer:'pX',seq:2,ts:state._lastTs+1000}});
+  assert.strictEqual(t1.text,'Hey world','ADR-1123: overlapping hunks lose wholesale to the remote clock');
+  assert.ok(!ops.some(o=>o.op==='upd'&&o.id==='t1'),'ADR-1123: no union emit when nothing survives');
+  Net.broadcast=_ob;
+  assert.ok(html.includes('_mT3='),'ADR-1123: 3-way text merger exists');
+  assert.ok(html.split('_txFlush();').length-1===4,'ADR-1123: emit flush on every commit path (commit/applyRemote/undo/redo)');
+  assert.ok((html.match(/_mT3\(sh\[_tk\]/g)||[]).length===2,'ADR-1123: merge hooks at the upd + patch-list apply sites');
+  state.shapes.length=0;state.wclock={};state.seenOps=new Set();_invalidateGrid();
+  console.log('  \u2713 ADR-1123 disjoint text merge + convergence emit (9 asserts)');
+}
+pass += 9;
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
