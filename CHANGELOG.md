@@ -1,3 +1,12 @@
+## [1.8.136] - 2026-10-01
+
+### Fixed
+- **round862 / ADR-1112 — replace undo keeps the peers' tomb parity (interim existence clocks)**: the doc-switch *undo* boundary audit found that `case 'replace'` backward restored `op.wc` into the wiped `state.wclock` and stopped — while every peer's forward apply of the same undo-wire swap additionally tombs the swapped-out set (`old0`/`pg0` loops) and preserves interim existence clocks via `_wTb` (restamping older tombs up to the swap clock). An undoer therefore wiped remote tombs and `add`/`addMany` learns that arrived in the import→undo window, so a stale `add` redelivery could resurrect a shape on the undoer only. The `old0`/`pg0` tomb writes and `_wTb(wc0, op.clock, inN)` now run in both directions — backward's `next` = `op.before` is the same set peers' forward `after` resolves to — leaving the undoer's map identical to the peers' (interim tombs restamped to the undo clock, `_born` preserved on tombed records, swapped-out shapes/pages tombed). Audited and confirmed by-design: `ro` (undo is `ro`-gated), `docName` (converges on the separate name channel — local restore would diverge), and the viewport (per-client state).
+
+### Tests
+- 5 behavioural pins: interim tomb survives the undo wipe restamped to the undo clock; tombed record keeps its `_born` through `_wTb`; doc-A member restored; restored in-set member carries no stale tomb; a re-delivered stale `add` for the tombed id still drops post-undo.
+- Comment-tail reclaim (~270B) on the pageDel ADR-0703/0724 blocks funded the change.
+
 ## [1.8.135] - 2026-10-01
 
 ### Fixed

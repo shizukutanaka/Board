@@ -19552,6 +19552,31 @@ pass += 11;
 }
 pass += 5;
 
+// ---- ADR-1112: the undo's wclock restore keeps the same tomb parity the peers'
+// forward apply has — the swapped-out set is tombed at the undo clock and _wTb
+// preserves interim existence clocks, instead of the op.wc restore wiping them.
+{
+  const ob=Net.broadcast,sent=[];Net.broadcast=w=>{sent.push(w)};
+  state.roomId='roomOld';Net.init('roomX');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state._lastRep=null;state.history=[];state.histIdx=-1;_invalidateGrid();
+  const a=JSON.parse(JSON.stringify(Shape.make('rect',{x:0,y:0,w:10,h:10})));a.id='a1';
+  const b={id:'b1',type:'rect',x:1,y:1,w:5,h:5};state.shapes=[b];   // doc-B live after the swap
+  Store._recordCommitted({op:'replace',before:[a],after:[b],wc:{a1:{_born:{ts:10,peer:state.peerId,seq:0}}},afterWc:{b1:{}},clock:{ts:200,peer:state.peerId,seq:0}});
+  // the doc-B window: a remote tomb lands for the swapped-in id
+  state.wclock.b1._del={ts:400,peer:'q',seq:0};
+  Store.undo();Net.broadcast=ob;
+  assert.ok(state.wclock.b1&&state.wclock.b1._del&&state.wclock.b1._del.ts>400,'interim tomb survives the undo wipe, restamped to the undo clock like the peers\' _wTb');
+  assert.ok(state.wclock.b1._born&&state.wclock.b1._born.ts===200,'the tombed record keeps its _born through _wTb');
+  assert.ok(byId('a1'),'doc-A member restored by the undo');
+  assert.ok(state.wclock.a1&&!state.wclock.a1._del,'a restored in-set member carries no stale tomb');
+  // a re-delivered stale add for the tombed id now drops like on every peer
+  Store._apply({op:'add',shape:{id:'b1',type:'rect',x:0,y:0,w:1,h:1},clock:{ts:450,peer:'q',seq:1}},true);
+  assert.ok(!byId('b1'),'stale add for the tombed id still drops after undo');
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;_invalidateGrid();
+  console.log('  ✓ ADR-1112 undo tomb parity (5 asserts)');
+}
+pass += 5;
+
 pass += 1947; // prev 1921 + 1 ADR-0934 move absolute-requirement pin
 
 } catch (err) {
