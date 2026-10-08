@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.172';   // ADR-1148
+const V='1.8.173';   // ADR-1149
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -6093,6 +6093,7 @@ _on(window,_KD,e=>{
   else if(k==='h'&&_sK(e)&&meta&&!_aK(e)){_pd(e);hideSelection()}   // ADR-0137: ⌘⇧H
   else if(k==='i'&&_sK(e)&&meta&&!_aK(e)){_pd(e);selectInverse()}   // ADR-0139: ⌘⇧I
   else if(!meta&&!_sK(e)&&/^[0-9]$/.test(k)&&_selN()){_pd(e);applyStyleToSelection({opacity:k==='0'?1:+k/10})}   // ADR-0167: Figma digit-opacity
+  else if(k==='contextmenu'||(k==='f10'&&_sK(e))){_pd(e);ctxMenuKbd()}   // ADR-1149
   else if(!meta&&KEYMAP[k]&&!ptr.down){pickTool(KEYMAP[k],k==='i')}
   else if(k===' '&&!meta){_pd(e);if(!ptr.down)pickTool('hand',true)}
 });
@@ -6113,6 +6114,16 @@ function toggleSq(){
   _dsp(sq,sq.style.display==='none'?'block':'none');
   if(sq.style.display!=='none'){if(ptr.down)_cancelPointerGesture();_fc(sq);sq.select();}
   else{_setSq('');_ivO();}
+}
+// ADR-1149: keyboard path to the ctx menu — ContextMenu key (≣) or ⇧F10.
+// Anchors on the selection's centre; empty selection centres the canvas.
+function ctxMenuKbd(){
+  const r=_cbr();
+  if(_selN()){
+    const bb=_bA(_selShapes());
+    if(bb){const c=_w2({x:bb.x+bb.w/2,y:bb.y+bb.h/2});UI.openCtxMenu(r.left+c.x,r.top+c.y);return}
+  }
+  UI.openCtxMenu(r.left+r.width/2,r.top+r.height/2);
 }
 function pickTool(tool,temporary){
   if(state.ro&&tool!=='select'&&tool!=='hand'){_roNo();return}
@@ -9377,7 +9388,7 @@ const UI={
       ['Enter / ⇧Enter',k.searchNav],
       ['⇧H / ⇧V',t('ctxFlipH')+' / '+t('ctxFlipV')],
       ['⌥C / ⌥V',t('ctxCopyStyle')+' / '+t('ctxPasteStyle')],
-      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⇧ + wheel',t('hPan')],['⇧ + click',t('selToggle')],['⌥ + drag',k.dup+' / '+k.lasso],['⌥ + hover',t('gapMeasure')],['⌥ + click',t('waypointEdit')],['⌥ + drop',k.fixAnchor],['long press',t('ctxMenuKey')],['I',k.eyedropper],['⇧X',k.swapFill],['0-9',k.digitOpacity],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
+      ['⇧ + drag',k.moveAxis],['⇧ + ⤡',k.resizeRatio],['⌥ + ⤡',k.resizeCenter],['⇧ + wheel',t('hPan')],['⇧ + click',t('selToggle')],['⌥ + drag',k.dup+' / '+k.lasso],['⌥ + hover',t('gapMeasure')],['⌥ + click',t('waypointEdit')],['⌥ + drop',k.fixAnchor],['≣ / ⇧F10 / long press',t('ctxMenuKey')],['I',k.eyedropper],['⇧X',k.swapFill],['0-9',k.digitOpacity],['⌘⇧ , / .',k.fontSize],['⌘B / ⌘I / ⌘U / ⌘⇧X',k.boldItalic],
       ['Tab / ⇧Tab',k.cycle],['Enter',k.create+' / '+t('editLabel')]
     ];
     while(g.firstChild)g.removeChild(g.firstChild);
