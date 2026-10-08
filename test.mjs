@@ -6210,7 +6210,7 @@ try {
       state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}'),'_pgAdopt hides cursor + re-validates selection + announces on page move (ADR-0690/0749/0750)');
-      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110/1137)');
+      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)){if(_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110/1137)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
       {
@@ -20660,13 +20660,14 @@ pass += 7;
 // _stubOk; both stub producers now gate on it.
 {
   assert.ok(html.includes("const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)}"),'ADR-1137: shared tomb-dead stub predicate');
-  assert.ok(html.includes("!_pgById(o.pg)&&_stubOk(o.pg)"),'ADR-1137: op-intake heal gates on the tomb');
-  assert.ok(html.includes("!_pgById(s.pg)&&_stubOk(s.pg)"),'ADR-1137: _pgHealS shares the gate');
+  assert.ok(html.includes("if(o)_pgHeal(o)"),'ADR-1137: op-intake heal shares the tomb gate (ADR-1175)');
+  assert.ok(html.includes("for(const s of _sh())_pgHeal(s)"),'ADR-1137: _pgHealS shares the gate');
   state.pages=[{id:'p1',name:'a',nts:0}];state.curPg='p1';
   const mkP=(id,pg)=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.pg=pg;return s};
   state.wclock['pd']={_del:{peer:'zz',seq:1,ts:1}};
   Store.applyRemote({op:'add',shape:mkP('sX','pd'),clock:{peer:'zz',seq:2,ts:2}});
   assert.ok(!_pgById('pd'),'ADR-1137: tomb-dead pg gets no stub');
+  assert.ok(!byId('sX').pg,'ADR-1175: unhealable member rehomes (pg scrubbed) instead of dead-pg invisibility');
   state.wclock['pb']={_del:{peer:'zz',seq:1,ts:1},_born:{peer:'zz',seq:3,ts:3}};
   Store.applyRemote({op:'add',shape:mkP('sY','pb'),clock:{peer:'zz',seq:4,ts:4}});
   assert.ok(_pgById('pb'),'ADR-1137: a born-newer page id still heals');
@@ -21628,11 +21629,14 @@ pass += 3;
   assert.ok(!E.state.pages.some(p=>p.id==='lp2'),'the cap drops the viewed local page');
   assert.strictEqual(E.state.curPg,'pa0','a dropped curPg re-derives to the first merged page');
   assert.ok(E._pgOk({pg:'pa0'}),'a member of the landed page stays visible (ADR-1174)');
-  console.log('  ✓ ADR-1174 snapshot-union curPg re-derivation (4 asserts)');
-  pass += 4;
+  assert.strictEqual(E.byId('s1').pg,undefined,'a cap-dropped member rehomes — pg scrubbed, not dead (ADR-1175)');
+  assert.ok(E._pgOk(E.byId('s1')),'the rehomed member stays visible on the landed page (ADR-1175)');
+  console.log('  ✓ ADR-1174 snapshot-union curPg re-derivation + member rehome (6 asserts)');
+  pass += 6;
 }
 assert.ok(html.includes("if(!_pgById(state.curPg)){if(_ln(np))switchPage(np[0].id);else state.curPg=null}"),'union heal re-derives curPg like _pgAdopt (ADR-1174)');
-pass += 1;
+assert.ok(html.includes("const _pgHeal=s=>{if(s.pg&&!_pgById(s.pg))"),'member heal shared as _pgHeal (ADR-1175)');
+pass += 2;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.198';   // ADR-1174
+const V='1.8.199';   // ADR-1175
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1537,7 +1537,7 @@ const Store={
         _oT('peerReplaced');
       }
       const _connFix=this._remoteDelConnFix(op);
-      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o&&o.pg&&!_pgById(o.pg)&&_stubOk(o.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:o.pg,name:'?',nts:-1})};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775/1137
+      if(_pgs()&&(op.shape||op.shapes)){const f=o=>{if(o)_pgHeal(o)};f(op.shape);if(_iA(op.shapes))for(const s of op.shapes)f(s)}   // ADR-0646/0775/1137
       this._apply(op,true);
       if(_connFix)for(const f of _connFix){
         const sh=byId(f.id);
@@ -2223,7 +2223,8 @@ const _pgOn=()=>!!(_pgs()&&_ln(_pgs())),_pgById=id=>_pgOn()&&_pgs().find(p=>p.id
 const _pgHome=a=>{for(const s of a){if(_pgs())s.pg=state.curPg;else delete s.pg}};   // ADR-1173: home members on the viewed page — pg-less would attribute to pages[0]
 const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&_iS(p.name)&&_ln(p.name)<=80&&(p.nts==null||_tsOK(p.nts))&&(p.ntp==null||_iS(p.ntp)&&_ln(p.ntp)<=64)&&(p.bts==null||_tsOK(p.bts))&&(p.btp==null||_iS(p.btp)&&_ln(p.btp)<=64))?a:null);   // ADR-0700/0791/1110
 const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)};   // ADR-1137: tomb-dead pages get no '?' stub
-const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110
+const _pgHeal=s=>{if(s.pg&&!_pgById(s.pg)){if(_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1});else delete s.pg}};   // ADR-1175
+const _pgHealS=()=>{if(_pgOn())for(const s of _sh())_pgHeal(s);else for(const s of _sh())delete s.pg};   // ADR-0694/1110
 const _pgClk=m=>validClock(m.rep)?m.rep:{ts:nowTs(),peer:_pi(),seq:0};   // ADR-1093
 function _pgAdopt(pages,cur,clk,und){const v=_vPages(pages);
 let keep=v;
