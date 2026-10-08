@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.201';   // ADR-1177
+const V='1.8.202';   // ADR-1178
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8189,8 +8189,9 @@ const Net={
     _sO().clear();_cT(this._snapT);this._snapT=0;this._lastSnapAt=0;this._snapRx=false;this._snapRetry=0;   // ADR-0459/0475
     if(state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}   // ADR-0619/0695/0839
     this._imgSent.clear();this._imgChunks.clear();this._imgOuts.length=0;this._fragOuts.length=0;this._snapIn=null;this._opcIn=null;this._imgqT.clear();this._imgScanN=0;this._dcKey=null;this._dcQ=null;this._dcQB=0;   // ADR-0464/0466/0836/1049/1056/1059/1061
-    for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467: drop old-room presence
-    clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat
+    for(const id of _pr().keys())if(!_sw(id,'rtc:'))_pr().delete(id);this._pCt=_pr().size;_ivO();   // ADR-0458/0467
+    this._lastSelSent='';this._lastSelAt=0;this._lastCursorSend=0;   // ADR-1178: self-latecomer
+    clearInterval(this._presenceTimer);
     state.roomId=roomId||DOC_KEY;
     if(typeof BroadcastChannel===_un)return;     // not supported
     try{
@@ -8202,8 +8203,7 @@ const Net={
       this._presenceTimer=setInterval(()=>{
         this._send(_mk('ping',_nm()));   // ADR-0740/1053
         this._reapPeers();this._reapFrags();
-        // ADR-0835/1049
-        // the ref still heals on any later blob or the 5-min _imgRescan re-ask.
+        // ADR-0835/1049: ref heals on later blob or the 5-min rescan
         this._imgqSweep(nowTs());
         if(++this._imgScanN>60){this._imgScanN=0;_imgRescan()}   // ADR-1049
         // ADR-0475

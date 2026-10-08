@@ -1308,7 +1308,7 @@ const checks = [
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_shWB()),name:_dn()")],
   ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
-  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init must not leak old heartbeat")],
+  ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
   ['_reapPeers exempts rtc: peers from timeout reaping', html.includes("if(_sw(id,'rtc:'))continue;   // RTC peers are lifecycle-managed")],
   ['dc.onclose removes the rtc peer', html.includes("if(dcRef._pid){_pr().delete(dcRef._pid);if(this._rtcPeerId===dcRef._pid)this._rtcPeerId=null;_ivO();}")],
@@ -16873,6 +16873,28 @@ try {
       Net._bcast=_ob2;Net._lastSelSent='';Net._lastSelAt=0;clearTimeout(Net._selT);Net._selT=null;
       state.selection.delete('selA');state.selection.delete('selB');state.peers.delete('p1177x');
       console.log('  ✓ selection presence throttle contract (ADR-1177)');
+    }
+    {
+      // ADR-1178: Net.init resets send-side presence state — the joiner is
+      // itself a latecomer, so after a room switch the local selection must
+      // re-announce once or the room's existing peers never hear it.
+      assert.ok(html.includes("this._lastSelSent='';this._lastSelAt=0;this._lastCursorSend=0;"),'presence send state resets at init (ADR-1178)');
+      Net._lastSelSent='"stale"';Net._lastSelAt=9;Net._lastCursorSend=7;
+      state.roomId='roomA';
+      Net.init('roomB');
+      assert.strictEqual(Net._lastSelSent,'','dedup key reset at room switch');
+      assert.strictEqual(Net._lastSelAt,0,'selection send clock reset at room switch');
+      assert.strictEqual(Net._lastCursorSend,0,'cursor send clock reset at room switch');
+      const _ob3=Net._bcast;let selN2=0;Net._bcast=m=>{if(m&&m.k==='selection')selN2++;return _ob3.call(Net,m)};
+      state.peers.set('p1178x',{color:'#123',lastSeen:Date.now()});
+      state.selection.add('selR');
+      Net.sendSelectionIfChanged();
+      assert.strictEqual(selN2,1,'selection re-announces in the new room');
+      Net._bcast=_ob3;Net._lastSelSent='';Net._lastSelAt=0;clearTimeout(Net._selT);Net._selT=null;
+      state.selection.delete('selR');state.peers.delete('p1178x');state.roomId=DOC_KEY;
+      clearInterval(Net._presenceTimer);
+      if(Net.bc&&Net.bc.close)try{Net.bc.close();Net.bc=null}catch(_){}
+      console.log('  ✓ room switch resets presence send state (ADR-1178)');
     }
     {
       // ADR-1032: viaRtc presence merges onto the link partner's real row when
