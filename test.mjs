@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3, toggleSq,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3, toggleSq, _foldSq,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3, toggleSq } = api;
+          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush, _tmb, _tmE, _tAlive, _bN, _bT, _mT3, toggleSq, _foldSq } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -21005,6 +21005,26 @@ pass += 10;
   console.log('  ✓ ADR-1156 closed-details children excluded from focus trap (8 asserts)');
 }
 pass += 8;
+
+// ---- ADR-1157: the find box folds before a modal / presentation opens ----
+{
+  assert.ok(html.includes("const _foldSq=()=>{const s=_g('sqinput');if(s&&s.style.display!=='none')toggleSq()}"),'ADR-1157: the fold is one seam, not a toggle call');
+  assert.ok(html.includes("_cancelPointerGesture();_foldSq();this._captureFocus();_fc(_g('helpClose'))"),'ADR-1157: help folds sq before capturing the invoker');
+  assert.ok(html.includes("_foldSq();\n    this._captureFocus();\n    _fc(_g('shareClose'))"),'ADR-1157: share folds sq before capturing the invoker');
+  assert.ok(html.includes("_foldSq();\n    _focusTrigger=_aE();"),'ADR-1157: the presentation folds sq before capturing the trigger');
+  const sq=fakeDoc.getElementById('sqinput');sq.matches=()=>false;sq.style.display='block';sq.value='q';
+  fakeDoc.activeElement=sq;
+  const help=fakeDoc.getElementById('help');
+  help.dataset.open='false';
+  UI.toggleHelp();
+  assert.strictEqual(sq.style.display,'none','ADR-1157: opening the help modal folds the find box');
+  assert.strictEqual(sq.value,'','ADR-1157: the fold clears the search query');
+  assert.ok(help.dataset.open===true||help.dataset.open==='true','ADR-1157: the modal still opened');
+  sq.style.display='none';sq.value='';fakeDoc.activeElement=null;help.dataset.open='false';UI._prevFocus=null;
+  state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1157 find box folds before modal/presentation opens (7 asserts)');
+}
+pass += 7;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
