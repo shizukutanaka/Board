@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.209';   // ADR-1185
+const V='1.8.210';   // ADR-1186
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8984,6 +8984,7 @@ const Persist={
   async save(explicit){
     if(!this.db)return this._dbWarn();
     try{
+      _md(!1);   // ADR-1186
       const tx=_trx(this.db,[DB_STORE,DB_IMG_STORE],_RW);
       const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());
@@ -9010,14 +9011,13 @@ const Persist={
         savedAt:_now()
       },DOC_KEY);
       await txDone(tx);
-      _md(!1);
       state.lastSaveAt=_now();
       UI.refreshSaved();
       if(_nS())this.requestDurable();   // user has content worth keeping
       this._quotaWarn();                               // ADR-0227
       if(explicit)_oT('saved');
     }catch(err){
-      _e(this._saveErrMsg(err));
+      _md(!0);_e(this._saveErrMsg(err));
     }
   },
   async load(){

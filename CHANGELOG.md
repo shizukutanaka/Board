@@ -1,3 +1,8 @@
+## [1.8.210] - 2026-10-01
+
+### Fixed
+- **round936 / ADR-1186 — `save()` の `_md(!1)` が mid-save 変異の dirty を clobber していた残穴を閉塞**: `save()` は `await txDone` 成功後に `_md(!1)` を書いていたため、非同期書込み中に `schedule()` 経由で立った `_md(!0)` + arm 済み `_saveT` が `txDone` で clear され、`beforeunload` (プロンプト+即時 save) と `flushIfHidden` (即時 save) の両カバーが ~500ms 偽値を読む窓があった。`_md(!1)` を書込み開始時へ移し、失敗時は catch で `_md(!0)` 復元 — dirty が常時「未書込み変更あり」の真値を返す。3挙動ピン (fake IDB 経由の mid-save 生存・失敗復元・正常 clear) で固定。
+
 ## [1.8.209] - 2026-10-01
 
 ### Fixed
