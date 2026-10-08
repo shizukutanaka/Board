@@ -22118,6 +22118,30 @@ pass += 2;
   pass += 10;
 }
 
+{
+  // ADR-1192: the same class in the op-'before' baseline maps — _lwwDrop and
+  // _stampWrites built plain-{} lookups keyed by op.before[].id (wire strings,
+  // '__proto__' passes patches()'s _iS/≤64 gate). A poisoned entry resolved as
+  // EVERY member's baseline → forged _chg verdicts across the whole op: kept
+  // props dropped (style/patch path) or members filtered out (group path).
+  // Contract-parity fix: all wire-keyed maps are _wM(); the four sites were
+  // the last plain-{} ones (audit enumerated every remaining `={}`/`Map` site).
+  state.shapes.push({id:'sA',type:'rect',x:0,y:0,w:10,h:10});
+  const C2={peer:'p',seq:9,ts:5};
+  const gop={op:'group',ids:['sA'],gid:'GV',before:[{id:'__proto__',groupId:'GV'},{id:'sA'}],clock:C2};
+  assert.strictEqual(Store._lwwDrop(gop),true,'group op keeps a member whose real baseline lacks groupId');
+  assert.deepStrictEqual(gop.ids,['sA'],'proto-poisoned baseline no longer drops the member');
+  const sop={op:'style',after:[{id:'sA',x:5}],before:[{id:'__proto__',x:5},{id:'sA',x:0}],clock:C2};
+  assert.strictEqual(Store._lwwDrop(sop),true,'patch op keeps props the poisoned baseline marked unchanged');
+  assert.strictEqual(sop.after[0].x,5,'after survives — poison baseline is a plain own key, not a proto swap');
+  Store._stampWrites({op:'style',after:[{id:'sA',x:5}],before:[{id:'__proto__',x:5},{id:'sA',x:0}],clock:C2});
+  assert.strictEqual(state.wclock['sA'].x,C2,'stampWrites uses the real baseline — changed prop stamped');
+  assert.ok(html.includes('const bmap=_wM()'),'group/ungroup baseline maps are null-proto (both methods)');
+  assert.ok(html.includes('const bb=_wM()'),'patch-op baseline maps are null-proto (both methods)');
+  console.log('  ✓ ADR-1192 null-proto op-baseline maps (7 asserts)');
+  pass += 7;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
