@@ -20720,6 +20720,28 @@ pass += 7;
 }
 pass += 8;
 
+// ---- ADR-1147: keyboard-only ops reach the ctx menu (text flags + zoom-to-selection) ----
+{
+  assert.ok(html.includes("['ctxBold','⌘B',()=>toggleTextFlag('bold')]"),'ADR-1147: ctx menu exposes bold');
+  assert.ok(html.includes("['ctxItalic','⌘I',()=>toggleTextFlag('italic')]"),'ADR-1147: ctx menu exposes italic');
+  assert.ok(html.includes("['ctxUnder','⌘U',()=>toggleTextFlag('under')]"),'ADR-1147: ctx menu exposes underline');
+  assert.ok(html.includes("['ctxStrike','⌘⇧X',()=>toggleTextFlag('strike')]"),'ADR-1147: ctx menu exposes strikethrough');
+  assert.ok(html.includes("['ctxZoomSel','⇧2',zoomToSelection]"),'ADR-1147: ctx menu exposes zoom-to-selection');
+  assert.ok(html.includes("ctxBold:'太字'")&&html.includes("ctxZoomSel:'選択にズーム'"),'ADR-1147: ja i18n keys');
+  assert.ok(html.includes("ctxBold:'Bold'")&&html.includes("ctxStrike:'Strikethrough'")&&html.includes("ctxZoomSel:'Zoom to selection'"),'ADR-1147: en i18n keys');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  const tx=Shape.make('sticky',{x:0,y:0,w:120,h:120});
+  const rx=Shape.make('rect',{x:200,y:0,w:100,h:100});
+  const lx=Shape.make('text',{x:400,y:0,w:100,h:40,locked:true});
+  Store.commit({op:'add',shape:tx});Store.commit({op:'add',shape:rx});Store.commit({op:'add',shape:lx});
+  state.selection=new Set([tx.id,rx.id,lx.id]);
+  toggleTextFlag('bold');_nugEnd();
+  assert.ok(byId(tx.id).bold===true&&byId(rx.id).bold!==true&&byId(lx.id).bold!==true,'ADR-1147: the menu-called toggle hits text-capable unlocked only');
+  state.shapes=[];_invalidateGrid();state.selection=new Set();
+  console.log('  ✓ ADR-1147 keyboard-only ops reach the ctx menu (8 asserts)');
+}
+pass += 8;
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;
