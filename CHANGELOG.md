@@ -1,3 +1,8 @@
+## [1.8.190] - 2026-10-01
+
+### Fixed
+- **round916 / ADR-1166 — dup-chain delta lifecycle**: audit of the ADR-0080 `dupIds`/`dupDelta` smart-duplicate chain found two live gaps. (a) **Phantom vector under ro**: an arrow-key nudge in read-only mode live-writes, gets rejected at the `commit` ro gate and `_roRe`-reverted — but the `_dd()` feed ran *unconditionally*, so `dupDelta` grew while nothing moved; the next ⌘D after ro lifted landed displaced. Both feed sites (`nudgeSelection`, `endSelect` drag-move) now gate the feed on `!state.ro`. (b) **Undo asymmetry**: undoing an armed-set move reverted position but not the delta, so ⌘D after undo applied the post-move vector. Feeding move ops now carry `op.dd` — the pre-move delta snapshot — and `_apply` restores it on backward and re-feeds `dd+dx/dd+dy` on own redo only (`op.clock.peer===_pi()`, the ADR-1163 bro/bvp idiom). `dd` joins `orig`/`moved`/`origSel` in the `_slimOp` strip: undo-domain data never rides the wire. 8 behavioural asserts + 3 source pins (2 recalibrated for the new literals).
+
 ## [1.8.189] - 2026-10-01
 
 ### Fixed
