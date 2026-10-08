@@ -1,3 +1,8 @@
+## [1.8.181] - 2026-10-01
+
+### Fixed
+- **round907 / ADR-1157 — the find box folds before a modal / presentation opens**: the ctx-menu→modal direction was closed in ADR-1155, but the find box (`#sqinput`, `z-index:999`) had the inverse hole — `UI.openShare`/`UI.toggleHelp`/`Presentation.enter` never folded it, so an open search box **rendered above** the share/help dialog (`z-index:100`) and **popped back mid-screen** after `leave()` with a stale query. `_captureFocus`/`_focusTrigger` then recorded the floating input itself as the invoker. New `_foldSq` seam is called *before* each invoker capture: `toggleSq`'s close path restores the pre-search focus, so the capture records the true chain end. One transient overlay at a time now holds symmetric. 7 pins (4 source + 3 behavioural).
+
 ## [1.8.180] - 2026-10-01
 
 ### Fixed
