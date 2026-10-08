@@ -1215,6 +1215,7 @@ Board/
 │   ├── ADR-1187-imgs-store-load-isolation.md  # `Persist.load` の imgs-store 読取失敗が doc 全体のロードを沈めていた残穴 — `getAll`/`getAllKeys` の reject で `load()` 全体が落ち図形ゼロ起動 → 次回 `save()` が復旧可能な doc を空盤面で上書き。img attach を nested try で隔離、`_attachShape` が ref を `_imgPending` へ駐留し imgq heal へ送る。3挙動ピン (図形生存・ref 駐留・無損失)
 │   ├── ADR-1188-backup-restore-imgs-isolation.md  # ADR-1187 同型の残存面 — `restoreBackup` の imgs-store 読取失敗でバックアップが永久にリストア不能 (slot は残り retry も同一点で落ちる)。同一隔離パターンで閉塞、ref は `_imgPending` 駐留→imgq heal。3挙動ピン (restore 成功・図形生存・ref 駐留)
 │   ├── ADR-1189-img-heal-lifecycle.md  # 画像 heal ライフサイクル (park→ask→answer→resolve→rescan) 監査完走 — 20+ ADR に分散実装された契約を網羅確認、`_imgDbGet` の残存エッジ (async staging・missing key・throw 嚥下・非 id ゲート・cap 拒否) を9ピンで補完 (docs+pin ラウンド)
+│   ├── ADR-1190-snapshot-ask-queue.md  # `_sendSnapshot` throttle 窓内の 2 件目以降の ask drop を閉塞 — deferral を per-ask queue へ (各 ask は自 horizon の応答+falsy collapse+8 cap overflow→full、init でクリア)。joiner の horizon 不整合による ~15s 不完全盤面を解消、9 ピン
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)

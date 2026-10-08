@@ -1,3 +1,8 @@
+## [1.8.214] - 2026-10-01
+
+### Fixed
+- **round940 / ADR-1190 — `_sendSnapshot` の throttle 窓内で 2 件目以降の ask が暗黙 drop されていた残穴を閉塞**: 旧実装は `_snapT` armed 中の呼出を記録せず return し、armed flush が**最初の asker の horizon** で計算された delta snapshot しか送らなかった。同一 1s 窓内で別の joiner (特に空盤面の新規 peer) が `hello`/`sync-req` を発行すると、その ask は失われ — joiner は horizon より古い図形を全て取り損ね、`_snapRx` 未達で sync-req retry (3回 bound × ~5s) に頼る最大 ~15s の不完全盤面に沈んでいた。deferral を per-ask queue へ置換: 各 ask は自 horizon で計算された応答 (送判定+dels) を受け、falsy ask は queue を collapse (full が全 ask を包含)、8 cap 越えは `[null]` へ潰れて flood amplification の上限を維持。`init` が `_snapRqs` をクリアし旧ルームの ask を持ち越さない。9挙動/ソースピンで固定 (両 ask queue・per-ask horizon 応答・falsy collapse・overflow→full・init クリア)。
+
 ## [1.8.213] - 2026-10-01
 
 ### Fixed

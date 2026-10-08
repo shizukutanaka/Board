@@ -1161,7 +1161,7 @@ const checks = [
     && html.includes('if(_pr().size>=MAX_PEERS)return;')
     && html.includes("!_iS(msg.peer)||_ln(msg.peer)>MAX_PEER_ID_LEN")],
   ['snapshot amplification: _sendSnapshot throttled',
-    html.includes('_lastSnapAt:0,_snapT:0') && html.includes('if(w>0){if(!this._snapT)this._snapT=_stO(()=>{this._snapT=0;this._sendSnapshot(req)},w);return}')],
+    html.includes('_lastSnapAt:0,_snapT:0') && html.includes('this._snapRqs||(this._snapRqs=[])') && html.includes('for(const r of q)this._send(this._snapshotMsg(r))')],
   ['importBoard: FileReader onerror toasts instead of failing silently',
     html.includes("r.onerror=()=>_eT(_IB);")],
   ['docName clamped to 80 chars on all four intake paths (import/IDB/backup/hash)',
@@ -8174,6 +8174,7 @@ try {
       B.Net._lastSnapAt=0;   // simulate the 1s window elapsing
       B.Net._sendSnapshot();
       assert.strictEqual(_snaps,2,'snapshot throttle: the next window sends again');
+      clearTimeout(B.Net._snapT);B.Net._snapT=0;B.Net._snapRqs=undefined;
       B.Net._send=_origSend;
       B.state.peers.clear();
       console.log('  ✓ peer-map flood hardening: MAX_PEERS cap, peer-id type/length intake, snapshot throttle (v1.7.63)');
@@ -22061,6 +22062,34 @@ pass += 2;
     assert.ok(html.includes('this._imgDbGet(msg.key)'),'an in-memory miss falls back to the durable store');
   }finally{Persist.db=_db0}
   console.log('  ✓ ADR-1189 imgq miss consults the durable store (9 asserts)');
+  pass += 9;
+}
+
+{
+  // ADR-1190: a second snapshot ask inside the throttle window queues instead of
+  // dropping — each asker's horizon gets its own send; a falsy ask collapses to
+  // one full snapshot; the queue is bounded (overflow → full) and cleared on
+  // room switch.
+  const net={_lastSnapAt:0,_snapT:0,_snapRqs:undefined,_sends:[],
+    _send(m){this._sends.push(m)},_snapshotMsg(r){return{r}}};
+  const A={x:{peer:'a',seq:1,ts:1}},B={y:{peer:'b',seq:1,ts:2}};
+  Net._sendSnapshot.call(net);
+  assert.strictEqual(net._sends.length,1,'first ask in a fresh window sends immediately');
+  Net._sendSnapshot.call(net,A);Net._sendSnapshot.call(net,B);
+  assert.strictEqual(net._sends.length,1,'in-window asks defer instead of sending');
+  assert.strictEqual(net._snapRqs.length,2,'both asks queue instead of the second dropping');
+  net._snapT._onTimeout();
+  assert.strictEqual(net._sends.length,3,'the flush answers every queued ask');
+  assert.deepStrictEqual(net._sends[1],{r:A},'ask A answered with A\u2019s own horizon');
+  net._lastSnapAt=Date.now();
+  Net._sendSnapshot.call(net,A);Net._sendSnapshot.call(net);
+  assert.strictEqual(net._snapRqs.length,1,'a falsy ask collapses the queue to itself');
+  clearTimeout(net._snapT);net._snapT=0;net._snapRqs=undefined;
+  for(let i=0;i<9;i++)Net._sendSnapshot.call(net,{['i'+i]:{peer:'p',seq:1,ts:1}});
+  assert.strictEqual(net._snapRqs[0],null,'queue overflow collapses to a full ask');
+  clearTimeout(net._snapT);
+  assert.ok(html.includes('this._snapRqs=_ud;'),'init clears the ask queue on room switch');
+  console.log('  ✓ ADR-1190 snapshot ask queue (9 asserts)');
   pass += 9;
 }
 
