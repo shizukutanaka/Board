@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.158';   // ADR-1134
+const V='1.8.159';   // ADR-1135
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1648,12 +1648,14 @@ const Store={
     const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};
     this._apply(op,false);
     state.histIdx--;                  // ADR-1129: consume before _pgFollow — a follow throw must not double-revert
-    _pgFollow(op);   // ADR-0652
+    let _werr=null;
     for(const w of _undoWire(op)||[]){w.clock={peer:_pi(),seq:++state.seq,ts:_ut};
       if(w.op==='replace')state._lastRep=w.clock;   // ADR-0615
-      this._stampWrites(w);Net.broadcast(w)}
+      this._stampWrites(w);try{Net.broadcast(w)}catch(e){if(!_werr)_werr=e}}   // ADR-1135: best-effort — a mid-loop send failure must not strand the rest
+    _pgFollow(op);   // ADR-0652/1135: after propagation — a follow throw can't abort the wire ops
     _txFlush();   // ADR-1123
     _rdb();
+    if(_werr)throw _werr;
     return true;
   },
   redo(){
@@ -1665,8 +1667,8 @@ const Store={
     _fck(op);   // ADR-0718
     this._apply(op,true);
     state.histIdx++;                  // ADR-1129: advance after apply — a throw must not skip the op
-    _pgFollow(op);   // ADR-0652
     if(op.op==='replace')state._lastRep=op.clock;this._stampWrites(op);Net.broadcast(op);   // ADR-0615
+    _pgFollow(op);   // ADR-0652/1135: after propagation — a follow throw can't abort the broadcast
     _txFlush();   // ADR-1123
     _rdb();
     return true;

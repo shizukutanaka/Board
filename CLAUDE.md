@@ -1161,6 +1161,7 @@ Board/
 │   └── ADR-1132-existence-clock-helper-equivalence.md  # tomb3系統 (_tmE/_tmb・_bN・_tAlive) 監査 clean 完走 — 同一支配関係 (_born>_del で全経路 alive、_del>到着時計で gate、_bT は単調 upgrade) を12ピンで固定。併せて _attachOp 網羅・_placeCopies 全 remap・MAC peer 束縛・origSel 非搬送・_shCap 網羅も検証済み
 │   └── ADR-1133-room-secret-reseed.md  # doc 復元の `rs` 採用が `_ls` しない揮発性代入 — ls 消去 (IDB 残存) の唯一の復元窓で doc 鍵が後続タブの mint に origin-clobber される残穴 → ls 死時のみ `_ls('board.rs',d.rs)` 再シード (ls 生存時は絶対に上書きしない)
 │   └── ADR-1134-live-read-convergence-flush.md  # `_txE` 滞留エントリ (push→flush 間の throw) が queue 時点の古値を新時計で emit し新しいローカル書込みを上書き収束して発散 → flush 時に `byId` で live 値を再読出し + dead id/収束済みは emit しない
+│   └── ADR-1135-undo-wire-send-exception-tolerance.md  # undo/redo の `_pgFollow` が wire 送出前で follow throw → op は適用済みなのに未送出発散 + undo wire ループの bare broadcast で途中 throw → 残 op 未送出 (部分送出発散) → follow は送出後へ移動、ループは best-effort + 先頭エラー rethrow (ADR-1130 同型)
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
