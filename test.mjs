@@ -1116,7 +1116,7 @@ const checks = [
   ['doFlip skips locked shapes (consistent with doRotate)', html.includes("const sel=_selUL();")],
   ['doRotate orbits selection about group centre', html.includes("orbit about group centre, like doFlip") && html.includes("_sT2(s,nx-cx,ny-cy)")],
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
-  ['search Escape returns focus to canvas', html.includes("_ivO();_fc(canvas);}") && html.includes("_sqAdvance(_sK(ev)?-1:1)")],
+  ['search Escape folds via the window router (single owner, ADR-1152)', html.includes("e.target===_g('sqinput'))toggleSq()") && html.includes("_sqAdvance(_sK(ev)?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
   ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  if(state.ro){_roNo();return}   // ADR-1106\n  const sel=_selUL();")],
@@ -20839,6 +20839,29 @@ pass += 7;
   console.log('  ✓ ADR-1151 find box Esc fold + focus contract (6 asserts)');
 }
 pass += 6;
+
+// ---- ADR-1152: Esc fold is single-owned (no element/window race) ----
+{
+  assert.ok(html.includes("_on(sq,_KD,ev=>{if(ev.key==='Enter'"),'ADR-1152: the element keydown no longer folds on Esc');
+  const sq=fakeDoc.getElementById('sqinput');sq.select=()=>{};sq.matches=()=>true;sq.style.display='none';sq.value='';
+  const inv={f:0,focus(){inv.f++},isConnected:true};
+  fakeDoc.activeElement=inv;
+  toggleSq();
+  assert.strictEqual(sq.style.display,'block','ADR-1152: ⌘F opens the find box');
+  sq.value='abc';
+  fakeDoc.activeElement=sq;
+  const _fk=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
+  // Real browser order: the element listener runs at the target, then the
+  // SAME event bubbles to window — with two owners the box reopened.
+  for(const f of sq._L['keydown']||[])f({key:'Escape',isComposing:false,preventDefault(){},stopPropagation(){}});
+  _fk('Escape',{target:sq});
+  assert.strictEqual(sq.style.display,'none','ADR-1152: element-then-window Esc folds once');
+  assert.strictEqual(sq.value,'','ADR-1152: closing clears the visible query');
+  sq.matches=()=>false;sq.style.display='none';sq.value='';fakeDoc.activeElement=null;
+  state.shapes=[];state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  console.log('  ✓ ADR-1152 find box Esc single-owner (4 asserts)');
+}
+pass += 4;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
