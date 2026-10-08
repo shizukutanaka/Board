@@ -1,3 +1,8 @@
+## [1.8.180] - 2026-10-01
+
+### Fixed
+- **round906 / ADR-1156 — closed-`<details>` children are excluded from the focus trap**: `_focusables`' `disabled`/`hidden` filter never accounted for `<details>` — the `#share` dialog's closed `.share-details` peer block contributed its `<summary>` plus all nine RTC controls to the trap list even though only the summary is rendered. Two live symptoms: (1) Tab on the mid-list `summary` hit `_trapStep`'s `null` middle branch, and native Tab walked out of the modal onto `<body>` (the dialog is last in document order); (2) ⇧Tab on the first item `shareClose` wrapped to the list tail `rtcAnswer` — a `focus()` on an unrendered element no-ops, permanently stranding ⇧Tab. The filter now drops elements inside `details:not([open])` except the `summary` itself, so every wrap sentinel and every middle step lands on a rendered, focusable element. 8 pins (2 source + 6 behavioural).
+
 ## [1.8.179] - 2026-10-01
 
 ### Fixed

@@ -1774,7 +1774,7 @@ try {
              copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _mergeImport, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, importSvgText, importExcText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
              _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, _mkSnapIdx, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
              _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection, _setDocName,
+             _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _focusables, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa: () => _teTa, zoomAt, reverseConn, unbindSelection, _setDocName,
              flushErase, _pushEraseBatch: (s) => _eraseBatch.push(s), _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
              exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
              _onBtnInstall, _getInstallPrompt: () => _installPrompt, _setInstallPrompt: (v) => { _installPrompt = v; },
@@ -1803,7 +1803,7 @@ try {
           copyStyle, pasteStyle, applyStyleToSelection, toggleElbow, toggleBothEnds, _elbowPts, _elbowTrunk, _linePts, _hatchSegs, _hatchCtx, _svgHatch, cycleFillStyle, _fontStr, toggleTextFlag, doMatchSize, _placeCopies, _mergeImport, _connLabelXY, _drawImgLabel, _wayArr, _svgImgLabel, toggleRound, cycleStickyColor, wrapInFrame, doPasteAt, doPasteInPlace, selectSamePaint, selectSameType, showAllShapes, _stickyChain, _fitIfEmptyView, toggleCurve, toggleLineArrow, toggleStickyText, selectFrameContents, selectInverse, unlockAll, exportViewportPNG, cycleArrowHead, _connPathPts, _pathAt, _pathNearestT, snapSelToGrid, importBoardText, copyBoardJSON, importDrawioText, resetRoute, fitFrames, cycleTextAlign, fontSizeStep, _curveCtrl, _curveSegs, _qconnShape, _qdotAt, _qdots, _eqGapSnap,
           _buildGrid, _queryGrid, _gridRectCandidates, sortZ, createShapeKbd, pickTool, penWidths, _mkSnapIdx, _snapIndex, moveDelta, _endPointBind, _snapBoxIdx, dashArr, validShape, _imgKey, _predTail,
           _sfbCapture, _sfbFlush, _sbf, _sfbBlur, MAX_HISTORY, _now, NET_PRESENCE_TIMEOUT, doLock, connEnds, computeConnClears, doRotate, doDelete, keyBetween, reindexFrac, validRemotePayload, clampZoom, MIN_ZOOM, MAX_ZOOM, Net, clockNewer, nowTs, resizeAfterTextEdit, withFrameChildren, nudgeSelection, _nugEnd, _frameOf, shapeRot, Persist, coalescedSamples, beginPen, contPen, abortGesture, ptr, _edgePanTick, _gresizeDrag, _gresizeCommit, _mapToBox, _rotPtsAbout, _grotDrag, _grotCommit, _rotShape, _grpRotHandle, _syncStylePanelIfChanged, _syncStylePanel, pickOrMarquee, wheelPx, imeShouldCommit, roundShapesForExport, _round, _syncTextFinalize,
-          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
+          _sqNav, _sqAdvance, _setSq, _sqMatches, _grpMapGet, zoomToSelection, _fitViewport, UI, _trapStep, _focusables, _watchDPR, copyText, Minimap, recognizeStroke, doBeautify, _selShapes, exportSelection, openTextEditor, positionTextEditor, _teFollow, _getTeTa, zoomAt, reverseConn, unbindSelection,
           flushErase, _pushEraseBatch, _cancelPointerGesture, _longPressFire, _armLongPress, _clearLongPress, _syncDocTitle, Presentation, canvas, resize,
           exportPNG, copyPNG, exportSVG, exportPDF, exportBoard, importBoard, _invalidateGrid, byId, eraseAt,
           _onBtnInstall, _getInstallPrompt, _setInstallPrompt,
@@ -20979,6 +20979,32 @@ pass += 5;
   console.log('  ✓ ADR-1155 dying-overlay invoker never recorded (10 asserts)');
 }
 pass += 10;
+
+// ---- ADR-1156: closed-<details> children are excluded from the focus trap ----
+{
+  assert.ok(html.includes("el.closest?.('details:not([open])')"),'ADR-1156: closed-details children are not listed as focusable');
+  assert.ok(html.includes("el===_qs(d,'summary')"),'ADR-1156: the summary stays tabbable inside a closed details');
+  // behavioural: a fake dialog tree whose querySelectorAll feeds _focusables
+  const summary={closest:s=>s==='details:not([open])'?det:null};
+  const kidA={closest:s=>s==='details:not([open])'?det:null};
+  const kidB={closest:s=>s==='details:not([open])'?det:null};
+  const close={closest:()=>null};
+  const det={querySelector:s=>s==='summary'?summary:null};
+  const root={querySelectorAll:()=>[close,summary,kidA,kidB]};
+  const items=_focusables(root);
+  assert.strictEqual(items.length,2,'ADR-1156: closed-details children dropped from the tab order');
+  assert.ok(items.includes(summary),'ADR-1156: the summary stays in the tab order');
+  assert.ok(!items.includes(kidA)&&!items.includes(kidB),'ADR-1156: closed-details children are not focusable items');
+  // the wrap sentinel is now a rendered element in both directions
+  assert.strictEqual(_trapStep(items,summary,false),close,'ADR-1156: forward wrap off the last lands on the first item');
+  assert.strictEqual(_trapStep(items,close,true),summary,'ADR-1156: backward wrap off the first lands on a rendered item');
+  // an OPEN details keeps all children in the tab order
+  const kidC={closest:()=>null};                                   // open details → closest('details:not([open])') is null
+  const root2={querySelectorAll:()=>[close,summary,kidC]};
+  assert.strictEqual(_focusables(root2).length,3,'ADR-1156: open-details children stay listed');
+  console.log('  ✓ ADR-1156 closed-details children excluded from focus trap (8 asserts)');
+}
+pass += 8;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
