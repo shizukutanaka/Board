@@ -1,3 +1,8 @@
+## [1.8.218] - 2026-10-01
+
+### Docs
+- **round944 / ADR-1194 — wire protocol reference: kind × transport × bounds の正規契約を1文書へ集約 (ADR-1048 残 P4 の消化)**: 認証エンベロープ (canon 除外=mac/dmac/data・`_send`/`_bcast`/`_sendDC` タグ漏斗・verify 順序・peer bound) と全13 envelope kind (`hello`/`ping`/`sync-req`/`cursor`/`selection`/`bye`/`name`/`op`/`snapshot`/`snap`/`opc`/`img`/`imgq`) の transport 行列・送信サイト・フィールド境界・intake 効果を、~40 ADR に分散していた規則から一括集約。op サブ op (17) 一覧と frag/img/imgq の送信ライフサイクル規則も同梱。行動変更なし — dispatch switch の `case` 群と全 `_mk` 送信 kind が doc に命名されることを担保する drift ゲート7ピンで契約固定 (kind 網羅・transport 行列・auth エンベロープ・bound リテラル・op sub-op 列挙)。
+
 ## [1.8.217] - 2026-10-01
 
 ### Fixed
