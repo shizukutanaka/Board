@@ -1,3 +1,8 @@
+## [1.8.217] - 2026-10-01
+
+### Fixed
+- **round943 / ADR-1193 — `_sec()` の mint が `uid()×4`=128文字で全 `≤64` ゲートを超過していた認証連鎖の閉塞 (wire-auth 鍵ライフサイクル監査 + 契約ピン)**: 検証順序 (self-echo→peer bounds→MAC→kind)・`_dcKey` 遷移の監査中に発見 — mint された鍵は以下の全ダウンストリーム境界に再採用不能: (a) `board.rs` 読み取りゲート (`_ln(v)<=64`) で自身の保存値を棄却 → 同一オリジンタブが別鍵を mint し BC `_mac` が恒常失敗でクロスタブ同期が沈黙 dead、(b) IDB `d.rs` 復元ゲート (2サイト同様 `<=64`) で永続鍵を棄却 → リロード毎に新鍵を mint、(c) `_decodeToken` の `k` bound (`<=64`) で offer トークンの鍵を棄却 → joiner は `_dcKey=null` で自己鍵にフォールバックし **双方向の DC dmac が恒常失敗 = RTC リンクが接続成立しても全メッセージ沈黙 dead**。mint を `uid()+uid()`=64文字 (256bit) へ修正し全境界へ通過可能化 — BC 収束・doc rs 復元・トークン鍵採用が初めて正しく往復する。併せて verify-order・`_dcKey` ライフサイクル (init→offer mint→token adopt→consume 冪等→onclose→`_dmac≡_mac` フォールバック)・プリミティブ (`_hmac` RFC2104/`_eqs` 定数時間/`_canon` 除外限定) の完全契約をピン化。11挙動/ソースピンで固定 (64-hex mint・board.rs 往復採用・RFC4231 ベクトル・forged/viaRtc 棄却順序)。
+
 ## [1.8.216] - 2026-10-01
 
 ### Fixed

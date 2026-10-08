@@ -21643,6 +21643,7 @@ pass += 4;
   assert.strictEqual(E.state.docName,'Foreign','redo re-adopts the name');
   // (d) roomSecret is session-scoped auth, not doc content: a .board cannot
   //     move it, and undo leaves it alone.
+  fakeWin.localStorage.removeItem('board.rs');   // dead origin store — post-1193 mints are ls-readable
   E.state.roomSecret='CUR';
   const _hadFR=Object.prototype.hasOwnProperty.call(globalThis,'FileReader'),_prevFR=globalThis.FileReader;
   try{
@@ -21664,6 +21665,7 @@ pass += 4;
   );
   const _prevDb=E2.Persist.db;E2.Persist.db=makeFakeIdb();
   try{
+    fakeWin.localStorage.removeItem('board.rs');   // dead origin store so the restore reseeds
     E2.state.roomSecret='K1';
     await E2.Persist.saveBackup([_rM('bkM',1)],{x:0,y:0,zoom:1},'B');
     E2.state.roomSecret='K2';E2.state.shapes=[];E2._invalidateGrid();
@@ -22140,6 +22142,58 @@ pass += 2;
   assert.ok(html.includes('const bb=_wM()'),'patch-op baseline maps are null-proto (both methods)');
   console.log('  ✓ ADR-1192 null-proto op-baseline maps (7 asserts)');
   pass += 7;
+}
+
+// ADR-1193: wire-auth verify-order + key-material lifecycle — the self-echo
+// and peer-bounds gates run read-only BEFORE MAC verification, every kind
+// sits behind the single `_eqs` gate, and the _dcKey lifecycle is a closed
+// set: offer mint → token adopt → consume re-adopt (idempotent) → onclose
+// null (fallback makes _dmac ≡ _mac on the room secret).
+{
+  // HMAC vectors — TC2 covers the direct-key path; an 80-byte ASCII key
+  // exercises the >64B hash-first branch (expected value from Node crypto)
+  assert.strictEqual(_hmac('Jefe','what do ya want for nothing?'),'5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843','hmac RFC4231 TC2');
+  assert.strictEqual(_hmac('a'.repeat(80),'Test Using Larger Than Block-Size Key - Hash Key First'),'7502d8b2069f64dcbca4d51628fdc86a17200b3fad268755483946baf3d99fa8','hmac key>64B hash-first branch');
+  // _eqs: equal → true; same-length diff → false; diff-length → false
+  assert.ok(_eqs('ab','ab')&&!_eqs('ab','ac')&&!_eqs('ab','abc'),'_eqs constant-time contract');
+  // _sec(): the mint fits the ≤64 bound every downstream gate enforces
+  // (board.rs read, d.rs restore, token k) — before the fix the uid()×4 mint
+  // was 128 chars and could never be re-adopted
+  state.roomSecret=null;fakeWin.localStorage.removeItem('board.rs');
+  Net._mac({});
+  const minted=state.roomSecret;
+  assert.ok(minted.length===64&&/^[0-9a-f]{64}$/.test(minted),'minted secret is 64-hex — passes board.rs/d.rs/token-k bounds');
+  state.roomSecret=null;
+  Net._mac({});
+  assert.strictEqual(state.roomSecret,minted,'board.rs round-trip: a fresh tab adopts the stored mint');
+  fakeWin.localStorage.removeItem('board.rs');   // restore the absent-store precondition for later blocks
+  // _canon strips exactly mac/dmac/data — every other field is signed
+  assert.strictEqual(Net._canon({k:'x',peer:'p',a:1,mac:'M',dmac:'D',data:'ZZ'}),'{"k":"x","peer":"p","a":1}','canon excludes only mac/dmac/data');
+  // verify-order: peer===_pi() drops before MAC — an untagged self-echo never verifies
+  state.shapes=[];_invalidateGrid();state.seenOps=new Set();state.wclock={};
+  const sS=Shape.make('rect',{x:0,y:0,w:4,h:4});
+  Net._recvRaw({k:'op',peer:state.peerId,op:{op:'add',shape:sS,clock:{peer:state.peerId,seq:1,ts:1}}},false);
+  assert.ok(!byId(sS.id),'self-peer message drops pre-MAC, no tag required');
+  // a forged 'hello' on BC never reaches _touchPeer
+  const pc0=Net.peerCount();
+  Net._recvRaw({k:'hello',peer:'zz-forged',mac:'0'.repeat(64)},false);
+  assert.strictEqual(Net.peerCount(),pc0,'forged hello fails before _touchPeer');
+  // _dcKey lifecycle: set → _dmac diverges; null → _dmac ≡ _mac (room-secret fallback)
+  const lm={k:'op',peer:'x',op:{op:'noop'},clock:{peer:'x',seq:1,ts:1}};
+  Net._dcKey='linkK';
+  const d1=Net._dmac(lm);
+  Net._dcKey=null;
+  assert.ok(d1!==Net._dmac(lm)&&Net._dmac(lm)===Net._mac(lm),'_dcKey transitions: set diverges, null folds to _mac');
+  // send-side tagging is total: _bcast stamps dmac, _send stamps mac
+  assert.ok(html.includes('if(!msg.dmac)msg.dmac=this._dmac(msg)')&&html.includes('msg.mac=this._mac(msg)'),'every egress kind carries a transport tag');
+  // viaRtc drops BC-only kinds POST-verify (ADR-0986 ordering): valid-dmac hello still dropped
+  const hh={k:'hello',peer:'zz-rtc'};
+  hh.dmac=Net._dmac(hh);
+  const pc1=Net.peerCount();
+  Net._recvRaw(hh,true);
+  assert.strictEqual(Net.peerCount(),pc1,'viaRtc hello dropped after verification (kind gate)');
+  console.log('  ✓ ADR-1193 wire-auth verify lifecycle (11 asserts)');
+  pass += 11;
 }
 
 } catch (err) {
