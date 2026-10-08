@@ -21960,6 +21960,38 @@ pass += 2;
   pass += 3;
 }
 
+// ---- ADR-1187: an imgs-store read failure must not sink the valid shapes.
+// Previously the img-attach block sat inside the same try as the doc read —
+// a getAll/getAllKeys error rejected load() wholesale, installing nothing;
+// the next save() then overwrote a recoverable doc record with an empty board.
+// The attach is now isolated: shapes install, ref-bearing imgs park via
+// Net._attachShape (imgq heal resolves them like any other parked ref).
+{
+  const imgShape={id:'i1',type:'image',img:'img:K9',x:0,y:0,w:10,h:10,z:1};
+  const doc={shapes:[imgShape],viewport:{x:0,y:0,zoom:1},docName:'D',pages:null,curPg:null,wc:{}};
+  const _errRq=()=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.error=new Error('imgs dead');rq.onerror&&rq.onerror()});return rq};
+  const _okRq=v=>{const rq={onsuccess:null,onerror:null};queueMicrotask(()=>{rq.result=v;rq.onsuccess&&rq.onsuccess()});return rq};
+  const brokenImgs={transaction(){
+    setTimeout(()=>{},0);
+    return{objectStore(n){return{
+      get(k){return _okRq(n==='docs'?doc:undefined)},
+      getAll(){return _errRq()},
+      getAllKeys(){return _errRq()},
+      put(){},delete(){}
+    }}};
+  }};
+  const _ldb=Persist.db;Persist.db=brokenImgs;Net._imgPending.clear();
+  try{
+    await Persist.load();
+    assert.strictEqual(byId('i1')?.id,'i1','the shape list survives an imgs-store read failure (ADR-1187)');
+    assert.ok(Net._imgPending.has('i1'),'the unresolved img ref parks for imgq heal instead of crashing the load (ADR-1187)');
+    assert.strictEqual(state.shapes.length,1,'no shape was lost (ADR-1187)');
+  }finally{Persist.db=_ldb;Net._imgPending.clear()}
+  state.shapes=[];state.wclock={};state.pages=null;state.curPg=null;state.seenOps=new Set();state.history=[];state.histIdx=-1;state._lastRep=null;state._lastTs=0;_invalidateGrid();
+  console.log('  ✓ ADR-1187 imgs-store failure isolation (3 asserts)');
+  pass += 3;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

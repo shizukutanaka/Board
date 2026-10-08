@@ -794,8 +794,8 @@ const _p=()=>_gC('--paper'),_ac=()=>_gC('--accent-contrast');   // ADR-0292
 const _c01=v=>_min(1,_max(0,v));   // ADR-0295
 const _conn=t=>t==='line'||t==='arrow';   // ADR-0297
 const _selAny=f=>_selIds().some(id=>{const s=byId(id);return s&&f(s)});   // ADR-0302
-const _selConnL=()=>_selUnl(s=>(_conn(s.type)));                    // ADR-0415: 6 ctx-menu sites
-const _selTxtL=()=>_selUnl(s=>(_TS.has(s.type)||_frm(s)||_lb(s)));   // ADR-0415: text-capable unlocked
+const _selConnL=()=>_selUnl(s=>(_conn(s.type)));                    // ADR-0415
+const _selTxtL=()=>_selUnl(s=>(_TS.has(s.type)||_frm(s)||_lb(s)));   // ADR-0415
 const _selArrowL=()=>_selUnl(s=>_arw(s));                  // ADR-0415
 const _forSel=f=>{for(const id of _sl()){const s=byId(id);if(s)f(s,id)}};   // ADR-0303
 const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=10;c.shadowOffsetY=3}};   // ADR-0306
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.210';   // ADR-1186
+const V='1.8.211';   // ADR-1187
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -945,7 +945,7 @@ const SHARE_URL_WARN=32768;   // ADR-0040
 const MIRROR_MAX=300;         // ADR-0041
 const SVG_MAX_ELEMS=5000,SVG_MAX_PTS=2000;   // ADR-0042
 const EXC_MAX_ELEMS=50000,EXC_MAX_PTS=10000;   // ADR-0043: .excalidraw import ceilings
-const PASTE_MAX_CHARS=4000;                    // ADR-0044: cap a clipboard text dump
+const PASTE_MAX_CHARS=4000;                    // ADR-0044
 const LONG_PRESS_MS=500;        // ADR-0006
 const LONG_PRESS_MOVE_TOL=10;   // px; beyond before firing = drag not hold
 const MIN_ZOOM=0.1, MAX_ZOOM=16;
@@ -9029,9 +9029,11 @@ const Persist={
       // ADR-0031
       let shapes=d.shapes;
       if(shapes.some(s=>s.img)){
-        const kv=await reqDone(_oS(tx,DB_IMG_STORE).getAll());
-        const ks=await reqDone(_oS(tx,DB_IMG_STORE).getAllKeys());
-        shapes=_imgAttach(shapes,new Map(ks.map((k,i)=>[k,kv[i]])));
+        try{   // ADR-1187
+          const kv=await reqDone(_oS(tx,DB_IMG_STORE).getAll());
+          const ks=await reqDone(_oS(tx,DB_IMG_STORE).getAllKeys());
+          shapes=_imgAttach(shapes,new Map(ks.map((k,i)=>[k,kv[i]])));
+        }catch(_){}
         shapes=shapes.map(s=>Net._attachShape(s));   // ADR-0840
       }
       _rs(shapes.filter(validShape));   // ADR-0009
