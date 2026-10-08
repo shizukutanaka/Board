@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.215';   // ADR-1191
+const V='1.8.216';   // ADR-1192
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1563,7 +1563,7 @@ const Store={
       return kept;};   // ADR-1125
     if(op.op==='upd'){if(!byId(op.id))return true;return filt(op.id,op.after,op.before)>0;}
     if(op.op==='group'||op.op==='ungroup'){
-      const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
+      const bmap=_wM();for(const b of (op.before||[]))bmap[b.id]=b;   // ADR-1192
       const gval=op.op==='group'?op.gid:undefined;
       op.ids=op.ids.filter(id=>{
         const w=_wc()[id];
@@ -1584,7 +1584,7 @@ const Store={
       return _ln(op.changes)>0;
     }   // ADR-1126
     if(!_iA(op.after))return true;
-    const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
+    const bb=_wM();if(_iA(op.before))for(const b of op.before)bb[b.id]=b;   // ADR-1192
     op.after=op.after.filter(p=>byId(p.id)?filt(p.id,p,bb[p.id])>0:false);
     if(_iA(op.before))op.before=op.before.filter(b=>op.after.some(p=>p.id===b.id));   // ADR-1131
     return _ln(op.after)>0;
@@ -1599,7 +1599,7 @@ const Store={
       for(const key of _ok(after)){if(key==='id'||key==='pg'||key==='frac'||key==='groupId'||key[0]==='_'||(key==='type'&&(op.op==='upd'||!_typOK(after[key],after,byId(id)))))continue;if(this._chg(before,after,key))w[key]=C;}};   // ADR-0914/0916/0990
     if(op.op==='upd')stamp(op.id,op.after,op.before);
     else if(op.op==='group'||op.op==='ungroup'){
-      const bmap={};for(const b of (op.before||[]))bmap[b.id]=b;
+      const bmap=_wM();for(const b of (op.before||[]))bmap[b.id]=b;   // ADR-1192
       const gval=op.op==='group'?op.gid:undefined;
       for(const id of op.ids){
         if(byId(id)&&this._chg({groupId:(bmap[id]||{}).groupId},{groupId:gval},'groupId')){
@@ -1613,7 +1613,7 @@ const Store={
     }else if(op.op==='move'&&!_iA(op.after)){   // ADR-0729
       for(const id of op.moved||op.ids||[]){const s=byId(id);if(s&&!s.locked){const w=_wc()[id]||(_wc()[id]=_wM());
         if(op.dx!==0)w.x=C;if(op.dy!==0)w.y=C}}
-    }else if(_iA(op.after)){const bb={};if(_iA(op.before))for(const b of op.before)bb[b.id]=b;
+    }else if(_iA(op.after)){const bb=_wM();if(_iA(op.before))for(const b of op.before)bb[b.id]=b;   // ADR-1192
       for(const p of op.after)stamp(p.id,p,bb[p.id]);}
   },
   _recordCommitted(op){

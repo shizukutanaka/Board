@@ -1,3 +1,8 @@
+## [1.8.216] - 2026-10-01
+
+### Fixed
+- **round942 / ADR-1192 — op `before` ベースライン lookup の残存 plain `{}` を `_wM()` へ統一 (null-proto 契約の完走)**: ADR-0788→1191 と続いた sweep の最終面として index.html の全 `={}`/`Map`/`Object.create` サイトを wire 制御キーかで分類監査 — Net 画像/フラグメント/ピア管理・wclock・id/grp/cache 索引は全て `_mP()`/`_sT()`/`_wM()` 済みで、残存 wire 由来キーの plain-`{}` は `_lwwDrop`/`_stampWrites` の `before` ベースライン map `bmap`/`bb` 4サイトのみだった。`patches()` は `id:'__proto__'` を通す (`_iS`+≤64) ため、`bmap['__proto__']=E` が [[Prototype]] 書換えとなり、**全メンバーのベースラインが毒 E に解決** — patch 枝で変更 props を一括 drop (`_chg(E,after)` 偽装)、group 枝で `op.ids` 全滅。悪用度は限定 (before は送信者委任の baseline) だが、契約規則「wire 由来文字列キーの map は全て null-proto」を完走して consumer 増設・shared-mutation の事故面を閉塞。7挙動/ソースピンで固定 (forged `__proto__` baseline でも group member 保持・patch prop 保持・stampWrites 正常スタンプ・2 ソースピン)。
+
 ## [1.8.215] - 2026-10-01
 
 ### Fixed
