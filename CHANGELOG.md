@@ -1,3 +1,8 @@
+## [1.8.198] - 2026-10-01
+
+### Fixed
+- **round924 / ADR-1174 — snapshot union-heal `curPg` re-derivation**: the snapshot page union (already-paged board, `_iA(msg.pages)` merge branch) built `np` under the 64-page cap without re-deriving the view — an incoming set that fills the cap drops every local-only page including `curPg`'s, leaving `curPg` pointing at a dead id. `_pgOk` then fails for **all** members (pg-less ones fall back to `pages[0].id` ≠ stale id) → whole board invisible with data intact, no toast, no crash; `_pgHealS` can't repair it (`np=64` blocks the `'?'` stub, and the dead page's members keep `pg=dead-id` regardless). The union branch now re-derives the view exactly like `_pgAdopt`/`_pgDel2` — `switchPage(np[0].id)` when `curPg` no longer resolves (gesture fold + cursorHide + selection revalidate + SR announce + persist), `curPg=null` defensively for an empty `np` (unreachable: local leftovers always supply ≥1 — stated, not assumed). Pinned by 4 behavioural + 1 source assert.
+
 ## [1.8.197] - 2026-10-01
 
 ### Fixed

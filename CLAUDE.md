@@ -1200,6 +1200,7 @@ Board/
 │   ├── ADR-1171-send-failure-bookkeeping-parity.md  # 送信失敗対称性 — ADR-1135 の best-effort 送信を redo/commit に拡張 (broadcast throw が _pgFollow/_txFlush/_rdb・収束 flush を取り残す同型残穴を閉塞、_recordCommitted は送信最終文で既に安全)、4+3ピン
 │   ├── ADR-1172-ad-hoc-send-failure-parity.md  # ad-hoc 送信失敗対称性 — 残存2無防備送出 (pageAdd 伴走 addMany: _pgDup の switchPage 孤立 + drawio 複数頁 paste のループ中断) を best-effort 化、全 Net.broadcast サイトが try 保護または終端化 (8サイトセンサスピン)、4+3ピン
 │   ├── ADR-1173-intake-page-homing.md  # 単頁外部取込の pg 帰属 — drawio 単頁尾/svg/exc が bare addMany で pg-less メンバーが pages[0] 帰属し curPg≠先頭で不可視 (成功 toast 付き、ADR-1072 同型) + 外来 pg 残留の幻影頁ベクタを、共有 `_pgHome` (閲覧頁スタンプ/頁なしで pg 抹消) で4ローカル取込経路 (3 importer + _placeCopies 畳込) へ閉塞、3+3ピン
+│   ├── ADR-1174-snapshot-union-curpg.md  # snapshot union-heal の curPg 再導出 — 64頁上限でローカル頁 (curPg 含む) が落ちると curPg が死 id となり全メンバー `_pgOk` 失敗→盤面全体不可視の静黙発散 (`_pgHealS` は np<64+メンバー参照でしか修復不能) — `_pgAdopt`/`_pgDel2` 同型に `switchPage(np[0].id)` 着地へ、4+1ピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)

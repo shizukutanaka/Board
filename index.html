@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.197';   // ADR-1173
+const V='1.8.198';   // ADR-1174
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8486,7 +8486,7 @@ const Net={
           if(rm){_iG();_iv()}}
         if(_iA(msg.pages)){   // ADR-0773
           if(!_pgs())_pgAdopt(msg.pages,state.curPg,_pgClk(msg));   // ADR-0672/1093
-          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:'';_fTs(p.nts)}if(l){if(l.bts==null&&p.bts!=null){l.bts=p.bts;l.btp=_iS(p.btp)?p.btp:'';_fTs(p.bts)}if(_ln(np)<64)_pu(np,l)}else{const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(_ln(np)<64&&(!w||!w._del||b&&clockNewer(b,w._del))){_pu(np,clone(p));_fTs(p.nts);if(b)_bT(p.id,b)}}}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np}_pgHealS();_pgBar()}   // ADR-0773/1093
+          else{const v=_vPages(msg.pages);if(v){const lm=_mP(_pgs().map(p=>[p.id,p])),np=[];for(const p of v){const l=lm.get(p.id);lm.delete(p.id);if(l&&clockNewer({ts:p.nts||0,peer:_iS(p.ntp)?p.ntp:'',seq:0},{ts:l.nts||0,peer:_iS(l.ntp)?l.ntp:'',seq:0})){l.name=p.name;l.nts=p.nts;l.ntp=_iS(p.ntp)?p.ntp:'';_fTs(p.nts)}if(l){if(l.bts==null&&p.bts!=null){l.bts=p.bts;l.btp=_iS(p.btp)?p.btp:'';_fTs(p.bts)}if(_ln(np)<64)_pu(np,l)}else{const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(_ln(np)<64&&(!w||!w._del||b&&clockNewer(b,w._del))){_pu(np,clone(p));_fTs(p.nts);if(b)_bT(p.id,b)}}}for(const p of lm.values())if(_ln(np)<64)_pu(np,p);state.pages=np;if(!_pgById(state.curPg)){if(_ln(np))switchPage(np[0].id);else state.curPg=null}}_pgHealS();_pgBar()}   // ADR-1174
         }
         if(msg.rep&&validClock(msg.rep)&&clockNewer(msg.rep,state._lastRep)){state._lastRep=msg.rep;_fTs(msg.rep.ts)}   // ADR-0617/1114
         _ps();   // ADR-0973
