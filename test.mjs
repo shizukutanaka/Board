@@ -1786,7 +1786,7 @@ try {
              _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate,
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
-             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC,
+             _textCascade, _imgImportFile, _s256, _hmac, _eqs, _sec, _wD, _wAdopt, _wM, _txC, _txFlush,
              _getLang: () => LANG, _getT: () => T };
   `);
   const api = fn(
@@ -1814,7 +1814,7 @@ try {
           _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER, _connLabelMeasure, _penSm,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx, _textCascade, _imgImportFile, editSelectedShapeKbd,
-          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC } = api;
+          _s256, _hmac, _eqs, _sec, Share, _wD, _wAdopt, _wM, _txC, _txFlush } = api;
 
   // ADR-1056: every wire message must carry a valid HMAC tag — stamp test
   // fixtures with the room secret so pre-1056 _onRecv calls keep exercising
@@ -20231,6 +20231,35 @@ pass += 7;
   console.log('  ✓ ADR-1129 recordCommitted eviction + undo/redo ordering (9 asserts)');
 }
 pass += 9;
+
+// ADR-1130 — _txFlush drains best-effort: a throwing _txC must not strand the
+// rest of the convergence queue (upd/zorder/group emits are one-shot — no
+// retry exists, so a mid-drain abort silently loses every remaining emit).
+{
+  state.shapes=[{id:'r1',type:'rect',x:1,y:0,w:1,h:1,z:1},{id:'r2',type:'rect',x:2,y:0,w:1,h:1,z:1}];
+  state.wclock=_wM();_invalidateGrid();
+  Store._stampWrites({op:'upd',id:'r1',after:{x:1},before:{x:0},clock:{peer:'zz',seq:1,ts:9e15}});
+  Store._stampWrites({op:'upd',id:'r2',after:{x:2},before:{x:0},clock:{peer:'zz',seq:1,ts:9e15}});
+  const dropOp=id=>Store._lwwDrop({op:'upd',id,after:{x:5},before:{x:0},clock:{peer:'zz',seq:1,ts:1}});
+  assert.strictEqual(dropOp('r1'),false,'ADR-1130: local-newer prop drops the remote value');
+  assert.strictEqual(dropOp('r2'),false,'ADR-1130: second drop seeds a second convergence emit');
+  const calls=[],_origB=Net.broadcast;
+  Net.broadcast=o=>{calls.push(o);if(calls.length===1)throw new Error('down')};
+  let threw=false;try{_txFlush()}catch(e){threw=true}
+  Net.broadcast=_origB;
+  assert.ok(threw,'ADR-1130: flush propagates the first failure');
+  assert.strictEqual(calls.length,2,'ADR-1130: remaining emits still drained after a throw');
+  assert.strictEqual(calls[1].id,'r2','ADR-1130: the queued emit after the failure is the r2 convergence');
+  // ro gate pins the suppressed-drain contract too.
+  state.ro=true;
+  assert.strictEqual(dropOp('r1'),false,'ADR-1130: re-seeded emit under ro');
+  calls.length=0;_txFlush();
+  assert.strictEqual(calls.length,0,'ADR-1130: ro adoption suppresses pending emits');
+  state.ro=false;
+  state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();_invalidateGrid();
+  console.log('  ✓ ADR-1130 best-effort flush drain (8 asserts)');
+}
+pass += 8;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

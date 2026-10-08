@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.153';   // ADR-1129
+const V='1.8.154';   // ADR-1130
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1968,9 +1968,10 @@ function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;cons
     else if(e.op==='group'){_pu(gg,{op:'group',ids:[e.id],gid:e.a,before:[{id:e.id,groupId:e.b}]})}
     else if(e.op){_pu(gg,{op:'ungroup',ids:[e.id],gids:[e.b],before:[{id:e.id,groupId:e.b}]})}
     else{let p=g.get(e.id);if(!p)g.set(e.id,p={b:{},a:{}});if(e.b!==_ud)p.b[e.k]=e.b;p.a[e.k]=e.a}}
-  for(const[id,p]of g)_txC({op:'upd',id,before:p.b,after:p.a});
-  if(z)_txC({op:'zorder',changes:z});
-  for(const o of gg)_txC(o)}}   // ADR-1126
+  let err=null;const _run=f=>{try{f()}catch(e){if(!err)err=e}};   // ADR-1130: a failed emit must not strand the rest of the queue
+  for(const[id,p]of g)_run(()=>_txC({op:'upd',id,before:p.b,after:p.a}));
+  if(z)_run(()=>_txC({op:'zorder',changes:z}));
+  for(const o of gg)_run(()=>_txC(o));if(err)throw err}}   // ADR-1126/1130
 const _emOK=(k,v)=>k!=='img'&&k!=='dataUrl'&&k!=='type'&&k!=='locked'&&k!=='id'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k[0]!=='_'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&validPatch({[k]:v});   // ADR-1124
 // Bound connectors: s.a/s.b (shape id) derive from the bound shape's edge
 // at render/hit/export so the connector follows. Stored = fallback.
