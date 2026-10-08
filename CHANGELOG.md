@@ -1,3 +1,8 @@
+## [1.8.212] - 2026-10-01
+
+### Fixed
+- **round938 / ADR-1188 — `restoreBackup` の imgs-store 読取失敗でバックアップが永久にリストア不能だった ADR-1187 同型残穴を閉塞**: バックアップの図形リストは正常に読めていても、imgs ストアの `getAll`/`getAllKeys` 失敗で `restoreBackup()` 全体が reject → `backupRestoreFailed` を返す。slot は残るが再試行も同一点で落ちるため、imgs ストアが恒久的に壊れているとバックアップは永遠に復元不能。ADR-1187 と同じ隔離パターン: attach を nested try で包み、失敗時は図形をそのまま採用し `_attachShape` が ref を `_imgPending` へ駐留 → imgq heal へ送る。3挙動ピン (fake IDB で backup doc 返却+imgs 拒否 → restore 成功・図形生存・ref 駐留) で固定。
+
 ## [1.8.211] - 2026-10-01
 
 ### Fixed
