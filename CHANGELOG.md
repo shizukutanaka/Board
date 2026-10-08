@@ -1,3 +1,8 @@
+## [1.8.202] - 2026-10-01
+
+### Fixed
+- **round928 / ADR-1178 — presence send state resets on room switch**: `Net.init` swept the receive-side state (seenOps, snapshot/img/frag queues, old-room peer rows) but left the *send-side* presence bookkeeping untouched — `_lastSelSent` still held the key the old room had already seen, so after joining a room where the user was the latecomer, `sendSelectionIfChanged` dedup-dropped the re-announcement and the room's existing peers never saw the user's selection until the set next changed (potentially never). The selection dedup key and the selection/cursor throttle clocks now reset alongside the rest of init's presence state (the self-latecomer case of ADR-0011's `_touchPeer` reset); the next frame re-announces the current selection once. `_selT` is left armed — it re-evaluates the key at fire time and self-corrects. Pinned by 4 behavioural + 1 source asserts.
+
 ## [1.8.201] - 2026-10-01
 
 ### Fixed
