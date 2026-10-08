@@ -802,7 +802,7 @@ const _csh=(s,c)=>{if(_sh2(s)){c.shadowColor='rgba(15,23,42,.22)';c.shadowBlur=1
 const _so=(b,a)=>{if(_ln(b)){_styleOp(b,a);_iv()}};   // ADR-0307
 const _selL=f=>_sb().filter(f);   // ADR-0308
 const _selUL=()=>_sb().filter(_ul);
-const _repC=(before,beforeWc,origSel,bp,bc,bro,aro,bvp)=>{if(state.ro){_roNo();return}Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc,bro,aro,bvp,avp:clone(_vp())})};   // ADR-0646/1057/1163/1164
+const _repC=(before,beforeWc,origSel,bp,bc,bro,aro,bvp,bnm)=>{if(state.ro){_roNo();return}Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc,bro,aro,bvp,avp:clone(_vp()),bnm,anm:_dn()})};   // ADR-0646/1057/1163/1164/1167
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel)};   // ADR-0309/0568: _ss drops missing/hidden ids
 const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.190';   // ADR-1166
+const V='1.8.191';   // ADR-1167
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1792,6 +1792,8 @@ const Store={
         else if(forward&&'aro' in op&&op.clock&&op.clock.peer===_pi()){state.ro=!!op.aro;_roBadge()}   // ADR-1163: own redo re-adopts — the wire-slimmed form never carries it
         if(!forward&&'bvp' in op){const v=op.bvp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164: undo restores the pre-swap camera
         else if(forward&&'avp' in op&&op.clock&&op.clock.peer===_pi()){const v=op.avp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164: own redo re-lands the adopted view
+        if(!forward&&'bnm' in op){_setDocName(op.bnm);_bName()}   // ADR-1167: undo restores the pre-swap name + re-publishes (peers kept the adopted one)
+        else if(forward&&'anm' in op&&op.clock&&op.clock.peer===_pi()){_setDocName(op.anm);_bName()}   // ADR-1167: own redo re-adopts
         break;}
       case 'pageAdd':{   // ADR-0646: multi-page
         if(forward){
@@ -7787,7 +7789,7 @@ function importBoard(file){
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      const _bpg=clone(_pgs()),_bcp=state.curPg,bvp=clone(_vp());   // ADR-0646/1164
+      const _bpg=clone(_pgs()),_bcp=state.curPg,bvp=clone(_vp()),bnm=_dn();   // ADR-0646/1164/1167
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
       _rs(shapes.map(s=>Net._attachShape(clone(s))));   // ADR-0009/1041
       // Match the replace op's _apply: drop stale selection ids and per-property write
@@ -7801,7 +7803,7 @@ function importBoard(file){
       }
       _sz();_iv();
       const r0=state.ro;state.ro=false;   // ADR-1162/1163: commit while writable — the ro flag adopts after repC
-      _repC(before,beforeWc,origSel,_bpg,_bcp,r0,d.ro===1,bvp);
+      _repC(before,beforeWc,origSel,_bpg,_bcp,r0,d.ro===1,bvp,bnm);
       state.ro=d.ro===1;_roBadge();   // ADR-1057/1069/1162
       _o(t('loadedBoard')+' ('+_ln(shapes)+')');
     }catch{_eT(_IB)}
@@ -8884,23 +8886,20 @@ const Share={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      const _bpg=clone(_pgs()),_bcp=state.curPg,bvp=clone(_vp());   // ADR-0646/1164
+      const _bpg=clone(_pgs()),_bcp=state.curPg,bvp=clone(_vp()),bnm=_dn();   // ADR-0646/1164/1167
       // ADR-0004
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());
       _rs(valid.map(s=>Net._attachShape(clone(s))));   // ADR-1041: parked refs park for imgq heal
       _scl();state.wclock=_wM();   // ADR-1111
       _pgAdopt(data.pages,data.curPg);_setDocName(_s80((_iS(data.name)&&data.name)||'Shared'));_bName();   // ADR-0009/0646/0696
-      // Match the replace op's _apply: drop stale selection ids and per-property write
-      // clocks from the board we just swapped out
-      if(_vpOK(data.viewport)){
-        // ADR-0112
-        // IDB restore path — corrupt/out-of-range zoom never reaches state).
+      // _apply parity: clean tomb slate before _pgAdopt (see ADR-1111)
+      if(_vpOK(data.viewport)){   // ADR-0112: IDB path bounds zoom the same way
         _vp().x=+data.viewport.x;_vp().y=+data.viewport.y;
         _vp().zoom=clampZoom(+data.viewport.zoom);
       }
       _sz();_iv();
       const r0=state.ro;state.ro=false;   // ADR-1162/1163: commit while writable — the ro flag adopts after repC
-      _repC(before,beforeWc,origSel,_bpg,_bcp,r0,data.ro===1,bvp);
+      _repC(before,beforeWc,origSel,_bpg,_bcp,r0,data.ro===1,bvp,bnm);
       state.ro=data.ro===1;_roBadge();   // ADR-1057/1069/1162
       _g('docName').value=_dn();_syncDocTitle();
       // clean URL
@@ -9099,7 +9098,7 @@ const Persist={
       const before=clone(_sh());
       const beforeWc=clone(_wc());
       const origSel=_selIds();
-      const _bpg=clone(_pgs()),_bcp=state.curPg,bvp=clone(_vp());   // ADR-0646/1164
+      const _bpg=clone(_pgs()),_bcp=state.curPg,bvp=clone(_vp()),bnm=_dn();   // ADR-0646/1164/1167
       _rs(shapes.map(clone));   // ADR-0009
       _scl();state.wclock=_wM();   // ADR-1111
       _pgAdopt(d.pages,d.curPg);   // ADR-0646
@@ -9110,7 +9109,7 @@ const Persist={
       }
       _sz();_iv();
       const r0=state.ro;state.ro=false;   // ADR-1162/1163: commit while writable — the ro flag adopts after repC
-      _repC(before,beforeWc,origSel,_bpg,_bcp,r0,d.ro===1,bvp);
+      _repC(before,beforeWc,origSel,_bpg,_bcp,r0,d.ro===1,bvp,bnm);
       state.ro=d.ro===1;_roBadge();   // ADR-1069/1162
       await this.discardBackup();
       this.schedule();

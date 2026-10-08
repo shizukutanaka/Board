@@ -19087,9 +19087,41 @@ assert.ok(html.includes("if(state.ro&&d.ro===1){_roNo();return}   // ADR-1162")&
 assert.ok(html.includes("function _mergeImport(shapes){\n  if(state.ro){_roNo();return}   // ADR-1162"),'merge-import is ro-gated like every sibling');
 assert.ok(html.includes("const r0=state.ro;state.ro=false;"),'swap paths capture pre-swap ro for the op (ADR-1163)');
 assert.ok(html.includes("'bro' in op")&&html.includes("'aro' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores ro from the op (ADR-1163)');
-assert.ok(html.includes(",bvp=clone(_vp());")&&(html.match(/d\.ro===1,bvp\)/g)||[]).length>=2&&html.includes("data.ro===1,bvp)"),'swap paths record the pre-swap camera on the op (ADR-1164)');
+assert.ok(html.includes(",bvp=clone(_vp()),bnm=_dn();")&&(html.match(/d\.ro===1,bvp,bnm\)/g)||[]).length>=2&&html.includes("data.ro===1,bvp,bnm)"),'swap paths record the pre-swap camera on the op (ADR-1164/1167)');
 assert.ok(html.includes("'bvp' in op")&&html.includes("'avp' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores the camera from the op (ADR-1164)');
 pass += 11;
+
+// ---- ADR-1167: docName joins the swap's restore domain ----
+{
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  const _zN=async o=>{const cs=new CompressionStream('deflate-raw');const w=cs.writable.getWriter();
+    w.write(new TextEncoder().encode(JSON.stringify(o)));w.close();
+    const buf=new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    return '#b='+encodeURIComponent('z:'+btoa(String.fromCharCode(...buf)))};
+  const _rN=(id,x)=>({id,type:'rect',x,y:0,w:10,h:10,z:1,stroke:'#000',fill:null,size:2,opacity:1});
+  E.state.docName='Mine';
+  const names=[];const _ob=E.Net._bcast;
+  E.Net._bcast=m=>{if(m&&m.k==='name')names.push(m.name);return _ob.call(E.Net,m)};
+  fakeWin.location.hash=await _zN({v:1,shapes:[_rN('impN',0)],name:'Foreign'});
+  assert.strictEqual(await E.Share.importFromHash(),true,'named import applies');
+  assert.strictEqual(E.state.docName,'Foreign','swap adopts the payload doc name');
+  E.Store.undo();
+  assert.strictEqual(E.state.docName,'Mine','undo restores the pre-swap doc name (was: foreign name lingers)');
+  E.Store.redo();
+  assert.strictEqual(E.state.docName,'Foreign','redo re-adopts the imported doc name');
+  assert.ok(names.includes('Mine')&&names.includes('Foreign'),'undo/redo re-broadcast the name — peers converge');
+  E.Net._bcast=_ob;
+  console.log('  ✓ ADR-1167 docName swap-restore contract (5 asserts)');
+  pass += 5;
+}
+assert.ok(html.includes(",bnm=_dn();")&&html.includes(",bvp,bnm)"),'swap paths capture the pre-swap doc name (ADR-1167)');
+assert.ok(html.includes("'bnm' in op")&&html.includes("'anm' in op&&op.clock&&op.clock.peer===_pi()"),'replace undo/redo restores the doc name (ADR-1167)');
+pass += 2;
 
 // ---- ADR-1165: delta-snapshot intake — dels/ops/rep gates ----
 {

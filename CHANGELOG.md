@@ -1,3 +1,8 @@
+## [1.8.191] - 2026-10-01
+
+### Fixed
+- **round917 / ADR-1167 — docName joins the swap's restore domain**: undoing a doc-switch import (.board file, share link, backup restore) restored shapes, pages, ro and the camera — but left the *adopted* document name behind, and a silent local restore would have diverged from peers anyway since docName is a shared LWW channel (`_nameTs`/`_namePeer`/`_nameWin`). The three swap sites now capture `bnm=_dn()` pre-adoption alongside `bvp`, and `_repC` records `anm=_dn()` post-adoption (the `avp` idiom). On undo `_apply` runs `_setDocName(op.bnm)` and re-broadcasts via `_bName()` so peers converge on the restored name; on own redo only (`op.clock.peer===_pi()`) it re-adopts `anm`. The `_slimOp` 'replace' whitelist keeps `bnm`/`anm` off the wire — undo-domain data still never transports. 5 behavioural asserts + 2 source pins; the ADR-1164 signature pin recalibrated to the new `bvp,bnm` call shape.
+
 ## [1.8.190] - 2026-10-01
 
 ### Fixed
