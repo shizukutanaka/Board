@@ -1,3 +1,8 @@
+## [1.8.161] - 2026-10-01
+
+### Fixed
+- **round887 / ADR-1137 — stub-heal tomb gate**: the `applyRemote` intake heal `f()` (ADR-0775) created `'?'` page stubs without the tomb-dead check `_pgHealS` and snapshot union-heal already carried. A remote `add`/`del` whose shape records carried a tombed `s.pg` resurrected a zombie page straight through ADR-1093's page tomb — divergent `state.pages` forever, `curPg` inconsistent, and a stub `pageAdd` could never legitimately promote. Extracted the shared predicate `_stubOk` (`!w || !w._del || born-newer`) and gated both producers identically; unknown and born-newer ids still heal, tomb-dead ids don't. 7 behavioural pins.
+
 ## [1.8.160] - 2026-10-01
 
 ### Verified

@@ -6208,7 +6208,7 @@ try {
       state.pages=[{id:'pA',name:'A',nts:0},{id:'pB',name:'B',nts:0}];state.curPg='pA';
       assert.ok(html.includes('if(nc!==oc){_cancelPointerGesture();_cxO()}'),'_pgAdopt gesture+editor-cancel gate (ADR-0664/0684)');
       assert.ok(html.includes('if(nc!==oc){Net.sendCursorHide();_ss(_selIds());if(nc)_ann(_pgById(nc).name)}'),'_pgAdopt hides cursor + re-validates selection + announces on page move (ADR-0690/0749/0750)');
-      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)&&(!w||!w._del||w._born&&clockNewer(w._born,w._del))&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110)');
+      assert.ok(html.includes("if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs()"),'_pgAdopt heals unknown pg → ? page, tomb-dead gets no stub (ADR-0692/1110/1137)');
       state.pages=null;state.curPg=null;ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
       // ADR-0692: a shape carrying an unknown pg spawns a ? page on adopt
       {
@@ -20451,6 +20451,34 @@ pass += 7;
   assert.ok(html.includes("op.op==='addMany'){const{origSel:_o1,...r}=op")&&html.includes("del'||op.op==='clear'||op.op==='pageAdd')){const{wc:_wc1,origSel:_o1,...r}=op"),'ADR-1136: addMany keeps wc; del/clear/pageAdd strip it');
   assert.ok(html.includes("state.ro=d.ro===1")&&html.includes("state.ro=data.ro===1")&&html.includes("state.ro=false;_roBadge()"),'ADR-1136: ro adopted on every doc intake and badge-unlockable');
   console.log('  ✓ ADR-1136 flush-funnel coverage audit (7 asserts)');
+}
+pass += 7;
+
+// ADR-1137 — stub-heal tomb gate: the op-intake '?' heal (applyRemote f())
+// ran without the tomb-dead check _pgHealS and snapshot union-heal already
+// carried, so a remote shape carrying a tombed s.pg resurrected a zombie page
+// straight through ADR-1093's page tomb. Shared predicate extracted as
+// _stubOk; both stub producers now gate on it.
+{
+  assert.ok(html.includes("const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)}"),'ADR-1137: shared tomb-dead stub predicate');
+  assert.ok(html.includes("!_pgById(o.pg)&&_stubOk(o.pg)"),'ADR-1137: op-intake heal gates on the tomb');
+  assert.ok(html.includes("!_pgById(s.pg)&&_stubOk(s.pg)"),'ADR-1137: _pgHealS shares the gate');
+  state.pages=[{id:'p1',name:'a',nts:0}];state.curPg='p1';
+  const mkP=(id,pg)=>{const s=Shape.make('rect',{x:0,y:0,w:10,h:10});s.id=id;s.pg=pg;return s};
+  state.wclock['pd']={_del:{peer:'zz',seq:1,ts:1}};
+  Store.applyRemote({op:'add',shape:mkP('sX','pd'),clock:{peer:'zz',seq:2,ts:2}});
+  assert.ok(!_pgById('pd'),'ADR-1137: tomb-dead pg gets no stub');
+  state.wclock['pb']={_del:{peer:'zz',seq:1,ts:1},_born:{peer:'zz',seq:3,ts:3}};
+  Store.applyRemote({op:'add',shape:mkP('sY','pb'),clock:{peer:'zz',seq:4,ts:4}});
+  assert.ok(_pgById('pb'),'ADR-1137: a born-newer page id still heals');
+  Store.applyRemote({op:'add',shape:mkP('sZ','pu'),clock:{peer:'zz',seq:5,ts:5}});
+  assert.ok(_pgById('pu'),'ADR-1137: an unknown pg still heals');
+  state.wclock['pd2']={_del:{peer:'zz',seq:1,ts:1}};
+  const n1=state.pages.length,kill=mkP('sY','pd2');
+  Store.applyRemote({op:'del',shapes:[kill],connClears:[],clock:{peer:'zz',seq:7,ts:7}});
+  assert.strictEqual(state.pages.length,n1,'ADR-1137: a del kill-set tombed pg grows no stub');
+  state.shapes.length=0;state.wclock=_wM();state.seenOps=new Set();state.pages=null;state.curPg=null;_invalidateGrid();
+  console.log('  ✓ ADR-1137 stub-heal tomb gate (7 asserts)');
 }
 pass += 7;
 
