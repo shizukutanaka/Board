@@ -1,3 +1,8 @@
+## [1.8.158] - 2026-10-01
+
+### Fixed
+- **round884 / ADR-1134 — live-read convergence flush**: `_txE` entries carried the queue-time value (`e.a`/`e.b` captured inside `_lwwDrop`/`_mT3` merges). A throw between push and flush (`_apply`/`_stampWrites`/`_pgFollow` inside `applyRemote`, `commit`, `undo`, `redo`) stranded the entry until the *next* flush — the deferred emit then carried a stale value under a fresh clock and converged peers onto an abandoned write (permanent divergence until the next write), or targeted a dead id / a doc-switch's foreign keyspace. `_txFlush` now resolves every entry against `byId` live: `a` is the current value (`s[e.k]`/`s.frac`/`s.groupId`), converged entries (`live===remote-claim`) emit nothing, and dead ids emit nothing — the emit contract is now "converge to what the sender holds at send time". 11 behavioural pins.
+
 ## [1.8.157] - 2026-10-01
 
 ### Fixed

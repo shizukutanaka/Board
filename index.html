@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.157';   // ADR-1133
+const V='1.8.158';   // ADR-1134
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1964,13 +1964,12 @@ _mT3=(l,b,r)=>{
 let _txE=null;
 function _txC(op){if(!op.clock)_fck(op);const k=_ck(op);if(_sO().has(k))return;_sO().add(k);_trimSeen();try{Store._stampWrites(op);_ps();Net.broadcast(op)}catch(e){_sO().delete(k);throw e}}   // ADR-1128
 function _txFlush(){if(_iA(_txE)){const q=_txE;_txE=null;if(state.ro)return;const g=_mP(),gg=[];let z=null;
-  for(const e of q){
-    if(e.op==='zorder'){_pu(z||(z=[]),{id:e.id,before:e.b,after:e.a})}
-    else if(e.op==='group'){_pu(gg,{op:'group',ids:[e.id],gid:e.a,before:[{id:e.id,groupId:e.b}]})}
-    else if(e.op){_pu(gg,{op:'ungroup',ids:[e.id],gids:[e.b],before:[{id:e.id,groupId:e.b}]})}
-    else{let p=g.get(e.id);if(!p)g.set(e.id,p={b:{},a:{}});if(e.b!==_ud)p.b[e.k]=e.b;p.a[e.k]=e.a}}
+  for(const e of q){const s=byId(e.id);if(!s)continue;   // ADR-1134: read live at flush — a throw window can't strand a stale value or a dead id
+    if(e.op==='zorder'){if(_iS(s.frac)&&s.frac!==e.b)_pu(z||(z=[]),{id:e.id,before:e.b,after:s.frac})}
+    else if(e.op){const _g=s.groupId??null;if(_g!==(e.b??null)){if(_g==null)_pu(gg,{op:'ungroup',ids:[e.id],gids:[e.b],before:[{id:e.id,groupId:e.b}]});else _pu(gg,{op:'group',ids:[e.id],gid:_g,before:[{id:e.id,groupId:e.b}]})}}
+    else{let p=g.get(e.id);if(!p)g.set(e.id,p={b:{},a:{}});if(e.b!==_ud)p.b[e.k]=e.b;if(_JS(s[e.k])!==_JS(e.b))p.a[e.k]=s[e.k]}}
   let err=null;const _run=f=>{try{f()}catch(e){if(!err)err=e}};   // ADR-1130: a failed emit must not strand the rest of the queue
-  for(const[id,p]of g)_run(()=>_txC({op:'upd',id,before:p.b,after:p.a}));
+  for(const[id,p]of g)_run(()=>{if(_ln(_ok(p.a)))_txC({op:'upd',id,before:p.b,after:p.a})});   // ADR-1134: skip a fully-converged emit
   if(z)_run(()=>_txC({op:'zorder',changes:z}));
   for(const o of gg)_run(()=>_txC(o));if(err)throw err}}   // ADR-1126/1130
 const _emOK=(k,v)=>k!=='img'&&k!=='dataUrl'&&k!=='type'&&k!=='locked'&&k!=='id'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k[0]!=='_'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&validPatch({[k]:v});   // ADR-1124

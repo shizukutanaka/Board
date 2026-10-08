@@ -1160,6 +1160,7 @@ Board/
 │   └── ADR-1131-dropped-key-before-parity.md  # _lwwDrop が after のみフィルタで before を不対称残留 → drop キーの before も除去 (op は適用差分のみを記述; group/ungroup parity) + remote op は history 非登録・_vPages が [null] 拒否の契約ピン
 │   └── ADR-1132-existence-clock-helper-equivalence.md  # tomb3系統 (_tmE/_tmb・_bN・_tAlive) 監査 clean 完走 — 同一支配関係 (_born>_del で全経路 alive、_del>到着時計で gate、_bT は単調 upgrade) を12ピンで固定。併せて _attachOp 網羅・_placeCopies 全 remap・MAC peer 束縛・origSel 非搬送・_shCap 網羅も検証済み
 │   └── ADR-1133-room-secret-reseed.md  # doc 復元の `rs` 採用が `_ls` しない揮発性代入 — ls 消去 (IDB 残存) の唯一の復元窓で doc 鍵が後続タブの mint に origin-clobber される残穴 → ls 死時のみ `_ls('board.rs',d.rs)` 再シード (ls 生存時は絶対に上書きしない)
+│   └── ADR-1134-live-read-convergence-flush.md  # `_txE` 滞留エントリ (push→flush 間の throw) が queue 時点の古値を新時計で emit し新しいローカル書込みを上書き収束して発散 → flush 時に `byId` で live 値を再読出し + dead id/収束済みは emit しない
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
