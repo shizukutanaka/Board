@@ -1220,6 +1220,7 @@ Board/
 │   ├── ADR-1192-null-proto-op-baseline-maps.md  # `_lwwDrop`/`_stampWrites` の `before` baseline `bmap`/`bb` 4サイトを `_wM()` へ — `id:'__proto__'` が [[Prototype]] を書き換え全メンバー baseline を毒 E に解決させる残穴を閉塞 (null-proto 契約完走)、7 ピン
 │   ├── ADR-1193-wire-auth-verify-lifecycle.md  # `_sec()` mint を `uid()×4`=128→`uid()×2`=64 へ — 全 `≤64` ゲート (board.rs/d.rs/token k) を超過して BC/RTC リンクが沈黙 dead だった連鎖を閉塞、verify-order+鍵ライフサイクル契約ピン、11 ピン
 │   ├── ADR-1194-wire-protocol-reference.md  # wire プロトコル正規リファレンス — 認証エンベロープ + 全13 kind の transport 行列・フィールド境界・intake 効果を ~40 ADR から集約 (ADR-1048 P4)、drift ゲート7ピン
+│   ├── ADR-1195-net-init-reset-contract.md  # Net.init の cleared/retained 契約 — room-bound (dedup/frag/queue/presence/peer) vs doc-bound (_imgIn/_imgPending/rtc: 行) の state 分離規約、挙動ピン7件
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
