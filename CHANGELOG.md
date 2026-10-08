@@ -1,3 +1,13 @@
+## [1.8.214] - 2026-10-01
+
+### Fixed
+- **round940 / ADR-1190 — `_sendSnapshot` の throttle 窓内で 2 件目以降の ask が暗黙 drop されていた残穴を閉塞**: 旧実装は `_snapT` armed 中の呼出を記録せず return し、armed flush が**最初の asker の horizon** で計算された delta snapshot しか送らなかった。同一 1s 窓内で別の joiner (特に空盤面の新規 peer) が `hello`/`sync-req` を発行すると、その ask は失われ — joiner は horizon より古い図形を全て取り損ね、`_snapRx` 未達で sync-req retry (3回 bound × ~5s) に頼る最大 ~15s の不完全盤面に沈んでいた。deferral を per-ask queue へ置換: 各 ask は自 horizon で計算された応答 (送判定+dels) を受け、falsy ask は queue を collapse (full が全 ask を包含)、8 cap 越えは `[null]` へ潰れて flood amplification の上限を維持。`init` が `_snapRqs` をクリアし旧ルームの ask を持ち越さない。9挙動/ソースピンで固定 (両 ask queue・per-ask horizon 応答・falsy collapse・overflow→full・init クリア)。
+
+## [1.8.213] - 2026-10-01
+
+### Fixed
+- **round939 / ADR-1189 — 画像 heal ライフサイクル契約の監査完走 + `_imgDbGet` 補助契約ピン (docs+pin)**: `img` 参照ヒーリングの遷移列 (park→ask→answer→resolve→rescan) を一巡監査し全局面 clean を確認。20+ ADR に分散していた契約を1文書へ集約: `_attachShape`/`_attachOp` の `_imgPending` 駐留 (256 cap・`_idOK` 二重ゲート)、`_imgqSweep` の TTL+per-key dedup re-ask、`_imgRescan` 低速再駐留、回答3層 (`_imgIn`→`_imgSent`→`_imgDbGet` IDB fallback)、`_stgOK` 64MB 下流、per-(key,sender) slot 再組立+ハッシュ検証、pending 解消まで。`_imgDbGet` の残存エッジを9挙動/ソースピンで補完: 非同期 staging・永続 hit・wire flush・missing key・transaction throw 嚥下・非 id キー不入力・64MB cap 拒否。
+
 ## [1.8.212] - 2026-10-01
 
 ### Fixed
