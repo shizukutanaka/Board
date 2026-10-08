@@ -22093,6 +22093,31 @@ pass += 2;
   pass += 9;
 }
 
+{
+  // ADR-1191: id-keyed lookup maps are null-proto (_wM) — a crafted wire id
+  // '__proto__' stores an ordinary own key instead of changing the object's
+  // prototype chain. With a plain {}, `m['__proto__']=clock` made the clock the
+  // prototype, so its extra own props (validClock permits them) resolved for
+  // arbitrary shape ids — targeted delta suppression in _reqWc's horizon map.
+  // NOTE: JSON.parse creates __proto__ as an OWN key (the object-literal
+  // `__proto__:` syntax silently becomes a prototype link — must use JSON).
+  const m=Net._reqWc.call({},{wc:JSON.parse(
+    '{"__proto__":{"ts":1,"peer":"x","seq":0,"sA":{"ts":1e12,"peer":"x","seq":1}},"sB":{"ts":2,"peer":"y","seq":1}}')});
+  assert.ok(m,'a horizon with a __proto__ key still parses');
+  assert.strictEqual(m.sA,undefined,'proto-poisoned lookups no longer resolve extra clock props');
+  assert.strictEqual(m.sB.ts,2,'ordinary entries still land');
+  assert.strictEqual(m['__proto__'].peer,'x','__proto__ is a plain own key, not a prototype swap');
+  assert.strictEqual(Net._reqWc.call({},{wc:{sB:'junk'}}),null,'all-or-nothing: one bad entry → null');
+  assert.strictEqual(Net._reqWc.call({},{wc:42}),null,'non-object wc → null');
+  const big={};for(let i=0;i<200001;i++)big['k'+i]={ts:1,peer:'p',seq:1};
+  assert.strictEqual(Net._reqWc.call({},{wc:big}),null,'entry count over the cap → null');
+  assert.ok(html.includes('const m=_wM();for(const id of ks)'),'_reqWc map is null-proto');
+  assert.ok(html.includes('const m=_wM();for(const q of Y)'),'cov baseline map is null-proto');
+  assert.ok(html.includes('_syncReqWc(){\n    const m=_wM()'),'_syncReqWc horizon map is null-proto');
+  console.log('  ✓ ADR-1191 null-proto wire maps (10 asserts)');
+  pass += 10;
+}
+
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
   fail += 1;

@@ -1,3 +1,8 @@
+## [1.8.215] - 2026-10-01
+
+### Fixed
+- **round941 / ADR-1191 — id-keyed wire マップの残存 plain `{}` を `_wM()` へ統一 (`__proto__` 汚染の閉塞)**: `_reqWc` (sync-req horizon 解析)・`_syncReqWc` (horizon 構築)・`cov` (op baseline 網羅判定) の3サイトが wire 由来キーを plain object へ書いていた。`m['__proto__']=clock` は own key を作らず **[[Prototype]] を書き換える**ため、`validClock` が許す余計な自身プロパティ (例: `{ts:1,peer:'x',seq:0,sA:{ts:1e12}}`) がプロトタイプ経由で任意の shape id へ解決し、`_snapshotMsg` の `req[s.id]` が偽 clock を返して当該図形の delta を標的抑制できた (broadcast される応答自体を歪める)。`_wM()` (null-proto、`Object.create(null)` 統一) で `__proto__` を通常 own key 化 — ADR-0788 の null-proto 契約を最後の残存サイトへ完走。10挙動/ソースピンで固定 (proto 汚染の非解決・`__proto__` の own key 化・全か無か契約・cap 拒否・3サイトソースピン)。
+
 ## [1.8.214] - 2026-10-01
 
 ### Fixed

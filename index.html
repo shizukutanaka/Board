@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.214';   // ADR-1190
+const V='1.8.215';   // ADR-1191
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1232,9 +1232,8 @@ const G={
   s2w(p){const v=_vp();return{x:_xC(p.x/v.zoom+v.x),y:_xC(p.y/v.zoom+v.y)}},
   bbox(s){
     if(_pn(s)){
-      // Memoize the O(pts) envelope walk — O(1) signature like ADR-0019: in-place
-      // point mutation moves p0/mid/end, any
-      // other edit swaps the array — observationally pure.
+      // Memoize the O(pts) envelope walk — O(1) signature (ADR-0019).
+      // In-place mutation moves p0/mid/end; other edits swap the array.
       const p=s.pts,n=_ln(p),e=n&&_penBboxCache.get(s.id);
       if(e&&e.pts===p&&e.n===n&&e.size===_szz(s)
         &&e.p0x===p[0][0]&&e.p0y===p[0][1]&&e.pMx===p[n>>1][0]&&e.pMy===p[n>>1][1]
@@ -1253,7 +1252,7 @@ const G={
       let x=_min(e.x1,e.x2),y=_min(e.y1,e.y2),x2=_max(e.x1,e.x2),y2=_max(e.y1,e.y2);   // ADR-0090
       for(const w of _wayArr(s)){x=_min(x,w.x);y=_min(y,w.y);x2=_max(x2,w.x);y2=_max(y2,w.y)}
       // ADR-0376: off-box route points — a curve's
-      // chord/elbow trunk can leave the box — skipping let inView cull a live curve.
+      // chord/elbow trunk can leave the box — inView cull kills a live curve.
       if(s.curve){const cc=_curveCtrl(e,s.cbend);x=_min(x,cc.x);y=_min(y,cc.y);x2=_max(x2,cc.x);y2=_max(y2,cc.y)}
       else if(_el(s))for(const q of _elbowPts(s)){x=_min(x,q.x);y=_min(y,q.y);x2=_max(x2,q.x);y2=_max(y2,q.y)}
       const p=(_szz(s)||1)/2+(_arw(s)?_szz(s)*3:0);
@@ -1278,8 +1277,7 @@ const G={
     const tol=_max(6/_vp().zoom,(_szz(s)||0)/2);
     if(p.x<b.x-tol||p.y<b.y-tol||p.x>b.x+b.w+tol||p.y>b.y+b.h+tol)return false;
     // Rotation is box-only
-    // `_hb(s)` guards crafted non-box shapes carrying rot — their missing s.w
-    // would un-rotate p to {NaN,NaN} and kill hit-testing.
+    // `_hb(s)` guards crafted non-box+rot (missing s.w → {NaN,NaN} hit box).
     if(_rt(s)&&_hb(s)){const _cx=s.x+s.w/2,_cy=s.y+(s.h||0)/2,_r=-_rt(s)*_PI/180,_c=_cos(_r),_si=_sin(_r),_dx=p.x-_cx,_dy=p.y-_cy;p={x:_cx+_dx*_c-_dy*_si,y:_cy+_dx*_si+_dy*_c};}
     switch(s.type){
       case 'rect':
@@ -1404,7 +1402,7 @@ const _CC_KEYS=_sT(['a','aF','b','bF','x1','y1','x2','y2']);   // ADR-0377
 const _ccOk=q=>q&&_iO(q)&&!_iA(q)&&_ok(q).every(k=>_CC_KEYS.has(k))&&validPatch(q);
 function validRemotePayload(op){
   const patches=a=>_iA(a)&&_ln(a)<=MAX_OP_SHAPES&&a.every(p=>p&&_iS(p.id)&&_ln(p.id)<=64&&validPatch(p));
-  const cov=(A,B)=>{const ck=(X,Y)=>{const m={};for(const q of Y)m[q.id]=q;return X.every(p=>{const q=m[p.id];return q&&_ok(p).every(k=>k in q)})};return ck(A,B)&&ck(B,A)};   // ADR-1087
+  const cov=(A,B)=>{const ck=(X,Y)=>{const m=_wM();for(const q of Y)m[q.id]=q;return X.every(p=>{const q=m[p.id];return q&&_ok(p).every(k=>k in q)})};return ck(A,B)&&ck(B,A)};   // ADR-1087/1191
   const noLock=p=>!('locked' in p);   // ADR-1122
   const wcOk=m=>_iO(m)&&_ln(_ok(m))<=MAX_OP_SHAPES&&_ok(m).every(k=>_iO(m[k])&&_ok(m[k]).every(p=>validClock(m[k][p])));   // ADR-0726
   switch(op.op){
@@ -8599,7 +8597,7 @@ const Net={
   },
   // ADR-1055
   _syncReqWc(){
-    const m={};
+    const m=_wM();   // ADR-1191
     for(const[id,w]of _oe(_wc())){let mx=null;for(const k in w){const c=w[k];if(validClock(c)&&(!mx||clockNewer(c,mx)))mx=c}if(mx)m[id]=mx}
     return _ln(_ok(m))<=SHARE_MAX_SHAPES?m:null;
   },
@@ -8607,7 +8605,7 @@ const Net={
   _reqWc(msg){
     const r=msg.wc;if(!_iO(r))return null;
     const ks=_ok(r);if(_ln(ks)>SHARE_MAX_SHAPES)return null;
-    const m={};for(const id of ks){if(!_idOK(id)||!validClock(r[id]))return null;m[id]=r[id]}
+    const m=_wM();for(const id of ks){if(!_idOK(id)||!validClock(r[id]))return null;m[id]=r[id]}   // ADR-1191
     return m;
   },
   _loResp(pk){   // ADR-0465
