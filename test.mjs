@@ -21065,7 +21065,8 @@ pass += 10;
 // temp-hand) fired instead: activation stolen.
 {
   assert.ok(html.includes("if(e.target.matches?.('button')&&(k===_EN||k===' '))return"),'button owns Enter/Space');
-  assert.ok(html.indexOf("if(_dlg&&k!==_ES)")<html.indexOf("e.target.matches?.('button')")&&html.indexOf("e.target.matches?.('button')")<html.indexOf("if(e.repeat)"),'guard sits after the dialog trap, before the repeat gate');
+  const _g1159=html.indexOf("e.target.matches?.('button')");
+  assert.ok(_g1159>html.indexOf('const k=_lc(e.key);')&&_g1159<html.indexOf("if(_pA()){",_g1159),'guard hoisted ahead of every routed branch (ADR-1160)');
   // Behavioural: Enter on a focused button stamps no shape; Space arms no temp-hand.
   const _fk1159=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
   const btn1159={matches:s=>s==='button'};
@@ -21087,6 +21088,37 @@ pass += 10;
   console.log('  ✓ ADR-1159 button activation keys excluded from the shortcut router (6 asserts)');
 }
 pass += 6;
+
+// ---------- ADR-1160: the activation-key contract covers presentation mode ----------
+// Under _pA() Space is a NAVIGATION key — a focused exit-button Space press was
+// _pd'd (native click suppressed) and routed to next(): the slide advanced and
+// the button could never be activated. Hoisting the ADR-1159 guard above the
+// pres branch makes the contract uniform: a focused control owns Enter/Space
+// in every mode.
+{
+  const _g1160=html.indexOf("e.target.matches?.('button')");
+  assert.ok(_g1160>0&&_g1160<html.indexOf('// Presentation mode is view-only'),'button guard precedes the presentation branch');
+  const _fk1160=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
+  const btn1160={matches:s=>s==='button'};
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  const pfA=Shape.make('frame',{x:0,y:0,w:200,h:100});
+  const pfB=Shape.make('frame',{x:400,y:0,w:200,h:100});
+  Store.commit({op:'addMany',shapes:[pfA,pfB]});
+  Presentation.enter();
+  assert.ok(Presentation.isActive(),'pres enters with 2 frames');
+  const vx0=state.viewport.x;
+  _fk1160(' ',{target:btn1160});
+  assert.strictEqual(state.viewport.x,vx0,'ADR-1160: Space on the focused exit button does not advance the slide');
+  _fk1160('Enter',{target:btn1160});
+  assert.strictEqual(state.viewport.x,vx0,'ADR-1160: Enter on the focused exit button does not advance the slide');
+  // Non-vacuity: Space off-control still navigates forward.
+  _fk1160(' ');
+  assert.notStrictEqual(state.viewport.x,vx0,'ADR-1160: Space off-control still advances the slide');
+  Presentation.leave();
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();
+  console.log('  ✓ ADR-1160 activation-key contract covers presentation mode (5 asserts)');
+}
+pass += 5;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
