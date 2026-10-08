@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.182';   // ADR-1158
+const V='1.8.183';   // ADR-1159
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -5985,6 +5985,9 @@ _on(window,_KD,e=>{
     if(k===_TB){const tgt=_trapStep(_focusables(_dlg),_aE(),_sK(e));if(tgt){_pd(e);_fc(tgt)}}
     return;
   }
+  // ADR-1159: a focused control owns its activation keys — Enter/Space on a
+  // button must activate the button, not the canvas action underneath.
+  if(e.target.matches?.('button')&&(k===_EN||k===' '))return;
   if(e.repeat){const B=meta?'fepibu':_aK(e)?'b':'gm?/';if(B.includes(k)||(!meta&&k===_EN)||(meta&&((_sK(e)&&'xsgl'.includes(k))||_aK(e)&&e.code==='KeyG'))||(!meta&&_sK(e)&&!_aK(e)&&'hvx'.includes(k)))return}   // ADR-1007: repeats run continuous actions only
   if(meta&&(k==='z'||k==='y')&&ptr.down)_cancelPointerGesture();   // ADR-0574: undo mid-gesture applies a stale before
   if(meta&&k==='z'&&!_sK(e)){_pd(e);if(Store.undo())_tst(t('undone'))}

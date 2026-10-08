@@ -1236,7 +1236,9 @@ const checks = [
   ['importBoard clears selection+wclock on whole-board swap', (html.match(/function importBoard\(file\)\{[\s\S]*?\n\}/)||[''])[0].includes('_pgAdopt(d.pages,d.curPg);') && html.includes("_scl();state.wclock=_wM();   // ADR-1111\n      _pgAdopt(d.pages,d.curPg);")],
   ['importFromHash clears selection+wclock on whole-board swap', html.includes("_rs(valid.map(s=>Net._attachShape(clone(s))));") && /_rs\(valid\.map\(s=>Net\._attachShape\(clone\(s\)\)\)\)[\s\S]{0,900}_scl\(\);state\.wclock=_wM\(\);/.test(html)],
   // v1.6.71: presentation-mode guard precedes editing shortcuts (no undo mid-slideshow)
-  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,700}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
+  // ADR-1159: distance bound widened — the button-owns-activation guard legitimately
+  // inserted ~210B between the dialog trap and the repeat gate.
+  ['presentation guard runs before undo/redo/select-all shortcuts', /if\(_pA\(\)\)\{[\s\S]{0,260}return;\n  \}[\s\S]{0,950}if\(meta&&k==='z'&&!_sK\(e\)\)/.test(html)],
   // v1.6.71: export canvas clamped to browser limits
   ['exportPNG uses exportScale clamp', html.includes("const scale=exportScale(w,h,desired||2);")],
   ['exportPDF uses exportScale clamp for dpr', html.includes("dpr=exportScale(W,H,_dpr()||1)")],
@@ -21055,6 +21057,36 @@ pass += 7;
   console.log('  ✓ ADR-1158 presentation folds style panel/zoom badge/SR mirror (10 asserts)');
 }
 pass += 10;
+
+// ---------- ADR-1159: focused controls own their activation keys ----------
+// The key router's early return covered only input/textarea; a focused
+// <button> still bubbled Enter/Space to the router — _pd then suppressed the
+// native click while the canvas action underneath (editor open, shape stamp,
+// temp-hand) fired instead: activation stolen.
+{
+  assert.ok(html.includes("if(e.target.matches?.('button')&&(k===_EN||k===' '))return"),'button owns Enter/Space');
+  assert.ok(html.indexOf("if(_dlg&&k!==_ES)")<html.indexOf("e.target.matches?.('button')")&&html.indexOf("e.target.matches?.('button')")<html.indexOf("if(e.repeat)"),'guard sits after the dialog trap, before the repeat gate');
+  // Behavioural: Enter on a focused button stamps no shape; Space arms no temp-hand.
+  const _fk1159=(key,o={})=>{const ev={key,ctrlKey:false,metaKey:false,shiftKey:false,altKey:false,isComposing:false,target:{matches:()=>false},preventDefault(){},stopPropagation(){},...o};for(const f of (fakeWin._L['keydown|c']||[]).slice(0,1))f(ev);for(const f of (fakeWin._L['keydown']||[]).slice(0,1))f(ev);return ev};
+  const btn1159={matches:s=>s==='button'};
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.pages=null;state.curPg=null;
+  state.viewport={x:0,y:0,zoom:1};
+  state.tool='rect';
+  _fk1159('Enter',{target:btn1159});
+  assert.strictEqual(state.shapes.length,0,'ADR-1159: Enter on a focused button stamps no shape');
+  state.tool='select';
+  _fk1159(' ',{target:btn1159});
+  assert.notStrictEqual(state.tool,'hand','ADR-1159: Space on a focused button arms no temp-hand');
+  // Non-vacuity: the same keys on a non-button target DO fire the canvas actions.
+  state.tool='rect';
+  _fk1159('Enter');
+  assert.strictEqual(state.shapes.length,1,'ADR-1159: Enter off-control still stamps the tool shape');
+  _fk1159(' ');
+  assert.strictEqual(state.tool,'hand','ADR-1159: Space off-control still arms temp-hand');
+  state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.selection=new Set();state.tool='select';
+  console.log('  ✓ ADR-1159 button activation keys excluded from the shortcut router (6 asserts)');
+}
+pass += 6;
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

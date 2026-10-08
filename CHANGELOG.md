@@ -1,3 +1,8 @@
+## [1.8.183] - 2026-10-01
+
+### Fixed
+- **round909 / ADR-1159 — a focused control owns its activation keys**: the key router's early-return covered only `input,textarea` and open dialogs — a focused `<button>` still bubbled Enter/Space to the canvas shortcuts, so native activation (click) **and** the canvas action fired together: Enter `_pd`'d the button's click while `editSelectedShapeKbd()`/`createShapeKbd()` stamped a shape or opened a second editor (and the repeat whitelist re-stamped on hold); Space fired the click **and** armed temp-hand, with the keyup restore silently flipping the tool back. One line after the dialog trap — `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` — closes the gap (no `contenteditable`/`select`/DOM `<a>` exist, so `button` completes the native-activation surface). 6 pins (2 source + 4 behavioural incl. off-control non-vacuity); recalibrated the v1.6.71 pres-guard distance bound for the ~210B insert.
+
 ## [1.8.182] - 2026-10-01
 
 ### Fixed
