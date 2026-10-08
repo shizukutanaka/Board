@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.191';   // ADR-1167
+const V='1.8.192';   // ADR-1168
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -1786,13 +1786,13 @@ const Store={
         _wTb(wc0,op.clock,inN);   // ADR-0736/1096/1112
         {const inP=_sT(((forward?op.pages:op.beforePages)||[]).map(p=>p.id));for(const p of pg0)if(!inP.has(p.id)&&!(wc0[p.id]&&wc0[p.id]._born&&clockNewer(wc0[p.id]._born,op.clock)))_wD(p.id,op.clock)}
         for(const s of _sh())_bT(s.id,op.clock);
-        if(forward)_pgAdopt(op.pages,op.curPg,op.clock);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock);   // ADR-0646/1093: the swap carries the page set
+        if(forward)_pgAdopt(op.pages,op.curPg,op.clock,1);else _pgAdopt(op.beforePages,op.beforeCurPg,op.clock,1);   // ADR-0646/1093/1168
         if(!forward)_selR(op);
-        if(!forward&&'bro' in op){state.ro=!!op.bro;_roBadge()}   // ADR-1163: undo restores the pre-swap ro
+        if(!forward&&'bro' in op){state.ro=!!op.bro;_roBadge()}   // ADR-1163
         else if(forward&&'aro' in op&&op.clock&&op.clock.peer===_pi()){state.ro=!!op.aro;_roBadge()}   // ADR-1163: own redo re-adopts — the wire-slimmed form never carries it
-        if(!forward&&'bvp' in op){const v=op.bvp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164: undo restores the pre-swap camera
+        if(!forward&&'bvp' in op){const v=op.bvp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164
         else if(forward&&'avp' in op&&op.clock&&op.clock.peer===_pi()){const v=op.avp;_vp().x=v.x;_vp().y=v.y;_vp().zoom=v.zoom}   // ADR-1164: own redo re-lands the adopted view
-        if(!forward&&'bnm' in op){_setDocName(op.bnm);_bName()}   // ADR-1167: undo restores the pre-swap name + re-publishes (peers kept the adopted one)
+        if(!forward&&'bnm' in op){_setDocName(op.bnm);_bName()}   // ADR-1167
         else if(forward&&'anm' in op&&op.clock&&op.clock.peer===_pi()){_setDocName(op.anm);_bName()}   // ADR-1167: own redo re-adopts
         break;}
       case 'pageAdd':{   // ADR-0646: multi-page
@@ -2223,9 +2223,9 @@ const _vPages=a=>!_iA(a)||!_ln(a)||_ln(a)>64?null:(a.every(p=>p&&_iS(p.id)&&_ln(
 const _stubOk=id=>{const w=_wc()[id];return!w||!w._del||w._born&&clockNewer(w._born,w._del)};   // ADR-1137: tomb-dead pages get no '?' stub
 const _pgHealS=()=>{if(_pgOn())for(const s of _sh()){if(s.pg&&!_pgById(s.pg)&&_stubOk(s.pg)&&_ln(_pgs())<64)_pu(_pgs(),{id:s.pg,name:'?',nts:-1})}else for(const s of _sh())delete s.pg};   // ADR-0694/1110
 const _pgClk=m=>validClock(m.rep)?m.rep:{ts:nowTs(),peer:_pi(),seq:0};   // ADR-1093
-function _pgAdopt(pages,cur,clk){const v=_vPages(pages);
+function _pgAdopt(pages,cur,clk,und){const v=_vPages(pages);
 let keep=v;
-if(clk&&v){keep=[];for(const p of v){const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(!w||!w._del||b&&clockNewer(b,w._del))_pu(keep,p)}}   // ADR-1110
+if(clk&&v){keep=[];for(const p of v){const w=_wc()[p.id],b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:null;if(!w||(und?!_tmE(w,{clock:clk}):!w._del)||b&&clockNewer(b,w._del))_pu(keep,p)}}   // ADR-1110/1168: und = swap apply — only a tomb newer than the op vetoes
 state.pages=keep&&_ln(keep)?clone(keep):null;
 if(clk)for(const p of state.pages||[]){const b=p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:clk;_bT(p.id,b);_fTs(p.nts);if(p.bts==null){p.bts=b.ts;p.btp=b.peer||''}}   // ADR-1093/1110/1114
 _pgHealS();
@@ -9030,7 +9030,7 @@ const Persist={
         shapes=shapes.map(s=>Net._attachShape(s));   // ADR-0840
       }
       _rs(shapes.filter(validShape));   // ADR-0009
-      _pgAdopt(d.pages,d.curPg,_pgClk(d));   // ADR-0646/1093
+      _pgAdopt(d.pages,d.curPg,_pgClk(d),1);   // ADR-0646/1093/1168
       if(_vpOK(d.viewport)){
         _vp().x=+d.viewport.x; _vp().y=+d.viewport.y;
         _vp().zoom=clampZoom(+d.viewport.zoom);

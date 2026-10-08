@@ -1,3 +1,8 @@
+## [1.8.192] - 2026-10-01
+
+### Fixed
+- **round918 / ADR-1168 — swap undo/redo restores pages without birth clocks**: undoing a doc-switch import dropped every recorded page whose record lacked `bts` (pre-ADR-1110 persisted docs, clock-less adoptions, hash imports): `Store.undo` re-mints `op.clock` at T2, the backward apply tombs the swapped-in pages then calls `_pgAdopt(beforePages,…)` — whose keep filter arbitrated *carried birth vs tomb only*, so `bts==null` entries lost to the swap's own tomb T1 and `state.pages`/`curPg` went null, converged on peers via the undo wire. Redo had the same hole (recorded `op.pages` can carry bts-less adopted pages, vetoed by the undo's own T2 tombs). The shape-side gate `_tmE` already arbitrates *tomb vs op clock* (a tomb only vetoes when newer than the op); pages now get the same rule via a new `und` flag on `_pgAdopt` — `und` = doc-swap apply (both 'replace' directions + backup restore), snapshot union-heal keeps the strict bts-only arbitration. 17 behavioural asserts + 4 source pins.
+
 ## [1.8.191] - 2026-10-01
 
 ### Fixed
