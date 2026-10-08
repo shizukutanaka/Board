@@ -1168,6 +1168,7 @@ Board/
 │   └── ADR-1139-dup-chain-arming-gate.md  # `_placeCopies` が全呼出で `dupIds`/`dupDelta` を再シードし、ペースト/インポートの任意センタリングベクトルがスマート複製チェーンを武装→⌘V→⌘D で遥か画面外に不可視複製を commit/broadcast していた残穴を、第4引数 `dup` で ⌘D 経路のみ武装するよう閉塞 (ADR-0080「harmless」推定を撤回)
 │   └── ADR-1140-line-granularity-text-merge.md  # `_mT3` の文字ハンク交差判定が「別行への disjoint 編集」まで真の衝突と誤認しローカル全文を消失していた残穴を、LCS アライメント+行ハンク二ポインタマージ `_mL3` で閉塞 (同行交差は従来どおり remote 勝ち、400 行境界) — ADR-1048 P2-a 完走
 │   └── ADR-1141-text-merge-emit-cap.md  # `_mT3` 合成結果が prop wire 上限 (text 5000 / label 600) を超えると収束 emit が全受信側で棄却→永久発散する残穴を、第4引数キャップ越時 remote 値フォールバックで閉塞
+│   └── ADR-1142-cursor-intake-bound.md  # presence cursor x/y が有限性のみ検証で唯一の unbounded remote 座標だった残穴を `_xyOK` (≤1e7) parity で閉塞
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
