@@ -8725,7 +8725,7 @@ try {
     // they raced with (convergent but unfair/unintuitive). nowTs() keeps every
     // stamped clock on the HLC floor.
     assert.ok(!/ts:_now\(\)\}/.test(html),'ADR-0739: no op-clock object stamped with raw _now()');
-    assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length>=4,'ADR-0739: all clock-stamp sites go through nowTs()');
+    assert.ok((html.match(/ts:nowTs\(\)/g)||[]).length===2,'ADR-0739: every stamped clock goes through nowTs() — the _fck mint + _pgClk fallback');
     console.log('  ✓ ADR-0739: clock stamps use the HLC floor everywhere');
 
     // ADR-0740: dead wire fields — hello/ping carried {seq:state.seq} no receiver
@@ -21539,6 +21539,44 @@ pass += 4;
 assert.ok(html.includes("if(op.clock.peer===_pi()){try{Net.broadcast(op)}catch(e){_txFlush();throw e}}"),'commit send failure flushes the convergence queue before surfacing (ADR-1171)');
 assert.ok(html.includes("let _werr=null;try{Net.broadcast(op)}catch(e){_werr=e}")&&html.includes("if(_werr)throw _werr"),'redo send failure runs follow/flush/repaint then rethrows — ADR-1135 parity (ADR-1171)');
 {const _rc=html.slice(html.indexOf('  _recordCommitted(op){'),html.indexOf('  undo(){'));assert.ok(_rc.indexOf('Net.broadcast(op)')>_rc.indexOf('_rdb()'),'_recordCommitted broadcast is the last statement — nothing left to strand (ADR-1171)');}
+pass += 3;
+
+// ---------- ADR-1172: ad-hoc companion sends strand nothing — bookkeeping first, error after ----------
+// The two remaining unguarded Net.broadcast sites were the companion addMany
+// sends riding alongside pageAdd commits: _pgDup's throw could strand
+// switchPage (duplicate exists, view never follows) and the multi-page drawio
+// paste loop's throw abandoned every later page plus switchPage/selection/
+// viewport/docName/repaint — a silent half-import. Both now collect the first
+// send error and rethrow after the bookkeeping lands; every broadcast site is
+// try-guarded or terminal.
+{
+  fakeWin.location.hash='';
+  const E=fn(
+    fakeWin,fakeDoc,fakeWin.navigator,fakeWin.requestAnimationFrame,
+    makeFakeIdb(),fakeWin.URL,setTimeout,clearTimeout,setInterval,clearInterval,
+    fakeWin.getComputedStyle,()=>true,fakeWin.alert,Blob,fakeWin,fakeWin,fakeWin.localStorage,
+    fakeWin.location,fakeWin.history,fakeWin.screen,fakeWin.BroadcastChannel
+  );
+  await new Promise(r=>setTimeout(r,0));
+  const ob=E.Net.broadcast;
+  E.state.pages=[{id:'p1',name:'P1',nts:0}];E.state.curPg='p1';
+  E.state.shapes.push(Shape.make('rect',{x:0,y:0,w:10,h:10}));
+  // fail only the companion addMany — the pageAdd commit itself still lands
+  E.Net.broadcast=o=>{if(o&&o.op==='addMany')throw new Error('send fail')};
+  let threw=null;try{E._pgDup()}catch(e){threw=e}finally{E.Net.broadcast=ob}
+  const dupId=E.state.pages[E.state.pages.length-1].id;
+  assert.ok(threw&&threw.message==='send fail','_pgDup rethrows the companion-send failure (ADR-1172)');
+  assert.ok(E.state.pages.length===2&&E.state.curPg===dupId,'switchPage lands on the duplicate before the error surfaces (ADR-1172)');
+  assert.ok(E.state.shapes.filter(s=>s.pg===dupId).length===1,'dup members installed by the pageAdd commit (ADR-1172)');
+  let calls=0;E.Net.broadcast=o=>{if(o&&o.op==='addMany')calls++};
+  threw=null;try{E._pgDup()}catch(e){threw=e}finally{E.Net.broadcast=ob}
+  assert.ok(!threw&&calls===1&&E.state.pages.length===3,'companion send intact on the success path (ADR-1172)');
+  console.log('  ✓ ADR-1172 ad-hoc send-failure parity: page ops land, error surfaces (4 asserts)');
+}
+pass += 4;
+assert.ok(html.includes("{_werr=e}   // ADR-0650/0739/1172\n  switchPage(id);"),'_pgDup switchPage lands before the error surfaces (ADR-1172)');
+assert.ok(html.includes("{if(!_werr)_werr=e}   // ADR-1172"),'multi-page paste companion send is best-effort (ADR-1172)');
+assert.ok(html.split("Net.broadcast(").length-1===8&&html.split("try{Net.broadcast(").length-1===5,'every Net.broadcast site is try-guarded or terminal — _txC outer-try + 2 terminal (ADR-1172)');
 pass += 3;
 
 } catch (err) {

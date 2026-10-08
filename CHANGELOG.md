@@ -1,3 +1,8 @@
+## [1.8.196] - 2026-10-01
+
+### Fixed
+- **round922 / ADR-1172 — ad-hoc send-failure parity**: the two remaining unguarded `Net.broadcast` sites were the companion `addMany` sends riding alongside `pageAdd` commits — `_pgDup`'s throw stranded `switchPage` (the duplicate page + members committed locally but the view never followed), and the multi-page `.drawio` paste loop's throw abandoned every later page plus `switchPage`/selection/viewport/docName/repaint (a silent half-import). Both now collect the first send error and rethrow after the bookkeeping lands — ADR-1171 parity. Every `Net.broadcast` site is now try-guarded or terminal; the send-failure contract class is closed. Pinned by 4 behavioural + 3 source asserts (incl. an 8-site census).
+
 ## [1.8.195] - 2026-10-01
 
 ### Fixed
