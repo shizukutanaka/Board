@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.226';   // ADR-1202
+const V='1.8.227';   // ADR-1203
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -974,9 +974,7 @@ const PEER_ID=(()=>{try{
   if(!_iS(id)||!/^[a-z0-9-]{8,64}$/i.test(id)){id=uid();_ls('board.peer',id)}
   return id;
 }catch(_){return uid()}})();
-// minimap visibility: persisted across reloads (the alternative —
-// an always-on minimap with no dismiss — would nag a toggle user
-// on every reload).
+// minimap visibility persists (always-on would nag togglers).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
 // ADR-0012
 const THEME_KEY='board.theme';
@@ -4508,7 +4506,7 @@ _on(canvas,_PU,e=>{
       if(_dk('resize')){
         const rsh=byId(ptr.resizeOrig.id);   // ADR-0635
         if(rsh)if(rsh.locked)_gRst();   // ADR-0964
-        else{
+        else if(!_rb(rsh.id)){                                        // ADR-1203
           _endPointBind(rsh,ptr.resizeHandle,_aK(e));           // ADR-0065/0209
           const after=clone(rsh);
           const before=ptr.resizeOrig;
@@ -4527,7 +4525,7 @@ _on(canvas,_PU,e=>{
       }else if(_dk('rotate')){
         const rsh=byId(ptr.rotOrig.id);   // ADR-0635
         if(rsh)if(rsh.locked)_gRst();   // ADR-0964
-        else{
+        else if(!_rb(rsh.id)){
           const after=clone(rsh),before=ptr.rotOrig;
           if(_JS(before)!==_JS(after)){
             _rcOp({op:'upd',id:rsh.id,before,after});
@@ -4540,26 +4538,26 @@ _on(canvas,_PU,e=>{
       }else if(_dk('cbend')&&ptr.cbendOrig){            // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if((sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
+        else if(!_rb(sh.id)&&(sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
           _rcOp({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
         }
       }else if(_dk('ebend')&&ptr.ebendOrig){            // ADR-0072
         const sh=byId(ptr.ebendOrig.id);
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if((sh.bend||0)!==(ptr.ebendOrig.bend||0)){
+        else if(!_rb(sh.id)&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
           _rcOp({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
         }
       }else if(_dk('way')&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if(_JS(ow)!==_JS(nw)){
+        else if(!_rb(sh.id)&&_JS(ow)!==_JS(nw)){
           _rcOp({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
         }
         ptr.wayIdx=null;ptr.wayNew=false;
       }else if(_dk('lblpos')&&ptr.lblOrig){               // ADR-0117
         const sh=byId(ptr.lblOrig.id),ol=ptr.lblOrig.labelPos??null,nl=sh?(sh.labelPos??null):null;
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if(ol!==nl){
+        else if(!_rb(sh.id)&&ol!==nl){
           _rcOp({op:'style',before:[{id:sh.id,labelPos:ol}],after:[{id:sh.id,labelPos:nl}]});
         }
         ptr.lblOrig=null;
@@ -4578,7 +4576,7 @@ _on(canvas,_PU,e=>{
     }
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.reborn=null;   // ADR-1203
   state.marquee=null;_csr('default');_ivO();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
