@@ -284,7 +284,7 @@ const checks = [
   ["snapshot docName is LWW-gated via (ts,writer) order (ADR-0618/0699)", html.includes("nameTs:_nameTs,namePeer:_namePeer") && html.includes("_nameWin(msg.nameTs,_idOK(msg.namePeer)?msg.namePeer:'')")],
   ["Net.init resets causal markers across rooms (ADR-0619/0699/0839)", html.includes("state.roomId&&state.roomId!==(roomId||DOC_KEY)){state._lastRep=null;_nameTs=0;_namePeer='';try{this.dc&&this.dc.close();this.rtc&&this.rtc.close()}catch(_){}}")],
   ["move commit drops ids removed mid-gesture + restores members locked mid-gesture (ADR-0621/0965)", html.includes("_gRL(ptr.dragStartShapes);") && html.includes("const orig={};") && html.includes("_mO={op:'move',ids,dx,dy,orig}")],
-  ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}")],
+  ["_sb drops dead ids at source + nudgeSelection parity (ADR-0623)", html.includes("_sb=()=>_selIds().map(byId).filter(Boolean)") && html.includes("unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)&&!_nrb(id)});}")],
   ["_slimOp strips undo-only fields from wire ops (ADR-0625/0965)", html.includes("const{origSel:_o2,moved:_m2,orig:_o3,dd:_d4,...rest}=op;") && html.includes("const{wc:_wc1,origSel:_o1,...r}=op;")],
   ["undo restamps op.clock fresh before the backward apply (ADR-0717)", html.includes("const _ut=nowTs();op.clock={peer:_pi(),seq:++state.seq,ts:_ut};")],
   ["undo-wire carries before for style/resize/align (ADR-0717)", html.includes("before:op.after,after:op.before}")],
@@ -1118,7 +1118,7 @@ const checks = [
   ['search input has localized aria-label', html.includes("_sa(sq,_AL,T.k.search)")],
   ['search Escape folds via the window router (single owner, ADR-1152)', html.includes("e.target===_g('sqinput'))toggleSq()") && html.includes("_sqAdvance(_sK(ev)?-1:1)")],
   // v1.6.64: Socratic round 4 - rotation scope + lock completeness
-  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s))")],
+  ['doRotate restricted to box shapes (s.w!=null, NaN-safe)', html.includes("_selL(s=>s&&!_lk(s)&&_hb(s)&&!_nrb(s.id))")],
   ['doDelete skips locked shapes', html.includes("function doDelete(){\n  if(state.ro){_roNo();return}   // ADR-1106\n  const sel=_selUL();")],
   ['eraser skips locked shapes', html.includes("if(!s||s.locked||_eraseBatch.some")],
   // v1.6.65: budget removed - deferred fixes implemented
@@ -1253,7 +1253,7 @@ const checks = [
   ['_placeCopies remaps sh.a and sh.b to new ids', html.includes("if(sh.a&&idMap.has(sh.a))sh.a=idMap.get(sh.a);") && html.includes("if(sh.b&&idMap.has(sh.b))sh.b=idMap.get(sh.b);")],
   // v1.6.75: keyboard nudge parity with pointer-drag (frame children follow + skip locked)
   ['withFrameChildren helper shared by drag + nudge', html.includes("function withFrameChildren(ids)") && html.includes("const dragIds=withFrameChildren(_sl());")],
-  ['nudgeSelection mirrors drag: frame children + skip locked/dead', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)})")],
+  ['nudgeSelection mirrors drag: frame children + skip locked/dead', html.includes("function nudgeSelection(dx,dy)") && html.includes("[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)&&!_nrb(id)})")],
   ['arrow-key handler delegates to nudgeSelection', html.includes("nudgeSelection(dx,dy);")],
   // v1.6.76: render rotation gated to box shapes (canvas/SVG parity, no NaN centre)
   ['shapeRot helper gates rotation to box shapes', html.includes("function shapeRot(s){return _rt(s)&&_hb(s)?_rt(s):0;}")],
@@ -22424,6 +22424,74 @@ pass += 2;
   state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
   console.log('  ✓ ADR-1201: ro-mid-arm — gone purges orig; _keepSel stamps the op, never the tip');
   pass += 5;
+}
+
+{
+  // ADR-1202: a remote reborn mid-gesture must stop receiving local mutations.
+  // _bT splices the id out of the armed gesture's origin maps (drag-start /
+  // gOrig / gAnc) so doMove/_gresizeDrag/_grotDrag can't _geoR-stomp the remote
+  // geometry every frame, and _nug producers derive members via _nrb-gated
+  // filters so post-reborn writes never become local-only phantoms.
+  const a=Shape.make('rect',{x:0,y:0,w:10,h:10}),b=Shape.make('rect',{x:20,y:0,w:10,h:10});
+  a.id='r2A';b.id='r2B';
+  state.shapes=[a,b];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set(['r2A','r2B']);state.ro=false;_invalidateGrid();
+  ptr.down=true;ptr.dragStartShapes=new Map([[a.id,{...a}],[b.id,{...b}]]);ptr.gOrig=new Map([[b.id,{...b}]]);
+  b.x=777;                                             // the remote reborn's own geometry
+  _bT('r2B',{ts:nowTs(),peer:'PX',seq:1});             // marks ptr.reborn + splices origin maps
+  assert.ok(ptr.reborn.has('r2B'),'reborn mark recorded');
+  assert.ok(!ptr.dragStartShapes.has('r2B')&&ptr.dragStartShapes.has('r2A')&&!ptr.gOrig.has('r2B'),'_bT splices the reborn id out of every armed gesture origin map');
+  nudgeSelection(5,0);                                 // arms _nug (reborn-before-arm: still a member)
+  _bT('r2B',{ts:nowTs(),peer:'PY',seq:1});             // reborn DURING the armed session → _nug.reborn
+  nudgeSelection(3,0);                                 // _nrb keeps the member out of later pushes
+  assert.strictEqual(byId('r2B').x,782,'reborn member keeps remote+pre-mark geometry — no post-reborn local stomp');
+  assert.strictEqual(byId('r2A').x,8,'surviving member still nudges');
+  _nugEnd();
+  assert.ok(!state.history.length||!state.history[0].ids.includes('r2B'),'committed op excludes the reborn member (gone-purged)');
+  assert.ok(html.includes("_nrb=id=>!!(_nug&&_nug.reborn&&_nug.reborn.has(id))"),'_nrb helper present');
+  assert.ok(html.includes("for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc])if(m)m.delete(id)"),'_bT splices every gesture origin map');
+  assert.ok(html.includes("if(rsh&&!_rb(rsh.id)){")&&html.includes("if(tr&&!_rb(sh.id)){")&&html.includes("if(sh&&!_rb(sh.id)){"),'scalar gesture mutation loops gated');
+  ptr.down=false;ptr.reborn=null;ptr.dragStartShapes=null;ptr.gOrig=null;
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
+  console.log('  ✓ ADR-1202: reborn sheds gesture origins; _nrb gates every _nug producer (9 asserts)');
+  pass += 9;
+}
+
+{
+  // ADR-1203: the scalar-orig commit sites were the residual reborn surface —
+  // a remote reborn mid-gesture leaves live === remote while `before` stays the
+  // stale armed orig, so committing records a phantom change whose undo-inverse
+  // would revert remote state on every peer. Marks must also die at the PU tail
+  // (they only survive _ptrReset today) — otherwise a shape reborn during
+  // gesture 1 stays _rb-frozen for gesture 2: mutation loops AND commits both
+  // dead, a permanent local-edit lockout after any remote rebirth.
+  const r=Shape.make('rect',{x:0,y:0,w:10,h:10});r.id='r3A';
+  state.shapes=[r];state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set(['r3A']);state.tool='select';state.ro=false;_invalidateGrid();
+  const fireUp=()=>{const ev={pointerId:1,offsetX:0,offsetY:0,button:0,preventDefault(){},stopPropagation(){}};for(const f of (canvas._L['pointerup|c']||[]).slice(0,1))f(ev);for(const f of (canvas._L['pointerup']||[]).slice(0,1))f(ev);};
+  ptr.down=true;ptr.dragKind='resize';ptr.resizeOrig={...byId('r3A')};ptr.resizeHandle='se';
+  _bT('r3A',{ts:nowTs()+9000,peer:'PZ',seq:1});        // remote reborn mid-gesture
+  byId('r3A').w=77;                                  // remote incarnation's own geometry
+  fireUp();
+  assert.ok(!state.history.length,'reborn mid-resize: pointerup commits nothing (undo would revert remote state)');
+  assert.strictEqual(byId('r3A').w,77,'remote geometry survives the skipped commit');
+  assert.ok(!ptr.reborn,'reborn marks die at the PU tail — no stale-mark carry into the next gesture');
+  const c=Shape.make('line',{x1:0,y1:0,x2:50,y2:0});c.id='r3B';c.curve=1;c.cbend=0;
+  state.shapes.push(c);_invalidateGrid();
+  ptr.down=true;ptr.dragKind='cbend';ptr.cbendOrig={id:'r3B',cbend:0};
+  _bT('r3B',{ts:nowTs()+9000,peer:'PZ',seq:2});
+  byId('r3B').cbend=0.9;
+  fireUp();
+  assert.ok(!state.history.length,'reborn mid-cbend: no style op either');
+  assert.strictEqual(byId('r3B').cbend,0.9,'remote cbend survives');
+  ptr.down=true;ptr.dragKind='resize';ptr.resizeOrig={...byId('r3A')};ptr.resizeHandle='se';
+  byId('r3A').w=55;
+  fireUp();
+  assert.ok(state.history.length===1&&state.history[0].after.w===55,'next gesture on the reborn id commits normally — marks are gesture-scoped');
+  assert.ok(html.includes("else if(!_rb(rsh.id)){")&&html.split("!_rb(sh.id)&&").length-1>=4,'reborn gates on all six scalar commit sites');
+  assert.ok(html.includes("ptr.wayOrig=null;ptr.reborn=null;   // ADR-1203"),'PU tail clears reborn with the gesture state');
+  ptr.down=false;ptr.reborn=null;ptr.dragKind=null;ptr.resizeOrig=null;ptr.resizeHandle=null;ptr.cbendOrig=null;
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.history=[];state.histIdx=-1;state.wclock={};_invalidateGrid();
+  console.log('  ✓ ADR-1203: reborn sheds scalar commits; marks die at the PU tail (8 asserts)');
+  pass += 8;
 }
 
 } catch (err) {

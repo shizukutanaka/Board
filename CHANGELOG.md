@@ -1,3 +1,13 @@
+## [1.8.227] - 2026-10-01
+
+### Fix
+- **round953 / ADR-1203 — reborn commit ゲート (スカラ orig) + マーク寿命のジェスチャスコープ化**: ADR-1202 はスカラ orig ジェスチャの変異ループのみを `_rb` 閉塞し、commit サイトは残存 — remote reborn で live=remote 値のまま `{before: stale-arm-orig, after: remote}` の phantom op を記録し、undo の inverse wire op が全 peer の remote 幾何を stale 値へ巻き戻す発散窓を、resize/rotate/ebend/cbend/way/lblpos の 6 commit サイトへの `!_rb` ゲートで閉塞 (live が remote 真値のため skip は冪等収束)。併せて `ptr.reborn` が `_ptrReset` でしか消えず正常 PU 末尾で残存していた残穴 — 次ジェスチャでも `_rb` が真のまま変異+commit 両方 dead で、一度 remote-reborn された図形が事実上永久ローカル編集不能になっていた false-positive を、PU 末尾の `ptr.reborn=null` でジェスチャスコープへ閉塞。
+
+## [1.8.226] - 2026-10-01
+
+### Fix
+- **round952 / ADR-1202 — remote-reborn メンバーへのローカル mutation 全面閉塞**: ADR-0964→1201 の `_rb` 保護チェーンは復元系 (undo/cancel) のみを覆い、mutation 系は裸だった — (a) `_bT` で remote 誕生を採用した図形が `ptr.down` ジェスチャ中の `dragStartShapes`/`gOrig`/`gAnc` に残り続け、doMove/gresize/grot の毎フレーム `_geoR` が remote 幾何を stale 値で上書き + commit が自クロックで LWW 勝利して peer の新幾何を静黙破壊していた残穴を、マーク時の **map 削除** で閉塞 (変異ループが orig map を走査するため削除=以後非訪問、commit の `[...keys()]`/`mids` 側も自動除外)。(b) スカラ orig ジェスチャ (resize/rotate/ebend/cbend/lblpos/way) の変異ループを `!_rb` ゲートで閉塞。(c) `_nug` producer 全域 (nudgeSelection/Alt+arrow/unlockedSelectionIds/doFlip/doLock/doRotate/fontSizeStep/toggleTextFlag/swapFillStroke) の member 導出を新 `_nrb`/`_unrb` ゲートで reborn 除外し、`_xFS` フレーム子拡張の直後に再除外 — reborn-前の arm は収束済み、reborn-中の member は gone-purge と整合。undo 側の stale-before 復元も `before` 配列が `_unrb` 済みから生成されるため一致。
+
 ## [1.8.225] - 2026-10-01
 
 ### Fix
