@@ -440,15 +440,15 @@ Board/
 │   ├── ADR-0388-shape-id-type.md   # shape id string/長さ検査 (実装済)
 │   ├── ADR-0389-toast-dedupe.md   # 同一トースト再付け替え (実装済)
 │   ├── ADR-0390-exc-frameid-emit.md   # exc frameId 空間内包 emit (実装済)
-│   ├── ADR-0391-more-literal-shorthands.md   # _TR/_ud/_now (実装済)
-│   ├── ADR-0392-sa-al-ap-shorthands.md   # _sa/_AL/_AP (実装済)
-│   ├── ADR-0393-board-viewport-roundtrip.md   # .board viewport 往復 (実装済)
-│   ├── ADR-0394-more-dom-shorthands.md   # DOM shorthand 追加 (実装済)
+│   ├── ADR-0391-tr-ud-now-shorthands.md   # _TR/_ud/_now (実装済)
+│   ├── ADR-0392-sa-shorthand.md   # _sa/_AL/_AP (実装済)
+│   ├── ADR-0393-board-file-viewport.md   # .board viewport 往復 (実装済)
+│   ├── ADR-0394-aria-const-shorthands.md   # DOM shorthand 追加 (実装済)
 │   ├── ADR-0395-toast-key-consts.md   # トーストキー定数化 (実装済)
 │   ├── ADR-0396-locked-delete-toast.md   # ロック済削除トースト (実装済)
-│   ├── ADR-0397-st-pd-consts.md   # _St/_PD + 残トーストキー (実装済)
-│   ├── ADR-0398-file-import-32mb-guard.md   # 全取込 32MB ガード (実装済)
-│   ├── ADR-0399-ap-sto-kd-ch-ck-shorthands.md   # _ap/_stO/_KD/_CH/_CK/_vpS (実装済)
+│   ├── ADR-0397-st-pd-toast-consts.md   # _St/_PD + 残トーストキー (実装済)
+│   ├── ADR-0398-file-size-guard.md   # 全取込 32MB ガード (実装済)
+│   ├── ADR-0399-more-shorthands.md   # _ap/_stO/_KD/_CH/_CK/_vpS (実装済)
 │   ├── ADR-0400-snap-sender-chunks.md   # RTC snapshot 送信側チャンク化 (実装済)
 │   ├── ADR-0401-dual-send-bcast-helper.md   # _bcast/_setDocName/_dpr/_PM/_PU/_PC/_lc (実装済)
 │   ├── ADR-0402-docname-sync.md   # ドキュメント名ピア同期 (実装済)
@@ -1095,9 +1095,9 @@ Board/
 │   └── ADR-1044-pending-nudge-remote-lifecycle.md  # `_nug` coalescer の flush 網羅監査 — 全ローカル変異は `_recordCommitted` で flush、remote は `_gTouch` fold + `n.reborn` で整合、clean 完走
 │   └── ADR-1045-snapshot-img-answer-store.md  # snapshot の `sent` 使い捨てマップで img 参照キーが `_imgSent` 不達 → imgq 応答不能の実害を解消 (snapshot puts も応答ストアへ登録)
 │   └── ADR-1046-img-pending-waitlist-bound.md  # `_park` 待機リスト 256上限+FIFO 監査 — 追い出しでも straggler スキャンで自己治癒、再 park は挿入位置維持、clean 完走
-│   └── ADR-1047-minimap-img-ik-verify.md  # minimap 描画の `_ik` バイト検証 — getImg parity で指紋衝突の誤ビットマップを解消
+│   └── ADR-1047-minimap-img-verify.md  # minimap 描画の `_ik` バイト検証 — getImg parity で指紋衝突の誤ビットマップを解消
 │   └── ADR-1048-5050-audit.md  # 長所50/短所50 + ソクラテス式仮定監査 + P0–P4 改善候補リスト
-│   └── ADR-1049-img-rescan-repark.md  # presence sweep 内の 5分 `_imgRescan` — 60s 期限切れ parked ref の永久プレースホルダー化を解消
+│   └── ADR-1049-imgq-slow-rescan.md  # presence sweep 内の 5分 `_imgRescan` — 60s 期限切れ parked ref の永久プレースホルダー化を解消
 │   └── ADR-1053-peer-display-names.md  # presence (`ping`/`cursor`/`selection`) に `n` フィールドでピア表示名 — カーソルマーカー+アバター tooltip に表示
 │   └── ADR-1054-merge-mode-import.md  # 非空ボードでの .board/共有リンク取込にマージor置換の選択 — `_placeCopies` 経由で 1 回の undoable addMany (round823 でスタック再構築ロスから復元)
 │   └── ADR-1074-zero-delta-dup-chain.md  # ゼロデルタ dup シードをチェーンなし扱い — ⌘D の不可視スタック解消
@@ -1221,6 +1221,14 @@ Board/
 │   ├── ADR-1193-wire-auth-verify-lifecycle.md  # `_sec()` mint を `uid()×4`=128→`uid()×2`=64 へ — 全 `≤64` ゲート (board.rs/d.rs/token k) を超過して BC/RTC リンクが沈黙 dead だった連鎖を閉塞、verify-order+鍵ライフサイクル契約ピン、11 ピン
 │   ├── ADR-1194-wire-protocol-reference.md  # wire プロトコル正規リファレンス — 認証エンベロープ + 全13 kind の transport 行列・フィールド境界・intake 効果を ~40 ADR から集約 (ADR-1048 P4)、drift ゲート7ピン
 │   ├── ADR-1195-net-init-reset-contract.md  # Net.init の cleared/retained 契約 — room-bound (dedup/frag/queue/presence/peer) vs doc-bound (_imgIn/_imgPending/rtc: 行) の state 分離規約、挙動ピン7件
+│   ├── ADR-1196-adr-index-filename-parity.md  # ADR index のファイル名 parity — 9件の rename 残存 dead link を修正 + docs/ ⇄ index 集合一致の drift ゲートピン
+│   ├── ADR-1197-gridver-epoch.md  # `_gridVer` 図形バージョンエポック契約 — `_iG()` 単一ライター・`_apply` 漏斗 (prop-only/undo 含む全 op)・消費者エポック共有・img blob は bitmap 帯外チャネル、3ソース+6挙動ピン
+│   ├── ADR-1198-oa-patch-gate.md  # `_oa` パッチゲート契約 — 生図形書込みの単一漏斗 (assign+共存解消+`_park`+`_gTouch`)・明示 `_gTouch` ペア (move/group/ungroup/zorder/snapshot-merge)・構造 prop (pg/ページ行/wclock) は patch ドメイン外・backward は cancel 先行で exempt、5ソース+6挙動ピン
+│   ├── ADR-1199-orphan-group-census.md  # 孤児グループ国勢調査 `_grpSweep` — メンバーシップ op 9種の尾で live メンバー<2 の gid を全ピア決定論的に剥がす (halō/SR の幻影1人グループ消滅)、両漏斗 (_apply tail + `_recordCommitted` replace)・locked 孤児も scrub・`w['groupId']=C` 仲裁、6挙動+3ソースピン
+│   ├── ADR-1200-orphan-group-census-funnel-parity.md  # `_recordCommitted` のセンサスを `_apply` 尾と同一の 9-op 正規表現へ — doUngroup の locked 孤児 / `_nugLock` で 1 メンバー化した group が local で ghost gid を残す発散窓を閉塞、3挙動+1ソースピン
+│   ├── ADR-1201-nuglock-orig-gone-purge.md  # mid-arm ro flip 境界2欠陥: `_nugLock` の `gone` パーティションを `op.orig` へ拡張 (remote-reborn への stale 復元閉塞) + `_keepSel` を履歴 tip から op オブジェクト書き込みへ (棄却 commit の origSel 汚染/クラッシュ閉塞)、5挙動+1ソースピン
+│   ├── ADR-1202-reborn-mutation-gates.md  # remote-reborn メンバーへの mutation 全面閉塞: `_bT` でジェスチャ orig map から mark-and-remove (doMove/gresize/grot の毎フレーム stale 復元+commit LWW 勝利を閉塞) + スカラ orig ゲート `!_rb` + `_nrb`/`_unrb` で `_nug` producer 全域の member 導出を reborn 除外、9挙動+3ソースピン
+│   ├── ADR-1203-reborn-scalar-commit-gates.md  # reborn commit ゲート + マーク寿命: スカラ orig 6 commit サイトに `!_rb` (stale-before phantom op が undo wire で remote 幾何を巻き戻す発散閉塞) + PU 末尾に `ptr.reborn=null` (正常終了で残る stale マークが次ジェスチャを永久凍結する残穴閉塞)、8挙動+2ソースピン
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
