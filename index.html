@@ -805,7 +805,7 @@ const _selUL=()=>_sb().filter(_ul);
 const _repC=(before,beforeWc,origSel,bp,bc,bro,aro,bvp,bnm)=>{if(state.ro){_roNo();return}Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc,bro,aro,bvp,avp:clone(_vp()),bnm,anm:_dn()})};   // ADR-0646/1057/1163/1164/1167
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel)};   // ADR-0309/0568: _ss drops missing/hidden ids
-const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
+const _keepSel=(op,arr)=>{if(_ln(arr))op.origSel=arr};   // ADR-0312/1201: stamp the op object — the tip is wrong on a rejected commit
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.224';   // ADR-1200
+const V='1.8.225';   // ADR-1201
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -5856,8 +5856,8 @@ function openTextEditor(s,isNew){
         const connClears=computeConnClears(_sT([orig.id]));
         const delOp={op:'del',shapes:[orig]};
         if(_ln(connClears))delOp.connClears=connClears;
+        _keepSel(delOp,origSel);
         _cmt(delOp);
-        _keepSel(origSel);
       }else if(newText!==origText){
         const before={text:origText,w:orig.w,h:orig.h};
         const after={text:newText,w:s.w,h:s.h};
@@ -5952,8 +5952,8 @@ function flushErase(){
   const origSel=_selIds();
   const op={op:'del',shapes:clone(live)};
   if(_ln(connClears))op.connClears=connClears;
+  _keepSel(op,origSel);
   _cmt(op);
-  _keepSel(origSel);
 }
 
 // ====================== KEYBOARD ======================
@@ -6221,9 +6221,7 @@ function doPaste(){
   const srcCx=bb?bb.x+bb.w/2:vCx,srcCy=bb?bb.y+bb.h/2:vCy;
   const co=(_pasteCount+1)*20/v.zoom;   // +1 so first paste has a small inset offset
   _pasteCount++;
-  const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,vCx-srcCx+co,vCy-srcCy+co);
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0115
@@ -6231,9 +6229,7 @@ function doPaste(){
 // Used to paste across boards/views or to drop a copy exactly atop the source.
 function doPasteInPlace(){
   if(!_cl())return;
-  const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,0,0);
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0103
@@ -6241,9 +6237,7 @@ function doPasteAt(wx,wy){
   if(!_cl())return;
   const bb=_bA(_cl().shapes);
   const srcCx=bb?bb.x+bb.w/2:wx,srcCy=bb?bb.y+bb.h/2:wy;
-  const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,wx-srcCx,wy-srcCy);
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // Clone shapes onto the board with fresh ids/group ids, offset by (dx,dy), and
@@ -6274,7 +6268,7 @@ function _placeCopies(srcShapes,dx,dy,dup){
     _pu(built,sh);
     _pu(added,sh.id);
   }
-  if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}
+  if(_ln(built)){_pgHome(built);const o={op:'addMany',shapes:built};_keepSel(o,_selIds());_cmt(o)}   // ADR-1201: origSel rides the op object
   _ss(added);   // ADR-0568: _ss filters out hidden copies
   if(dup){state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy}}     // ADR-0080/1139: only ⌘D arms the repeat chain — paste/import placement vectors aren't user transforms
   _iv();
@@ -6289,14 +6283,12 @@ function _mergeImport(shapes){
 }
 function doDuplicate(){
   if(!_selN())return;
-  const origSel=_selIds();
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
   if(!_ln(sel))return;
   // ADR-0080/1074
   // chain at all — repeat at the default offset instead of invisible stacking.
   const smart=state.dupIds.size&&_dd()&&(_dd().x||_dd().y)&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,_dd().x,_dd().y,1):_placeCopies(sel,_ud,_ud,1);   // independent of _cl()
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 function doDelete(){
@@ -6311,8 +6303,8 @@ function doDelete(){
   const connClears=computeConnClears(delIds);   // resolve bindings BEFORE splicing
   const op={op:'del',shapes:clone(sel)};
   if(_ln(connClears))op.connClears=connClears;
+  _keepSel(op,origSel);
   _cmt(op);
-  _keepSel(origSel);
   _scl();
   _tst(t('deleted')+' '+_ln(sel));
 }
@@ -6488,8 +6480,7 @@ function doUngroup(){
     if(gids.has(_gi(s))&&!_lk(s)){_pu(before,{id:s.id,groupId:_gi(s)});delete s.groupId;_pu(ungrouped,s.id)}
   }
   _ss([...ids.filter(byId),...ungrouped]);
-  Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
-  _keepSel(origSel);
+  const uo={op:'ungroup',ids:ungrouped,gids:[...gids],before};_keepSel(uo,origSel);Store._recordCommitted(uo);
   _oT('ungrouped');
   _iv();
 }
@@ -6507,8 +6498,7 @@ function doClearAll(){
   if(!confirm(t('confirmClear')))return;
   const origSel=_selIds();
   Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004
-  _cmt({op:'clear',shapes:clone(_sh()),wc:clone(_wc())});
-  _keepSel(origSel);
+  const co={op:'clear',shapes:clone(_sh()),wc:clone(_wc())};_keepSel(co,origSel);_cmt(co);
   _tst(t('cleared'));
 }
 
@@ -7758,9 +7748,7 @@ function importBoardText(txt,wp){
   wp=wp||_midV()
   const bb=_bA(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
-  const origSel=_selIds();
   const added=_placeCopies(shapes,dx,dy);
-  _keepSel(origSel);
   _o(t('imported')+' '+_ln(added));
   return true;
 }
@@ -10194,7 +10182,7 @@ function _undoWire(op){
     default:       return null;
   }}
 let _nug=null;
-function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o,n.reborn);if(!((o.ids&&!_ln(o.ids))||(o.after&&!_ln(o.after))||(o.changes&&!_ln(o.changes)))){Store._recordCommitted(o);_keepSel(n.sel)}}}
+function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o,n.reborn);if(!((o.ids&&!_ln(o.ids))||(o.after&&!_ln(o.after))||(o.changes&&!_ln(o.changes)))){Store._recordCommitted(o);_keepSel(o,n.sel)}}}
 function _nugLock(op,rb){   // ADR-0965/0971
   const gone=_sT(),B=op.before||[],A=op.after||[];
   for(const id of(op.ids||(B.length?B:op.changes).map(b=>b.id))){
@@ -10209,6 +10197,7 @@ function _nugLock(op,rb){   // ADR-0965/0971
   }
   if(gone.size)_iv();
   for(const k of['ids','before','after','changes'])if(op[k])op[k]=op[k].filter(m=>!gone.has(m.id||m));
+  if(op.orig)for(const g of gone)delete op.orig[g];   // ADR-1201: gone sheds orig too — else _roRe clobbers remote-reborn geometry
 }
 function _mg(dst,src,f){for(const c of src){const e=dst.find(x=>x.id===c.id);if(e)f(e,c);else dst.push(c)}}   // ADR-0960: per-id merge for zorder/style sessions
 // Restore live pre-commit writes from the op's own before/orig/changes data —
@@ -10231,8 +10220,8 @@ function _nugPush(op){   // ADR-0957/0960
   _nugEnd();
   _nug={k,op,sel:_selIds()};arm();
 }
-function _rcOp(op){_nugEnd();const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
-function _cOp(op){const o=_selIds();_cmt(op);_keepSel(o)}
+function _rcOp(op){_nugEnd();const o=_selIds();Store._recordCommitted(op);_keepSel(op,o)}
+function _cOp(op){const o=_selIds();_cmt(op);_keepSel(op,o)}
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];

@@ -1,3 +1,8 @@
+## [1.8.225] - 2026-10-01
+
+### Fix
+- **round951 / ADR-1201 — mid-arm ro flip 境界の隣接2欠陥**: (a) pending move op の生スナップショット map `op.orig` は `ids/before/after/changes` へ施す `gone` 滤過の対象外だった — arm 中に `state.ro` が立つと `_roRe` が `op.orig` を走査し、remote が reborn したメンバーに stale ローカル幾何を復元 → remote-reborn 状態をローカル限定で破壊する発散。`gone` を `op.orig` からも除去。(b) `_keepSel` が「commit が履歴に push した」前提で履歴 tip へ `origSel` を書いていた — ro/dedup 棄却の commit は push しないため、直前の無関係な op の undo 選択復元を静的に汚染し、空履歴では TypeError。`_keepSel=(op,arr)` を op オブジェクトへ書く形へ全13サイトを移行し (`_placeCopies` は内部で `_selIds()` 捕捉)、`_repC`/`beautify` の origSel-in-literal イディオムに統一 (wire 非流出は `_slimOp` が保証)。
+
 ## [1.8.224] - 2026-10-01
 
 ### Fix
