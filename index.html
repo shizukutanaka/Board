@@ -805,7 +805,7 @@ const _selUL=()=>_sb().filter(_ul);
 const _repC=(before,beforeWc,origSel,bp,bc,bro,aro,bvp,bnm)=>{if(state.ro){_roNo();return}Store._recordCommitted({op:'replace',before,after:clone(_sh()),wc:beforeWc,afterWc:clone(_wc()),origSel,pages:clone(_pgs()),curPg:state.curPg,beforePages:bp,beforeCurPg:bc,bro,aro,bvp,avp:clone(_vp()),bnm,anm:_dn()})};   // ADR-0646/1057/1163/1164/1167
 const _ctrAt=(ss,wp)=>{wp=wp||_midV();const bb=_bA(ss);if(bb){const dx=wp.x-(bb.x+bb.w/2),dy=wp.y-(bb.y+bb.h/2);for(const s of ss)_sT2(s,dx,dy)}};
 const _selR=op=>{if(op.origSel)_ss(op.origSel)};   // ADR-0309/0568: _ss drops missing/hidden ids
-const _keepSel=arr=>{if(_ln(arr))_hi()[_hx()].origSel=arr};   // ADR-0312
+const _keepSel=(op,arr)=>{if(_ln(arr))op.origSel=arr};   // ADR-0312/1201: stamp the op object — the tip is wrong on a rejected commit
 const _pd=e=>e.preventDefault();   // ADR-0326
 const _ce=t=>document.createElement(t);   // ADR-0329
 const _selIds=()=>[..._sl()];   // ADR-0330
@@ -855,7 +855,7 @@ const _st=()=>state.style;
 const _df=()=>state.draft;
 const _wc=()=>state.wclock,_wM=x=>Object.assign(Object.create(null),x),_oe=Object.entries,_fTs=t=>{if(_iN(t))state._lastTs=_max(state._lastTs,t)};   // ADR-0788/1114
 const _wD=(id,c)=>{_fTs(c&&c.ts);_wc()[id]=_wM({_del:c})},_wK=k=>k!=='id'&&k!=='type'&&k!=='pg'&&k!=='frac'&&k!=='groupId'&&k!=='__proto__'&&k!=='constructor'&&k!=='prototype'&&k[0]!=='_',_wR=(id,w)=>{const n=_wM();if(_iO(w)&&_ln(_ok(w))<=64)for(const k of _ok(w))if((_wK(k)||k==='frac'||k==='groupId'||k==='_born'||k==='_del')&&validClock(w[k])){n[k]=clone(w[k]);_fTs(w[k].ts)}_wc()[id]=n},_wTb=(rw,c,inN)=>{for(const[id,w]of _oe(rw||{}))if(w._del&&(clockNewer(w._del,c)||!inN.has(id))){const n=_wM({_del:clockNewer(w._del,c)?w._del:c});_fTs(w._del.ts);if(validClock(w._born)){n._born=w._born;_fTs(w._born.ts)}_wc()[id]=n}};   // ADR-0789/1039/1096: tomb restores keep _born
-const _bT=(id,c)=>{if(!c)return;_fTs(c.ts);const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born)){w._born=c;if(c.peer!==_pi()){if(ptr.down)(ptr.reborn||(ptr.reborn=new Set())).add(id);if(_nug)(_nug.reborn||(_nug.reborn=new Set())).add(id)}}},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926/0970/0984/1116
+const _bT=(id,c)=>{if(!c)return;_fTs(c.ts);const w=_wc()[id]||(_wc()[id]=_wM());if(!w._born||clockNewer(c,w._born)){w._born=c;if(c.peer!==_pi()){if(ptr.down){(ptr.reborn||(ptr.reborn=new Set())).add(id);for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc])if(m)m.delete(id)}if(_nug)(_nug.reborn||(_nug.reborn=new Set())).add(id)}}},_bN=(id,c)=>{const w=_wc()[id];return!!(w&&w._born&&clockNewer(w._born,c))};   // ADR-0926/0970/0984/1116
 const _wAdopt=(id,rw)=>{   // ADR-0927
   if(!rw||!_iO(rw))return;
   const ks=_ok(rw);if(_ln(ks)>64)return;
@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.220';   // ADR-1196
+const V='1.8.227';   // ADR-1203
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -974,13 +974,11 @@ const PEER_ID=(()=>{try{
   if(!_iS(id)||!/^[a-z0-9-]{8,64}$/i.test(id)){id=uid();_ls('board.peer',id)}
   return id;
 }catch(_){return uid()}})();
-// minimap visibility: persisted across reloads (the alternative —
-// an always-on minimap with no dismiss — would nag a toggle user
-// on every reload).
+// minimap visibility persists (always-on would nag togglers).
 const MINIMAP_ON=(()=>{try{return _lg('board.minimap')!=='off'}catch(_){return true}})();
 // ADR-0012
 const THEME_KEY='board.theme';
-// Mode lives in memory (storage best-effort): localStorage reads can throw under
+// Mode lives in memory (storage best-effort): localStorag
 // blocked cookies/partitioning.
 let _themeCache=(()=>{try{const v=_lg(THEME_KEY);return v==='light'||v==='dark'?v:null}catch(_){return null}})();
 function applyTheme(mode){   // mode: light|dark|null (auto=prefers-color-scheme)
@@ -1389,7 +1387,7 @@ const _TYPES=_sT(['rect','ellipse','diamond','pen','line','arrow','text','sticky
 const _ptsOK=a=>_iA(a)&&a.every(p=>_iA(p)&&_ln(p)>=2&&p.every(n=>_iN(n)&&_fin(n)));   // ADR-0436: shared pen-pts tuple check
 const _typOK=(v,p,sh)=>_TYPES.has(v)&&(v!=='pen'||(_ptsOK(p=(p&&p.pts)||sh.pts)&&_ln(p)>0));   // ADR-0990
 const _CSS=typeof CSS!=='undefined'?CSS:null;
-// 'none' is a Board sentinel (fill:'none' = no fill, ADR-0288), not a CSS color.
+// 'none' is a Board sentinel (fill:'none' = no fill, ADR-
 const _colOK=v=>v==='none'||v==='default'||(_CSS?_CSS.supports('color',v):/^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+\([^)]{0,80}\)$|^[a-zA-Z]{1,20}$/.test(v));   // ADR-0870
 function validShape(s){
   if(!s||!_iO(s)||_ok(s).length>64||!_iS(s.id)||_ln(s.id)>64||!_TYPES.has(s.type)||!_iN(s.z))return false;   // ADR-0387/0388/0858
@@ -1628,6 +1626,7 @@ const Store={
     try{
     if(op.op==='replace'){state._lastRep=op.clock;const inN=_sT(op.after.map(s=>s.id));for(const s of op.before)if(!inN.has(s.id))_wD(s.id,op.clock);_wTb(op.wc,op.clock,inN);for(const s of op.after)_bT(s.id,op.clock);const inP=_sT((op.pages||[]).map(p=>p.id));for(const p of op.beforePages||[])if(!inP.has(p.id)&&!_bN(p.id,op.clock))_wD(p.id,op.clock);for(const p of op.pages||[])if(p)_bT(p.id,p.bts!=null?{ts:p.bts,peer:_iS(p.btp)?p.btp:'',seq:0}:op.clock)}   // ADR-0616/0736/0927/1109/1111
     this._stampWrites(op);                 // change already applied by caller; record clock
+    if(/^(?:del|add|addMany|pageDel|pageAdd|clear|replace|group|ungroup)$/.test(op.op))_grpSweep(op.clock);   // ADR-1200: caller-mutated membership ops get the same census as the _apply tail — a locked sole survivor (doUngroup) or a group shrunk to 1 by mid-run locks (_nugLock) would otherwise keep a ghost gid locally while every remote peer strips it
     }catch(e){_sO().delete(k);throw e}     // ADR-1129
     _hi().length=_hx()+1;
     _hi().push(op);
@@ -1901,7 +1900,7 @@ const Store={
           // gate still applies so an unlock-undo isn't dead)
           if(!sh||(sh.locked&&!('locked' in raw)))continue;
           const p=clone(raw);delete p.pg;delete p.frac;delete p.groupId;if(p.type!=null&&!_typOK(p.type,p,sh))delete p.type;for(const k of _ok(p))if(k[0]==='_')delete p[k];
-          // Same LWW guard as 'upd' (_lwwSkip): undo must not clobber a newer remote write
+          // Same LWW guard as 'upd' (_lwwSkip): undo must not clobb
           if(!forward)for(const k of _ok(p)){if(k!=='id'&&_lwwSkip(raw.id,k,op))delete p[k];}
           {const _bw=forward?op.before:op.after,_bp=_iA(_bw)&&_bw.find(e=>e&&e.id===sh.id);for(const _tk of['text','label'])if(p[_tk]!=null&&_iS(sh[_tk])&&_bp!=null&&_iS(_bp[_tk])){const _m=_mT3(sh[_tk],_bp[_tk],p[_tk],_tk==='text'?5000:600);if(_m!==p[_tk]){_pu(_txE||(_txE=[]),{id:sh.id,k:_tk,b:p[_tk],a:_m});p[_tk]=_m}}}   // ADR-1123/1141
           _oa(sh,p);
@@ -1915,6 +1914,7 @@ const Store={
     // shapes must not stay in selection (0566 invariant)
     if(/^(?:style|upd|align|resize|beautify)$/.test(op.op))for(const id of _ids)if(_sl().has(id)){_selSig=null;const _s=byId(id);if(_s&&_hd(_s))_sdl(id)}
     if(_pgOn()){_pgHealS();_pgBar()}
+    if(/^(?:del|add|addMany|pageDel|pageAdd|clear|replace|group|ungroup)$/.test(op.op))_grpSweep(op.clock);   // ADR-1199: orphan-group census at the shared funnel
     // ADR-0027
     // a union covering most of the viewport isn't worth clipping for.
     for(const id of _ids)_u(byId(id));
@@ -1925,7 +1925,7 @@ const Store={
 // ADR-0009
 // point the spatial hit-test grid uses) whenever shapes change — property
 // mutations don't touch membership, so they never invalidate it. The size
-// compare catches a mid-op push()/splice() that would leave it one change stale.
+// compare catches a mid-op push()/splice() that would lea
 let _idIndex=null;
 function byId(id){
   if(!_idIndex||_idIndex.size!==_nS()){_idIndex=_mP();for(const s of _sh())_idIndex.set(s.id,s);}
@@ -1937,7 +1937,7 @@ function clone(o){return _JP(_JS(o))}
 // strictly outranks every observed ts (a del beats the born it saw).
 function nowTs(){state._lastTs=_max(Date.now(),state._lastTs+1);return state._lastTs}
 // Total order on op clocks for per-property LWW (ADR-0002): "newer" = larger by
-// (ts, then peer, then seq). Every peer compares identical clock triples, so the
+// (ts, then peer, then seq). Every peer compares identica
 // winner is deterministic regardless of arrival order (the latest
 // recorded write for that property wins).
 function clockNewer(a,b){
@@ -1956,7 +1956,7 @@ function _lwwSkip(id,key,op){
 function _ccRest(sh,b,op){const pb=clone(b);for(const k of _ok(pb))if(_lwwSkip(sh.id,k,op))delete pb[k];_oa(sh,pb)}   // ADR-0921
 const _tmE=(w,op)=>!!(w&&w._del&&clockNewer(w._del,op.clock||{})&&!(w._born&&clockNewer(w._born,w._del)));   // ADR-1096
 function _tmb(id,op){return _tmE(_wc()[id],op)}   // ADR-0922/0927: newer tomb outranks restore
-// ADR-1123/1140: disjoint diffs union; emit 'upd' with before=remote → every peer lands
+// ADR-1123/1140: disjoint diffs union; emit 'upd' with be
 // cleanly. Char-hunk overlap retries at line granularity (same-position inserts
 // concatenate); a real line-range overlap keeps the clock-winner's text.
 const _cpl=(a,b)=>{const n=_min(_ln(a),_ln(b));let i=0;while(i<n&&a[i]===b[i])i++;return i},
@@ -2121,9 +2121,9 @@ function keyBetween(a,b){
   }
   return out.map(d=>FRAC_DIGITS[d]).join('');
 }
-// reindexFrac: stamp every shape with a strictly increasing key from array order.
+// reindexFrac: stamp every shape with a strictly increasi
 // The keyBetween(null,…) chain is prefix-stable …
-// total count), so add/del splices that don't reindex still leave canonical keys.
+// total count), so add/del splices that don't reindex sti
 function reindexFrac(){let p=null;for(const s of _sh()){p=keyBetween(p,null);s.frac=p;}}
 // sortZ: order shapes by fractional key. Keyless shapes reconcile first
 // (legacy integer-z migration / land above the top key). Established keys
@@ -2185,7 +2185,7 @@ const Shape={
 // insertion order): on access we re-insert to mark recent, and evict the oldest
 // past the cap so a board with many pasted images can't leak memory.
 const _imgCache=_mP(),IMG_CACHE_MAX=60;
-// O(1) key — ADR-0035: mime+len +48c head/mid/tail fingerprint; byte-verify on hit
+// O(1) key — ADR-0035: mime+len +48c head/mid/tail finger
 function _imgKey(u){if(!_iS(u))return'';
   const m=_ln(u)>>1;return u.slice(5,32)+':'+_ln(u)+':'+_s0(u,48)+':'+u.slice(m-24,m+24)+':'+u.slice(-48)}
 function getImg(dataUrl){
@@ -2612,7 +2612,7 @@ function resize(){
   if(_pA())Presentation.refit();   // ADR-0606
   _iv();
 }
-// devicePixelRatio can change with no resize event (drag across density domains,
+// devicePixelRatio can change with no resize event (drag 
 // OS scale change). A `(resolution: Xdppx)` media query fires `change` once
 // when it stops matching; re-arm a fresh query
 // to keep tracking, else the backing store keeps stale DPR and blurs.
@@ -2665,7 +2665,7 @@ function describeShape(s){
   d+=` @ ${_rnd(b.x)},${_rnd(b.y)}`;
   if(_lk(s))d+=` ${t('ctxLock')}`;
   if(_hd(s)||_oP(s)===0)d+=` ${t('tagHidden')}`;   // ADR-0371/0440
-  if(_gi(s))d+=` ${t('tagGroup')}`;   // ADR-0380: visual group halo has no SR channel
+  if(_gi(s)&&_ln(_grpMapGet().get(_gi(s))||[])>1)d+=` ${t('tagGroup')}`;   // ADR-0380/1199: announce only real (>1-member) groups
   if(_conn(s.type)&&(s.a||s.b)){   // ADR-0380: bound endpoints are the conn's identity
     const _ep=id=>{const t=id&&byId(id);return t&&!_hd(t)&&_pgEq(t,s)?t:null};   // ADR-1145: don't name hidden/off-page targets
     const A=_ep(s.a),B=_ep(s.b);
@@ -2853,6 +2853,7 @@ function drawOverlay(){
   _sTF(c,DPR,0,0,DPR,0,0);
   if(!_ln(_shV())&&!_df())drawEmptyHint(c,W,H);   // FT-17/0668: onboarding is page-scoped
   for(const[,members] of _grpMapGet()){
+    if(_ln(members)<2)continue;   // ADR-1199: a single visible member is no group
     const b=_bA(members);if(!b)continue;
     const p1=_w2({x:b.x-4,y:b.y-4}),p2=_w2({x:b.x+b.w+4,y:b.y+b.h+4});
     _ssS(c,'rgba(0,196,204,.3)');_lnW(c,1);_sD(c,[4,4]);
@@ -3008,8 +3009,8 @@ function drawGrid(W,H){
   _st2(ctx);
   _gaS(ctx,1);
 }
-// Effective render rotation. Only box shapes (x/y/w/h present) have a meaningful
-// rotation centre; a stray `rotate` on point geometry (reachable via remote `upd`
+// Effective render rotation. Only box shapes (x/y/w/h pre
+// rotation centre; a stray `rotate` on point geometry (re
 // — doRotate is box-only) is ignored, keeping canvas/SVG export in agreement.
 function shapeRot(s){return _rt(s)&&_hb(s)?_rt(s):0;}
 // Centred label for rect/ellipse (frames draw their own corner label). Mirrors
@@ -3057,9 +3058,9 @@ function _drawImgLabel(s,c){
   for(let i=0;i<_ln(lines);i++)_fT(c,lines[i],tx2,sy+2+lh/2+i*lh);
   _rs2(c);
 }
-// Connector label at the bound endpoints' midpoint (ADR-0003) — a paper-coloured
+// Connector label at the bound endpoints' midpoint (ADR-0
 // pill stops the strike-through, zoom-scaled. ADR-0081: the shared anchor for
-// canvas + inline editor. ADR-0117: arc-length path points (elbow→polyline, curve→bezier16).
+// canvas + inline editor. ADR-0117: arc-length path point
 function _connPathPts(s){
   if(_el(s))return _elbowPts(s);
   if(s.curve){const e=_cE(s),cc=_curveCtrl(e,s.cbend),pts=[];
@@ -3649,7 +3650,7 @@ function drawText(s,c){
   if(s.link&&_pn(s)&&s.pts[0]){c.font='10px sans-serif';_taS(c,'left');_tbS(c,'bottom');_fT(c,'🔗',s.pts[0][0]+4,s.pts[0][1]-2)}   // ADR-0333
 }
 
-// Rotate point (px,py) about centre (cx,cy) by `deg` degrees. Shared by handles,
+// Rotate point (px,py) about centre (cx,cy) by `deg` degr
 // rotated resize, and selection chrome.
 function _rotPt(px,py,cx,cy,deg){
   if(!deg)return{x:px,y:py};
@@ -3720,7 +3721,7 @@ function _grpRotHandle(b){
   const cx=b.x+b.w/2,cy=b.y+b.h/2,d=ROT_OFFSET/_vp().zoom;
   return{x:cx,y:b.y-d,ax:cx,ay:b.y,cx,cy};
 }
-// Rigidly rotate orig's geometry by deg about (cx,cy) and write it to live `sh`.
+// Rigidly rotate orig's geometry by deg about (cx,cy) and
 // Box members orbit their centre AND accumulate `rotate`; point geometry maps
 // every point. Orig→live each frame: no float error accumulates over the drag.
 function _rotShape(sh,orig,cx,cy,deg){
@@ -3755,7 +3756,7 @@ function _grotDrag(wp,shift){
         const nb=_bb(A);if(!sh[fk])sh[fk]={fx:0,fy:0};
         sh[fk].fx=_c01((spx-nb.x)/(nb.w||1));sh[fk].fy=_c01((spy-nb.y)/(nb.h||1));
       }
-    }}                                                       // ADR-0587: anchors ride the rotated bound shape
+    }}                                                       // ADR-0587
   const _nb=_bA(live);
   if(_nb&&deg)state.readout={x:_nb.x+_nb.w/2,y:_nb.y+_nb.h,label:`${deg>0?'+':''}${_rnd(deg)}°`};
   let _gd=_dmgPair(_b0,_nb,ptr.gPad||40);
@@ -3914,7 +3915,7 @@ function applyResize(sh,handle,orig,wp,shift,alt){
   state.readout={x:_rb.x+_rb.w/2,y:_rb.y+_rb.h,label:`${_rnd(_abs(_rb.w))} × ${_rnd(_abs(_rb.h))}`};
 }
 // ADR-0056
-// Drag: the shared handle math runs on a virtual box (snap/Shift/Alt all reuse),
+// Drag: the shared handle math runs on a virtual box (sna
 // then _mapToBox affine-maps every member's geometry orig→result each frame.
 function _gresizeDrag(wp,shift,alt){
   const ob=ptr.gBox,live=[...ptr.gOrig.keys()].map(byId).filter(Boolean);
@@ -4082,7 +4083,7 @@ let _laser=null;
 let _sq='';
 const _sqNav={idx:-1,lastQ:''};  // step-through navigation state (exported for test)
 // Setter for _sq (exported for test:
-// instead of assigning _sq directly). Also resets navigation state, mirroring the
+// instead of assigning _sq directly). Also resets navigat
 // search input's `input` event handler.
 function _setSq(v){_sq=v;_sqNav.idx=-1;_sqNav.lastQ='';}
 // ADR-0048
@@ -4130,11 +4131,12 @@ const _ptrReset=()=>{ptr.down=false;ptr.panning=false;ptr.dragKind=null;ptr.drag
 const _geoR=(s,o)=>{for(const k of['x','y','w','h','rotate','x1','y1','x2','y2','pts','way','bend','cbend','a','b','aF','bF'])if(k in o)s[k]=clone(o[k])};
 // ADR-0964
 const _rb=id=>!!(ptr.reborn&&ptr.reborn.has(id));   // ADR-0970
+const _nrb=id=>!!(_nug&&_nug.reborn&&_nug.reborn.has(id)),_unrb=a=>{for(let i=a.length-1;i>=0;i--)if(_nrb(a[i].id))a.splice(i,1)};   // ADR-1202
 const _gR1=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&!_rb(id))_geoR(s,o)}};
 const _gR2=(o,k)=>{const s=o&&byId(o.id);if(s&&!_rb(o.id)){if(k&&o[k]==null)delete s[k];_geoR(s,o)}};
 const _gRL=M=>{if(M)for(const[id,o]of M){const s=byId(id);if(s&&s.locked&&!_rb(id)){_geoR(s,o);_iv()}}};
 // ADR-0969
-// keeps remote values; a shape (re)born past the arm clock isn't restored at all.
+// keeps remote values; a shape (re)born past the arm cloc
 const _gTouch=(id,ks)=>{const s=byId(id);if(!s)return;const cp=o=>{for(const k of ks)o[k]=clone(s[k])};const n=_nug;if(n){const o=n.op.orig&&n.op.orig[id];if(o)cp(o);const B=n.op.before,b=B&&B.find(b=>b.id===id);if(b)cp(b);const C=n.op.changes,c=C&&C.find(c=>c.id===id);if(c)for(const k of ks)if(k==='frac')c.before=s.frac}if(!ptr.down)return;for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc]){const o=m&&m.get(id);if(o)cp(o)}for(const o of[ptr.resizeOrig,ptr.rotOrig,ptr.ebendOrig,ptr.cbendOrig,ptr.wayOrig,ptr.lblOrig])if(o&&o.id===id)cp(o)};   // ADR-0971
 const _gRst=()=>{
   if(_dk('move'))_gR1(ptr.dragStartShapes);
@@ -4400,7 +4402,7 @@ _on(canvas,_PM,e=>{
     case 'select':
       if(_dk('resize')){
         const rsh=byId(ptr.resizeOrig.id);   // ADR-0635
-        if(rsh){
+        if(rsh&&!_rb(rsh.id)){
           const _b0=_bb(ptr.resizeOrig);
           const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
           _geoR(rsh,ptr.resizeOrig);
@@ -4415,7 +4417,7 @@ _on(canvas,_PM,e=>{
         _grotDrag(wp,_sK(e));                                      // ADR-0057
       }else if(_dk('rotate')){
         const rsh=byId(ptr.rotOrig.id);   // ADR-0635
-        if(rsh){
+        if(rsh&&!_rb(rsh.id)){
           const _b0=_bb(rsh);
           const _rc=[];for(const s of _sh())if(_conn(s.type)&&((s.aF&&s.a===rsh.id)||(s.bF&&s.b===rsh.id)))_pu(_rc,{s,b:_bb(s)});   // ADR-0599
           let deg=_at2(wp.y-ptr.rotCy,wp.x-ptr.rotCx)*180/_PI+90; // knob-up = 0°
@@ -4433,23 +4435,23 @@ _on(canvas,_PM,e=>{
       else if(_dk('qline'))contLineLike(wp,_sK(e));   // ADR-0070
       else if(_dk('ebend')&&ptr.ebendOrig){               // ADR-0072
         const sh=byId(ptr.ebendOrig.id),tr=sh&&_elbowTrunk(sh);
-        if(tr){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);_iv()}   // ADR-0088: trunk drag honours grid snap
+        if(tr&&!_rb(sh.id)){const vert=_abs(tr[1].x-tr[0].x)<_abs(tr[1].y-tr[0].y);sh.bend=vert?snapV(wp.x):snapV(wp.y);_iv()}   // ADR-0088: trunk drag honours grid snap
       }
       else if(_dk('cbend')&&ptr.cbendOrig){               // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
-        if(sh){const e=_cE(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
+        if(sh&&!_rb(sh.id)){const e=_cE(sh),dx=e.x2-e.x1,dy=e.y2-e.y1,len=_hp(dx,dy)||1,
           mx=(e.x1+e.x2)/2,my=(e.y1+e.y2)/2;
           sh.cbend=snapV((wp.x-mx)*(-dy/len)+(wp.y-my)*(dx/len));_iv()}
       }
       else if(_dk('lblpos')&&ptr.lblOrig){                // ADR-0117
         const sh=byId(ptr.lblOrig.id);
-        if(sh){let t=_pathNearestT(_connPathPts(sh),wp);
+        if(sh&&!_rb(sh.id)){let t=_pathNearestT(_connPathPts(sh),wp);
           for(const slot of[0,0.25,0.5,0.75,1])if(_abs(t-slot)<0.03){t=slot;break}   // ADR-0216: magnetic slots
           sh.labelPos=+t.toFixed(3);_iv()}
       }
       else if(_dk('way')&&ptr.wayOrig){                   // ADR-0090
         const sh=byId(ptr.wayOrig.id);
-        if(sh){
+        if(sh&&!_rb(sh.id)){
           const wa=_wayArr(sh),i=ptr.wayIdx|0;
           if(ptr.wayNew){if(_ln(wa)<200){wa.splice(i,0,snapPt(wp));sh.way=wa}ptr.wayNew=false;}   // first move inserts vertex
           else{
@@ -4504,7 +4506,7 @@ _on(canvas,_PU,e=>{
       if(_dk('resize')){
         const rsh=byId(ptr.resizeOrig.id);   // ADR-0635
         if(rsh)if(rsh.locked)_gRst();   // ADR-0964
-        else{
+        else if(!_rb(rsh.id)){                                        // ADR-1203
           _endPointBind(rsh,ptr.resizeHandle,_aK(e));           // ADR-0065/0209
           const after=clone(rsh);
           const before=ptr.resizeOrig;
@@ -4523,7 +4525,7 @@ _on(canvas,_PU,e=>{
       }else if(_dk('rotate')){
         const rsh=byId(ptr.rotOrig.id);   // ADR-0635
         if(rsh)if(rsh.locked)_gRst();   // ADR-0964
-        else{
+        else if(!_rb(rsh.id)){
           const after=clone(rsh),before=ptr.rotOrig;
           if(_JS(before)!==_JS(after)){
             _rcOp({op:'upd',id:rsh.id,before,after});
@@ -4536,26 +4538,26 @@ _on(canvas,_PU,e=>{
       }else if(_dk('cbend')&&ptr.cbendOrig){            // ADR-0132
         const sh=byId(ptr.cbendOrig.id);
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if((sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
+        else if(!_rb(sh.id)&&(sh.cbend||0)!==(ptr.cbendOrig.cbend||0)){
           _rcOp({op:'style',before:[{id:sh.id,cbend:ptr.cbendOrig.cbend||0}],after:[{id:sh.id,cbend:sh.cbend||0}]});
         }
       }else if(_dk('ebend')&&ptr.ebendOrig){            // ADR-0072
         const sh=byId(ptr.ebendOrig.id);
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if((sh.bend||0)!==(ptr.ebendOrig.bend||0)){
+        else if(!_rb(sh.id)&&(sh.bend||0)!==(ptr.ebendOrig.bend||0)){
           _rcOp({op:'style',before:[{id:sh.id,bend:ptr.ebendOrig.bend||0}],after:[{id:sh.id,bend:sh.bend||0}]});
         }
       }else if(_dk('way')&&ptr.wayOrig){                 // ADR-0076
         const sh=byId(ptr.wayOrig.id),ow=ptr.wayOrig.way||null,nw=sh&&sh.way||null;
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if(_JS(ow)!==_JS(nw)){
+        else if(!_rb(sh.id)&&_JS(ow)!==_JS(nw)){
           _rcOp({op:'style',before:[{id:sh.id,way:clone(ow)}],after:[{id:sh.id,way:clone(nw)}]});   // ADR-0090: arrays clone whole
         }
         ptr.wayIdx=null;ptr.wayNew=false;
       }else if(_dk('lblpos')&&ptr.lblOrig){               // ADR-0117
         const sh=byId(ptr.lblOrig.id),ol=ptr.lblOrig.labelPos??null,nl=sh?(sh.labelPos??null):null;
         if(sh)if(sh.locked)_gRst();   // ADR-0964
-        else if(ol!==nl){
+        else if(!_rb(sh.id)&&ol!==nl){
           _rcOp({op:'style',before:[{id:sh.id,labelPos:ol}],after:[{id:sh.id,labelPos:nl}]});
         }
         ptr.lblOrig=null;
@@ -4574,7 +4576,7 @@ _on(canvas,_PU,e=>{
     }
   }
   ptr.down=false;ptr.dragKind=null;ptr.dragStartShapes=null;
-  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;
+  ptr.resizeHandle=null;ptr.resizeOrig=null;ptr.ebendOrig=null;ptr.cbendOrig=null;ptr.wayOrig=null;ptr.reborn=null;   // ADR-1203
   state.marquee=null;_csr('default');_ivO();
 });
 // v1.6.88: extracted as named function so tests can call it directly.
@@ -4590,9 +4592,9 @@ function _cancelPointerGesture(){
   _iv();
 }
 // ADR-0006: fires after LONG_PRESS_MS. Guards: gest
-// progress (resize/rotate — a deliberate precision drag not to interrupt), and the
+// progress (resize/rotate — a deliberate precision drag n
 // pointer hasn't travelled past LONG_PRESS_MOVE_TOL …
-// this well before the timer fires — no separate pointermove cancellation needed).
+// this well before the timer fires — no separate pointerm
 function _longPressFire(cx,cy){
   _longPressTimer=null;
   if(!ptr.down||_dk('resize')||_dk('gresize')||_dk('grot')||_dk('rotate'))return;
@@ -4644,7 +4646,7 @@ _on(canvas,'dblclick',e=>{
   _openLabelEditorFor(hit);
 });
 // Positions and opens the shared label editor for box labels …
-// their centre/corner) and connector labels (line/arrow, at the segment midpoint).
+// their centre/corner) and connector labels (line/arrow, 
 // Shared by dblclick and ADR-0013's keyboard path so both stay in sync.
 // ADR-0182
 // recomputable on every viewport change so the input rides the shape.
@@ -4686,7 +4688,7 @@ function editSelectedShapeKbd(){
   return _openLabelEditorFor(sh);
 }
 // Shared inline label editor — commits via `upd` op (reversible + synced).
-// bold = frame styling. IME-safe; Enter commits, Escape discards (blur detached).
+// bold = frame styling. IME-safe; Enter commits, Escape d
 function openLabelEditor(hit,leftPx,topPx,bold){
   _cxO();   // ADR-0560
   _edPrev=_aE();   // ADR-1153: invoker slot — the fold hands focus back here
@@ -5112,6 +5114,14 @@ function _grpMapGet(){
   _grpMapVer=_gridVer;
   return _grpMap;
 }
+// ADR-1199: a group needs ≥2 live members — del/pageDel/swap/undo can strand
+// the last member holding a phantom groupId (ghost halo + announce). Runs at
+// the apply/commit funnels so every peer strips identically — deterministic
+// census, no wire emit; the stamp matches the dedicated group/ungroup channel.
+const _grpSweep=C=>{const c=_mP();for(const s of _sh())if(_gi(s))c.set(_gi(s),(c.get(_gi(s))||0)+1);
+  if(!c.size)return;
+  for(const s of _sh())if(_gi(s)&&c.get(_gi(s))===1){delete s.groupId;_gTouch(s.id,['groupId']);
+    if(C){const w=_wc()[s.id]||(_wc()[s.id]=_wM());w['groupId']=C}}};
 function _buildGrid(shapes){
   const cells=_mP(),big=[],idx=_mP();
   let cs=_GCELL;
@@ -5225,7 +5235,7 @@ function pickOrMarquee(wp,e){
   }
 }
 // ---- snap-target edge index (ADR-0020) ----
-// Snap edge index keyed on _gridVer + caller exclusion key — rebuild per mutation.
+// Snap edge index keyed on _gridVer + caller exclusion ke
 const _snapIdx={move:{ver:-1,key:'',idx:null},resize:{ver:-1,key:'',idx:null}};
 function _mkSnapIdx(targets){
   const xs=[],ys=[];
@@ -5316,7 +5326,7 @@ function objectSnap(dx,dy){
   if(base.dy===0&&eq.dy!==0){base.dy=eq.dy;_pu(base.guides,...eq.guides)}
   return base;
 }
-// Expand a set of selected ids to include shapes fully contained in any selected
+// Expand a set of selected ids to include shapes fully co
 // frame, so moving a frame moves its contents (other frames never capture as
 // children). Shared by pointer-drag + marquee paths. Pure read; fresh Set.
 function withFrameChildren(ids){
@@ -5335,7 +5345,7 @@ function withFrameChildren(ids){
 }
 // Arrow-key nudge: frame children follow, locked filtered
 function nudgeSelection(dx,dy){
-  const ids=[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)});   // ADR-0621 parity
+  const ids=[...withFrameChildren(_sl())].filter(id=>{const s=byId(id);return s&&_ul(s)&&!_nrb(id)});   // ADR-0621/1202 parity
   if(!_ln(ids))return;
   const orig={};   // ADR-0965
   for(const id of ids){const sh=byId(id);if(sh){orig[id]=clone(sh);_sT2(sh,dx,dy)}}
@@ -5444,12 +5454,12 @@ function endSelect(wp,shift,alt){
 // Coerce pen pressure: mouse=const 0.5, stylus=0..1; finite-safe.
 function _penPr(e){const p=e&&e.pressure;return _fin(p)&&p>0?_min(1,p):0.5}
 // IME composition gate
-// (no IME in progress), false during composition. Used for live inputs (docName)
+// (no IME in progress), false during composition. Used fo
 // to keep mid-composition characters out of state/IDB/sync. Pure → unit-tested.
 // (Qiita Rapls; Zenn spacemarket: Safari IME 確定)
 function imeShouldCommit(e){return !(e&&e.isComposing);}
-// Every sub-sample the browser coalesced into one pointermove. High-rate styluses
-// and 120Hz+ displays emit several samples per 60Hz frame; keeping only the last
+// Every sub-sample the browser coalesced into one pointer
+// and 120Hz+ displays emit several samples per 60Hz frame
 // throws away detail. getCoalescedEvents recovers them all → smoother curves.
 // Falls back to [e] where unsupported/empty. (Qiita: sen-ltd, MDN)
 function coalescedSamples(e){
@@ -5719,9 +5729,9 @@ function _stickyChain(s){
   _iv();
 }
 // ---- keyboard shape creation (a11y) ----
-// Create a default-sized shape of the active tool, centred in the viewport, so the
+// Create a default-sized shape of the active tool, centre
 // whole create→select→edit loop is reachable without a pointer …
-// Tab navigation added in v1.6.10). Returns true if a shape was created/handled.
+// Tab navigation added in v1.6.10). Returns true if a sha
 function createShapeKbd(){
   const tool=_tl(),view=visibleWorldRect();
   const cx=_rnd(view.x+view.w/2),cy=_rnd(view.y+view.h/2);
@@ -5770,8 +5780,8 @@ function resizeAfterTextEdit(s,text,c){
   c.letterSpacing='0px';
 }
 // commit+broadcast empty up front, then fill in —
-// peers would otherwise see a blank shape forever (invisible hitbox). Bridge with
-// a broadcast-ONLY op for the finalize delta: LWW-stamped, OUT of local history.
+// peers would otherwise see a blank shape forever (invisi
+// a broadcast-ONLY op for the finalize delta: LWW-stamped
 function _syncTextFinalize(s,before,deleted){
   if(typeof Net===_un||typeof Net.broadcast!=='function')return;
   const op=deleted
@@ -5845,8 +5855,8 @@ function openTextEditor(s,isNew){
         const connClears=computeConnClears(_sT([orig.id]));
         const delOp={op:'del',shapes:[orig]};
         if(_ln(connClears))delOp.connClears=connClears;
+        _keepSel(delOp,origSel);
         _cmt(delOp);
-        _keepSel(origSel);
       }else if(newText!==origText){
         const before={text:origText,w:orig.w,h:orig.h};
         const after={text:newText,w:s.w,h:s.h};
@@ -5911,7 +5921,7 @@ function positionTextEditor(ta,s){
 
 // ---- eraser ----
 let _eraseBatch=[];    // shapes collected during one eraser stroke
-// Unbatch: wholesale tomb-or-keep scans must see erase-window members (ADR-0953).
+// Unbatch: wholesale tomb-or-keep scans must see erase-wi
 const _unB=()=>{for(const s of _eraseBatch)_sh().push(s);_eraseBatch=[]};
 function eraseAt(wp){
   const hit=pickTop(wp);
@@ -5941,15 +5951,15 @@ function flushErase(){
   const origSel=_selIds();
   const op={op:'del',shapes:clone(live)};
   if(_ln(connClears))op.connClears=connClears;
+  _keepSel(op,origSel);
   _cmt(op);
-  _keepSel(origSel);
 }
 
 // ====================== KEYBOARD ======================
 const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
   a:'arrow',l:'line',t:'text',n:'sticky',f:'frame',e:'eraser',d:'diamond',k:'marker'};
 // Focus trap for open dialogs (WCAG 2.4.3 / 2.1.2).
-// _focusables lists tabbable controls in a root; _trapStep is the pure wrap step:
+// _focusables lists tabbable controls in a root; _trapSte
 // it returns which element to
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog; else native Tab moves.
 function _focusables(root){
@@ -6059,7 +6069,7 @@ _on(window,_KD,e=>{
   else if((k===_AU||k===_AD||k===_AL2||k===_AR2)&&_aK(e)){
     // Alt+arrow = keyboard resize (a11y: pointer
     // top-left anchored; ⇧ = ×10 step. Box shapes only
-    const sel=_selL(s=>s&&!_lk(s)&&_hb(s));
+    const sel=_selL(s=>s&&!_lk(s)&&_hb(s)&&!_nrb(s.id));
     if(_ln(sel)){
       _pd(e);
       const step=_sK(e)?10:1;
@@ -6084,7 +6094,7 @@ _on(window,_KD,e=>{
       const dy=k===_AU?-step:k===_AD?step:0;
       nudgeSelection(dx,dy);
     }
-    else{                                   // ADR-0165: no selection → arrows pan the view
+    else{                                   // ADR-0165
       _pd(e);                    // (Excalidraw scroll parity; keyboard-only nav)
       const step=(_sK(e)?200:40)/_vp().zoom;
       _vp().x=_xC(_vp().x+(k===_AL2?-step:k===_AR2?step:0));
@@ -6193,8 +6203,8 @@ function doCopy(){
   _cpNow=true;
   _tst(t('copied')+' '+_ln(sel));
 }
-// v1.6.97: paste cascade counter — resets when a new clipboard is captured so that
-// Ctrl+V × N cascades from viewport center, not from the original copy position.
+// v1.6.97: paste cascade counter — resets when a new clip
+// Ctrl+V × N cascades from viewport center, not from the 
 let _pasteCount=0,_lastClipboard=null;
 function doPaste(){
   if(!_cl())return;
@@ -6210,9 +6220,7 @@ function doPaste(){
   const srcCx=bb?bb.x+bb.w/2:vCx,srcCy=bb?bb.y+bb.h/2:vCy;
   const co=(_pasteCount+1)*20/v.zoom;   // +1 so first paste has a small inset offset
   _pasteCount++;
-  const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,vCx-srcCx+co,vCy-srcCy+co);
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0115
@@ -6220,9 +6228,7 @@ function doPaste(){
 // Used to paste across boards/views or to drop a copy exactly atop the source.
 function doPasteInPlace(){
   if(!_cl())return;
-  const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,0,0);
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // ADR-0103
@@ -6230,9 +6236,7 @@ function doPasteAt(wx,wy){
   if(!_cl())return;
   const bb=_bA(_cl().shapes);
   const srcCx=bb?bb.x+bb.w/2:wx,srcCy=bb?bb.y+bb.h/2:wy;
-  const origSel=_selIds();
   const added=_placeCopies(_cl().shapes,wx-srcCx,wy-srcCy);
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 // Clone shapes onto the board with fresh ids/group ids, offset by (dx,dy), and
@@ -6263,7 +6267,7 @@ function _placeCopies(srcShapes,dx,dy,dup){
     _pu(built,sh);
     _pu(added,sh.id);
   }
-  if(_ln(built)){_pgHome(built);_cmt({op:'addMany',shapes:built})}
+  if(_ln(built)){_pgHome(built);const o={op:'addMany',shapes:built};_keepSel(o,_selIds());_cmt(o)}   // ADR-1201: origSel rides the op object
   _ss(added);   // ADR-0568: _ss filters out hidden copies
   if(dup){state.dupIds=_sT(added);state.dupDelta={x:dx,y:dy}}     // ADR-0080/1139: only ⌘D arms the repeat chain — paste/import placement vectors aren't user transforms
   _iv();
@@ -6278,14 +6282,12 @@ function _mergeImport(shapes){
 }
 function doDuplicate(){
   if(!_selN())return;
-  const origSel=_selIds();
   const sel=[...withFrameChildren(_sl())].map(byId).filter(s=>s&&!_lk(s));
   if(!_ln(sel))return;
   // ADR-0080/1074
   // chain at all — repeat at the default offset instead of invisible stacking.
   const smart=state.dupIds.size&&_dd()&&(_dd().x||_dd().y)&&sel.every(s=>state.dupIds.has(s.id));
   const added=smart?_placeCopies(sel,_dd().x,_dd().y,1):_placeCopies(sel,_ud,_ud,1);   // independent of _cl()
-  _keepSel(origSel);
   if(_ln(added))_tst(t(_PA)+' '+_ln(added));
 }
 function doDelete(){
@@ -6300,8 +6302,8 @@ function doDelete(){
   const connClears=computeConnClears(delIds);   // resolve bindings BEFORE splicing
   const op={op:'del',shapes:clone(sel)};
   if(_ln(connClears))op.connClears=connClears;
+  _keepSel(op,origSel);
   _cmt(op);
-  _keepSel(origSel);
   _scl();
   _tst(t('deleted')+' '+_ln(sel));
 }
@@ -6314,12 +6316,12 @@ function _zCommit(changes){
   if(!_ln(changes)){_iv();return}
   if(_sh().some(s=>_ln(s.frac)>48)){const m=_mP(changes.map(c=>[c.id,c.before])),o=_sh().map(s=>s.frac);reindexFrac();changes=_sh().map((s,i)=>({id:s.id,before:m.has(s.id)?m.get(s.id):o[i],after:s.frac}))}
   _sz();
-  _nugPush({op:'zorder',changes});   // ADR-0960: held [ ] folds into one zorder op
+  _nugPush({op:'zorder',changes});   // ADR-0960
   _ivp();
 }
 // Shared by doBringFront/doSendBack/doBring
 // take part in a z-order op
-function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)});}   // ADR-0623: dead ids must not leak into op id lists
+function unlockedSelectionIds(){return _selIds().filter(id=>{const s=byId(id);return s&&_ul(s)&&!_nrb(id)});}   // ADR-0623/1202
 function _zSelShapes(){const ids=_usI(),sel=_sT(ids);return[sel,_ln(ids)?_sh().filter(s=>sel.has(s.id)):[]]}
 function doBringFront(){
   const ids=_usI();if(!_ln(ids))return;
@@ -6461,7 +6463,7 @@ function doGroup(){
   const gid=uid();
   const before=ids.map(id=>({id,groupId:byId(id)?.groupId}));
   for(const id of ids){const sh=byId(id);if(sh)sh.groupId=gid}
-  _nugPush({op:'group',ids,gid,before});   // ADR-0961: held ⌘G folds into one group op
+  _nugPush({op:'group',ids,gid,before});   // ADR-0961
   _oT('grouped');
   _iv();
 }
@@ -6477,8 +6479,7 @@ function doUngroup(){
     if(gids.has(_gi(s))&&!_lk(s)){_pu(before,{id:s.id,groupId:_gi(s)});delete s.groupId;_pu(ungrouped,s.id)}
   }
   _ss([...ids.filter(byId),...ungrouped]);
-  Store._recordCommitted({op:'ungroup',ids:ungrouped,gids:[...gids],before});
-  _keepSel(origSel);
+  const uo={op:'ungroup',ids:ungrouped,gids:[...gids],before};_keepSel(uo,origSel);Store._recordCommitted(uo);
   _oT('ungrouped');
   _iv();
 }
@@ -6496,8 +6497,7 @@ function doClearAll(){
   if(!confirm(t('confirmClear')))return;
   const origSel=_selIds();
   Persist.saveBackup(clone(_sh()),{..._vp()},_dn());   // ADR-0004
-  _cmt({op:'clear',shapes:clone(_sh()),wc:clone(_wc())});
-  _keepSel(origSel);
+  const co={op:'clear',shapes:clone(_sh()),wc:clone(_wc())};_keepSel(co,origSel);_cmt(co);
   _tst(t('cleared'));
 }
 
@@ -6599,7 +6599,7 @@ function doMatchSize(dim){
   _ivp();
 }
 
-// Flip: mirror across selection-bbox centre, recorded as an `align` op. See docs.
+// Flip: mirror across selection-bbox centre, recorded as 
 function flipShape(s,axis,c){
   const m=v=>2*c-v;
   // ADR-0133
@@ -6632,13 +6632,14 @@ function flipShape(s,axis,c){
 }
 function doFlip(axis){
   if(state.ro){_roNo();return}
-  const sel=_selUL();
+  const sel=_selUL().filter(s=>!_nrb(s.id));
   if(!_ln(sel))return;
   const bb=_bA(sel);if(!bb)return;
   const c=axis==='h'?bb.x+bb.w/2:bb.y+bb.h/2;
   // Frame-aware: shapes inside a selected frame orbit with it
   const frameOf=_frameOf(sel);
   _xFS(sel,frameOf)
+  _unrb(sel);
   const before=sel.map(clone);
   const flipIds=_sT(sel.map(s=>s.id));
   for(const s of sel)flipShape(s,axis,c);
@@ -6656,20 +6657,20 @@ function doFlip(axis){
   }
   const after=sel.map(clone);
   for(const s of _mC)after.push(clone(s));
-  _nugPush({op:'align',dir:'flip',before,after});   // ADR-0961: held ⇧H/⇧V folds into one flip op
+  _nugPush({op:'align',dir:'flip',before,after});   // ADR-0961
   _ivp();
   _ann(t(axis==='h'?'ctxFlipH':'ctxFlipV'));
 }
 
 function doLock(){
   if(state.ro){_roNo();return}
-  const sel=_selL(Boolean);
+  const sel=_selL(s=>!_nrb(s.id));
   if(!_ln(sel))return;
   const lk=!sel[0].locked;
   const before=sel.map(s=>({id:s.id,locked:_lk(s)??null}));
   for(const s of sel)s.locked=lk||null;
   const after=sel.map(s=>({id:s.id,locked:_lk(s)??null}));
-  _nugPush({op:'align',dir:'lock',before,after});   // ADR-0961: held ⌘⇧L folds into one lock op
+  _nugPush({op:'align',dir:'lock',before,after});   // ADR-0961
   _ivp();
   _ann(t(lk?'ctxLock':'ctxUnlock'));
 }
@@ -6709,7 +6710,7 @@ function doBeautify(){
   _o(`${t('beautified')} (${_ln(after)})`);
 }
 // ADR-0055
-// geometry (pen pts / line-arrow endpoints rotate rigidly about the group centre).
+// geometry (pen pts / line-arrow endpoints rotate rigidly
 const _rotatable=s=>_hb(s)||s.pts||s.x1!=null;
 // ADR-0146
 // re-derives the scalar, otherwise unrepresentable → null.
@@ -6727,11 +6728,12 @@ function _rotPtsAbout(s,gx,gy,cs,sn){
 }
 function doRotate(d){
   if(state.ro){_roNo();return}   // ADR-1106
-  const sel=_selL(s=>s&&!_lk(s)&&_rotatable(s));
+  const sel=_selL(s=>s&&!_lk(s)&&_rotatable(s)&&!_nrb(s.id));
   if(!_ln(sel))return;
   const bb=_bA(sel),gx=bb.x+bb.w/2,gy=bb.y+bb.h/2; // orbit about group centre, like doFlip
   const frameOf=_frameOf(sel,s=>_rotatable(s));   // frame children orbit along
   _xFS(sel,frameOf)
+  _unrb(sel);
   const r=d*_PI/180,cs=_cos(r),sn=_sin(r);
   const before=sel.map(s=>clone(_hb(s)?{...s,rotate:_rt(s)||0}:s));
   // ADR-0586
@@ -6757,12 +6759,12 @@ function doRotate(d){
   }
   const after=sel.map(clone);
   for(const c of _bC)if(!selIds.has(c.id))after.push(clone(c));
-  _nugPush({op:'align',dir:'rotate',before,after});   // ADR-0961: held ,/. folds into one rotate op
+  _nugPush({op:'align',dir:'rotate',before,after});   // ADR-0961
   _ivp();
   _ann(_ln(sel)===1?describeShape(sel[0]):d+'°');   // ,/. rotate announce (0055)
 }
 // ====================== EXPORT ======================
-// Browsers cap a canvas's dimension (~16384px) and area — a fixed scale silently
+// Browsers cap a canvas's dimension (~16384px) and area —
 // exceeds them (toBlob → null/truncated). Clamp the scale so w/h/area fit,
 // degrading resolution instead of failing. Pure → unit-tested.
 const EXPORT_MAX_DIM=16384, EXPORT_MAX_AREA=16384*16384;
@@ -7012,7 +7014,7 @@ function excScene(shapes){
   }
   return{type:'excalidraw',version:2,source:'Board',elements:els,files,appState:{gridSize:null,scrollX:-_vp().x,scrollY:-_vp().y,zoom:{value:_vp().zoom}}};   // ADR-0257
 }
-// ---- ADR-0203: .drawio import ------------------------------------------------
+// ---- ADR-0203: .drawio import -------------------------
 // Uncompressed mxGraphModel XML via DOMParser. drawio's default save is
 // deflate+base64 inside <diagram> — warn rather than silently drop. style
 // "k=v;k=v;flag;" cells map to the closest Board type; unknown vertices → rect,
@@ -7101,7 +7103,7 @@ function drawioToShapes(txt){
     }}
   const _off=_mP();
   const off=id=>{if(_off.has(id))return _off.get(id);
-    _off.set(id,{x:0,y:0});                                            // ADR-0357: provisional — breaks parent cycles
+    _off.set(id,{x:0,y:0});                                            // ADR-0357
     const p=_par.get(id);let o={x:0,y:0};
     if(p&&p!=='0'){const po=off(p),pg=_geo.get(p);
       o={x:po.x+(+((pg&&_ga(pg,'x'))||0)),y:po.y+(+((pg&&_ga(pg,'y'))||0))}}
@@ -7285,8 +7287,8 @@ function exportExc(){
   _oT('exportedExc');
 }
 
-// ---- ADR-0220: .drawio export ------------------------------------------------
-// Uncompressed mxGraphModel round-trip with ADR-0203 import: vertices for boxes,
+// ---- ADR-0220: .drawio export -------------------------
+// Uncompressed mxGraphModel round-trip with ADR-0203 impo
 // edges for line/arrow (bound ends, waypoints, orthogonal/curved/jump routing,
 // shared style vocabulary). Pens skipped (no freeform); hidden stay home.
 const _dioEsc=v=>_St(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -7337,7 +7339,7 @@ function _dioCells(shapes){
     const lbl=_lb(s)!=null?_lb(s):_txx(s);
     if(t==='image'&&_lb(s))sty+='verticalAlign=bottom;';                 // ADR-0353
     const _gc=_gbx[_gi(s)];                                          // ADR-0336
-    const _pf=_gc?null:_fOf(s);                                         // ADR-0345: frame containment (group wins)
+    const _pf=_gc?null:_fOf(s);                                         // ADR-0345
     _pu(cells,`<mxCell id="${id}" value="${nl(lbl||'')}" style="${esc(sty)}" vertex="1" parent="${_gc?`g_${_dioEsc(_gi(s))}`:_pf?idOf.get(_pf.id):'1'}"${s.link?` link="${esc(s.link)}"`:''}${_hd(s)?' visible="0"':''}><mxGeometry x="${(s.x||0)-(_gc?_gc.x:_pf?_pf.x:0)}" y="${(s.y||0)-(_gc?_gc.y:_pf?_pf.y:0)}" width="${s.w||120}" height="${s.h||80}" as="geometry"/></mxCell>`);   // ADR-0245/0336/0345
   }
   // ADR-0354
@@ -7747,9 +7749,7 @@ function importBoardText(txt,wp){
   wp=wp||_midV()
   const bb=_bA(shapes);
   const dx=bb?wp.x-(bb.x+bb.w/2):0,dy=bb?wp.y-(bb.y+bb.h/2):0;
-  const origSel=_selIds();
   const added=_placeCopies(shapes,dx,dy);
-  _keepSel(origSel);
   _o(t('imported')+' '+_ln(added));
   return true;
 }
@@ -7792,9 +7792,9 @@ function importBoard(file){
       const _bpg=clone(_pgs()),_bcp=state.curPg,bvp=clone(_vp()),bnm=_dn();   // ADR-0646/1164/1167
       if(_ln(before))Persist.saveBackup(before,{..._vp()},_dn());   // ADR-0004
       _rs(shapes.map(s=>Net._attachShape(clone(s))));   // ADR-0009/1041
-      // Match the replace op's _apply: drop stale selection ids and per-property write
+      // Match the replace op's _apply: drop stale selection ids
       // clocks from the board we just swapped out. A clean tomb slate must come
-      // before _pgAdopt so its _pgHealS never arbitrates the new doc against old tombs.
+      // before _pgAdopt so its _pgHealS never arbitrates the ne
       _scl();state.wclock=_wM();   // ADR-1111
       _pgAdopt(d.pages,d.curPg);
       _docN(d);_bName();
@@ -7813,8 +7813,8 @@ function importBoard(file){
   r.onerror=()=>_eT(_IB);
   r.readAsText(file);
 }
-// Connector edge label as SVG (ADR-0003): paper background rect + centred text at the
-// segment midpoint. Width is estimated (no canvas measure); mirrors the canvas pill.
+// Connector edge label as SVG (ADR-0003): paper backgroun
+// segment midpoint. Width is estimated (no canvas measure
 // Returns '' when unlabeled so callers emit nothing for it.
 // ADR-0119
 function _svgArrowHead(els,tx,ty,a1,a2,ah,stroke,a,sz,style){
@@ -8101,7 +8101,7 @@ function _esc(s){return _St(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&l
 function _num(v){const n=+v;return _fin(n)?n:0}
 // Copy text to the clipboard with a non-secure-context fallback. _nc() is
 // undefined on file:// and plain http:// — the primary "just open it" case —
-// so prefer it in a secure context, else textarea + execCommand('copy') fallback.
+// so prefer it in a secure context, else textarea + execC
 // Returns Promise<boolean> for UI feedback.
 async function copyText(text){
   if(window.isSecureContext&&_nc()){
@@ -8136,7 +8136,7 @@ function wrapTextCached(s,text,maxWidth,fontSize,measure){
   _wrapCache.set(s,{key,lines});
   return lines;
 }
-// Word-wrap to maxWidth: honours \n, wraps on whitespace, hard-breaks long tokens.
+// Word-wrap to maxWidth: honours \n, wraps on whitespace,
 // The char-break path applies 禁則処理 so punctuation can't head or close a line
 function wrapText(text,maxWidth,measure){
   const out=[];
@@ -8579,7 +8579,7 @@ const Net={
     }
     return 'keep';
   },
-  // Throttled: forged floods amplify re-serialization; deferred asks queue instead of dropping.
+  // Throttled: forged floods amplify re-serialization; defe
   _lastSnapAt:0,_snapT:0,
   _sendSnapshot(req){
     const now=_now(),w=1000-(now-this._lastSnapAt);
@@ -8761,7 +8761,7 @@ const Net={
 // trailing precision; validation still rejects them
 function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}
 // Deep copy of shapes with coordinate/dimension fields rounded — SERIALIZATION
-// boundaries only (share URL, .board export), never the in-memory model, so undo
+// boundaries only (share URL, .board export), never the i
 // fidelity and live rendering stay exact. Trims URL length / file size. Pen
 // pressure keeps 3dp; positions/dimensions 2dp. Fresh array (no mutation).
 function roundShapesForExport(shapes,dp=2){
@@ -9851,7 +9851,7 @@ function applyStyleToSelection(patch){
   if(_ln(before)){_styleOp(before,after);}
   _iv();
 }
-// Slider undo coalescing: capture shape prop values on pointerdown, flush a single
+// Slider undo coalescing: capture shape prop values on po
 // style op on change
 const _sbf={};
 function _sfbCapture(p){for(const id of _sl()){const s=byId(id);if(s&&!_lk(s)&&!(id+p in _sbf))_sbf[id+p]=s[p]}}
@@ -9908,7 +9908,7 @@ function cycleArrowHead(){
   _iv();_oT('stylePasted');
 }
 // ADR-0291
-// s.start toggles presence, s.startHead carries the style (null = inherit s.head).
+// s.start toggles presence, s.startHead carries the style
 function cycleStartHead(){
   const sel=_selL(s=>s&&_arw(s)&&!_lk(s));
   if(!_ln(sel))return;
@@ -10080,7 +10080,7 @@ function unbindSelection(){
   const before=[],after=[];
   _forSel((s,id)=>{if((s.type!=='line'&&s.type!=='arrow')||_lk(s)||(!s.a&&!s.b))return;
     _pu(before,{id,a:s.a??null,b:s.b??null,aF:s.aF??null,bF:s.bF??null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
-    const e=_cE(s);                                          // ADR-0591: freeze the resolved endpoint —
+    const e=_cE(s);                                          // ADR-0591
     s.x1=e.x1;s.y1=e.y1;s.x2=e.x2;s.y2=e.y2;                 // coords drift while bound
     s.a=null;s.b=null;s.aF=null;s.bF=null;                     // ADR-0209
     _pu(after,{id,a:null,b:null,aF:null,bF:null,x1:s.x1,y1:s.y1,x2:s.x2,y2:s.y2});
@@ -10096,7 +10096,7 @@ function cycleVAlign(){
     const cur=_va(s)||null,nxt=sq[(_ix(sq,cur)+1)%3];
     _pp(before,after,id,'valign',cur,nxt);
     if(nxt==null)delete s.valign;else s.valign=nxt;
-    _st().valign=nxt;                                     // ADR-0417: parity with every sibling style cycle
+    _st().valign=nxt;                                     // ADR-0417
   })
   _so(before,after)
 }
@@ -10134,12 +10134,13 @@ function cycleLineH(){
 function fontSizeStep(d){
   const before=[],after=[];
   _forTxt((s,id)=>{   // ADR-0169/0298: labels+frames honour fontSize
+    if(_nrb(id))return;
     const cur=_fS(s)||14,nxt=_min(64,_max(8,cur+d*2));
     if(nxt===cur)return;
     _pp(before,after,id,'fontSize',cur,nxt);s.fontSize=nxt;
     _st().fontSize=nxt;                                 // ADR-0180: last-used persists to the next shape
   })
-  if(_ln(before)){_nugPush({op:'style',before,after});_iv()}   // ADR-0960: held ⌘⇧,/. folds into one style op
+  if(_ln(before)){_nugPush({op:'style',before,after});_iv()}   // ADR-0960
 }
 // ADR-0078
 const _rdb=()=>{_md(!0);_ru();_ps()},
@@ -10154,7 +10155,7 @@ const _rdb=()=>{_md(!0);_ru();_ps()},
       _pp=(b,a,id,k,c,n)=>{_pu(b,{id,[k]:c});_pu(a,{id,[k]:n})};
 // ADR-0443
 // write that restores old values …
-// consistent). group/ungroup/replace/beautify have no remote-safe inverse: their
+// consistent). group/ungroup/replace/beautify have no rem
 // per-shape befores aren't carried on the op — they stay local-only.
 function _undoWire(op){
   switch(op.op){
@@ -10183,7 +10184,7 @@ function _undoWire(op){
     default:       return null;
   }}
 let _nug=null;
-function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o,n.reborn);if(!((o.ids&&!_ln(o.ids))||(o.after&&!_ln(o.after))||(o.changes&&!_ln(o.changes)))){Store._recordCommitted(o);_keepSel(n.sel)}}}
+function _nugEnd(){const n=_nug;_nug=null;if(n){_cT(n.t);const o=n.op;_nugLock(o,n.reborn);if(!((o.ids&&!_ln(o.ids))||(o.after&&!_ln(o.after))||(o.changes&&!_ln(o.changes)))){Store._recordCommitted(o);_keepSel(o,n.sel)}}}
 function _nugLock(op,rb){   // ADR-0965/0971
   const gone=_sT(),B=op.before||[],A=op.after||[];
   for(const id of(op.ids||(B.length?B:op.changes).map(b=>b.id))){
@@ -10198,6 +10199,7 @@ function _nugLock(op,rb){   // ADR-0965/0971
   }
   if(gone.size)_iv();
   for(const k of['ids','before','after','changes'])if(op[k])op[k]=op[k].filter(m=>!gone.has(m.id||m));
+  if(op.orig)for(const g of gone)delete op.orig[g];   // ADR-1201: gone sheds orig too — else _roRe clobbers remote-reborn geometry
 }
 function _mg(dst,src,f){for(const c of src){const e=dst.find(x=>x.id===c.id);if(e)f(e,c);else dst.push(c)}}   // ADR-0960: per-id merge for zorder/style sessions
 // Restore live pre-commit writes from the op's own before/orig/changes data —
@@ -10220,12 +10222,13 @@ function _nugPush(op){   // ADR-0957/0960
   _nugEnd();
   _nug={k,op,sel:_selIds()};arm();
 }
-function _rcOp(op){_nugEnd();const o=_selIds();Store._recordCommitted(op);_keepSel(o)}
-function _cOp(op){const o=_selIds();_cmt(op);_keepSel(o)}
+function _rcOp(op){_nugEnd();const o=_selIds();Store._recordCommitted(op);_keepSel(op,o)}
+function _cOp(op){const o=_selIds();_cmt(op);_keepSel(op,o)}
 function _styleOp(before,after){_rcOp({op:'style',before,after})}   // ADR-0239/0248
 function toggleTextFlag(k){
   const before=[],after=[];
   _forTxt((s,id)=>{   // ADR-0170/0204
+    if(_nrb(id))return;
     const nxt=!s[k];
     _pu(before,{id,[k]:s[k]||null});_pu(after,{id,[k]:nxt?true:null});
     if(nxt)s[k]=true;else delete s[k];
@@ -10255,7 +10258,7 @@ function cycleFillStyle(){
 function swapFillStroke(){
   if(state.ro){_roNo();return}   // ADR-1106
   const before=[],after=[];
-  _forSel((s,id)=>{if(_lk(s))return;
+  _forSel((s,id)=>{if(_lk(s)||_nrb(id))return;
     const fk=_stk(s)?'color':'fill';
     if(!(_BOXF.has(s.type)))return;
     _pu(before,{id,stroke:_sk(s)??null,[fk]:s[fk]??null});
@@ -10263,7 +10266,7 @@ function swapFillStroke(){
     const t2=s[fk];s[fk]=_sk(s);s.stroke=t2;
     if(s[fk]==null)delete s[fk];if(s.stroke==null)delete s.stroke;
   })
-  if(_ln(before)){_nugPush({op:'style',before,after});_iv();_oT('swapDone')}   // ADR-0961: held ⇧X folds into one swap op
+  if(_ln(before)){_nugPush({op:'style',before,after});_iv();_oT('swapDone')}   // ADR-0961
 }
 // ADR-0173
 // shapes via style op (Excalidraw font-switch parity).
@@ -10638,7 +10641,7 @@ const Minimap=(()=>{
 })();
 
 // ====================== SERVICE WORKER ======================
-// Named handler exported for tests — avoids closure identity issues under mocking.
+// Named handler exported for tests — avoids closure ident
 function _onSwUpdate(){ _oT('appUpdated'); }
 // offline-first caching of this single page (sw.js, see ADR-1025)
 if('serviceWorker' in navigator){
