@@ -1,3 +1,8 @@
+## [1.8.224] - 2026-10-01
+
+### Fix
+- **round950 / ADR-1200 — 孤児グループ国勢調査の漏斗パリティ (`_recordCommitted`)**: ADR-1199 の `_grpSweep` は `_apply` 尾部 + `_recordCommitted` の `replace` のみだったが、caller-mutated op は `replace` 以外にも単独 carrier を残し得た — `doUngroup` は locked メンバーの gid を保持し (remote は census で即剥奪 → local に ghost gid 残存で発散窓)、`_nugLock` が mid-run lock で 1 メンバーへ縮退した `group` op も同型 (remote は strip・local は gid 保持)。`_recordCommitted` のセンサスを `_apply` 尾と同一の 9-op 正規表現へ一般化し、両漏斗が同一 op に同一終端状態を生成する契約へ。
+
 ## [1.8.223] - 2026-10-01
 
 ### Fix
