@@ -1223,6 +1223,7 @@ Board/
 │   ├── ADR-1195-net-init-reset-contract.md  # Net.init の cleared/retained 契約 — room-bound (dedup/frag/queue/presence/peer) vs doc-bound (_imgIn/_imgPending/rtc: 行) の state 分離規約、挙動ピン7件
 │   ├── ADR-1196-adr-index-filename-parity.md  # ADR index のファイル名 parity — 9件の rename 残存 dead link を修正 + docs/ ⇄ index 集合一致の drift ゲートピン
 │   ├── ADR-1197-gridver-epoch.md  # `_gridVer` 図形バージョンエポック契約 — `_iG()` 単一ライター・`_apply` 漏斗 (prop-only/undo 含む全 op)・消費者エポック共有・img blob は bitmap 帯外チャネル、3ソース+6挙動ピン
+│   ├── ADR-1198-oa-patch-gate.md  # `_oa` パッチゲート契約 — 生図形書込みの単一漏斗 (assign+共存解消+`_park`+`_gTouch`)・明示 `_gTouch` ペア (move/group/ungroup/zorder/snapshot-merge)・構造 prop (pg/ページ行/wclock) は patch ドメイン外・backward は cancel 先行で exempt、5ソース+6挙動ピン
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)

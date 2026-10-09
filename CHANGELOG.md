@@ -1,3 +1,8 @@
+## [1.8.222] - 2026-10-01
+
+### Docs+Test
+- **round948 / ADR-1198 — `_oa` パッチゲート契約の規約化 + ピン (_apply 内直接書込み全監査 clean 完走)**: 生図形 prop 書込みの単一漏斗契約を文書化 — `_oa` = assign + dataUrl/img 共存解消 + img 参照 `_park` (imgq heal) + `_gTouch` (pending nug/ジェスチャ orig 折り込み) の4効果。`_oa` が表現できない書込み (delete/個別キー) は直接書込み+明示 `_gTouch` ペア (move 絶対値/group/ungroup/zorder/snapshot-merge)。許容バイパス: 構造 prop (`s.pg`/ページ行/wclock/op 自己記録 — patch ドメイン外でスナップショットが復元し得ない)、install 経路 (`_attachShape` が構築時 park+coex)、wholesale swap (`_pcC`/`_pcR`/`_iG` 一括パージ)、backward (undo が `_nugEnd`+ptr cancel 先行で pending 不在)。行動変更なし — 5ソース+6挙動ピン (remote move/group で武装 orig がリモート値を吸収、down 解除で非折込、remote upd で `_park`+共存除去) で契約固定。
+
 ## [1.8.221] - 2026-10-01
 
 ### Docs+Test

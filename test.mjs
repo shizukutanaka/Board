@@ -22303,6 +22303,40 @@ pass += 2;
   console.log('  ✓ ADR-1197: _gridVer epoch — single writer, _apply funnel, bitmap OOB');
   pass += 9;
 }
+{
+  // ADR-1198: _oa is the single funnel for live-shape patch writes — assign +
+  // dataUrl/img coexistence strip + img-ref park + _gTouch fold. Direct
+  // s.prop= writes inside _apply are either explicitly _gTouch-paired
+  // (move/group/ungroup/zorder/snapshot-merge), structural props outside the
+  // patch domain (s.pg, page rows, wclock, op self-recording), install-time
+  // (_attachShape), or backward-only (local undo — _nug/ptr already flushed).
+  assert.ok(html.includes("_oa=(o,p)=>{const r=Object.assign(o,p);if(r.dataUrl&&r.img&&'dataUrl' in p)delete r.img;if(r.img&&_iS(r.id)&&(!r.dataUrl||'img' in p))_park(Net._imgPending,r.id,r.img);if(byId(o.id)===o)_gTouch(o.id,_ok(p));return r}"),'_oa = assign + coex strip + park + gTouch');
+  assert.ok(html.includes("if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y;_gTouch(sh.id,['x','y'])"),'move-absolute writes pair with _gTouch');
+  assert.ok(html.includes("const n=_nug;if(n){const o=n.op.orig&&n.op.orig[id];if(o)cp(o);")&&html.includes("for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc]){const o=m&&m.get(id);if(o)cp(o)}for(const o of[ptr.resizeOrig,ptr.rotOrig,ptr.ebendOrig,ptr.cbendOrig,ptr.wayOrig,ptr.lblOrig])"),'_gTouch folds the pending nug AND every live gesture orig map');
+  const g1=Shape.make('rect',{id:'gt1',x:1,y:2,w:10,h:10});
+  state.shapes=[g1];state.seenOps=new Set();state.wclock={};_invalidateGrid();
+  ptr.down=true;ptr.gOrig=new Map([[g1.id,{x:1,y:2}]]);
+  Store.applyRemote({op:'move',ids:[g1.id],dx:9,dy:8,after:[{id:g1.id,x:10,y:10}],before:[{id:g1.id,x:1,y:2}],clock:{peer:'pG',seq:1,ts:Date.now()}});
+  assert.ok(g1.x===10&&g1.y===10,'remote move lands on the live shape');
+  assert.ok(ptr.gOrig.get(g1.id).x===10&&ptr.gOrig.get(g1.id).y===10,'_gTouch folds the remote write into the armed gesture orig');
+  ptr.dragStartShapes=new Map([[g1.id,{groupId:'gg0'}]]);
+  Store.applyRemote({op:'group',ids:[g1.id],gid:'gg1',before:[{id:g1.id,groupId:null}],clock:{peer:'pG',seq:2,ts:Date.now()}});
+  assert.strictEqual(ptr.dragStartShapes.get(g1.id).groupId,'gg1','_gTouch folds a remote groupId into dragStartShapes');
+  ptr.down=false;ptr.gOrig=new Map([[g1.id,{x:100,y:100}]]);
+  Store.applyRemote({op:'move',ids:[g1.id],dx:1,dy:1,after:[{id:g1.id,x:11,y:11}],before:[{id:g1.id,x:10,y:10}],clock:{peer:'pG',seq:3,ts:Date.now()}});
+  assert.strictEqual(ptr.gOrig.get(g1.id).x,100,'with no live gesture the orig maps are not folded');
+  const im=Shape.make('image',{id:'gi1',x:0,y:0,w:5,h:5});im.img='kkGI';state.shapes.push(im);
+  Store.applyRemote({op:'upd',id:im.id,after:{stroke:'#000000'},clock:{peer:'pG',seq:4,ts:Date.now()}});
+  assert.strictEqual(Net._imgPending.get('gi1')?.k,'kkGI','_oa parks the img ref through a remote upd');
+  Store.applyRemote({op:'upd',id:im.id,after:{dataUrl:'data:image/png;base64,eA=='},clock:{peer:'pG',seq:5,ts:Date.now()}});
+  assert.ok(im.dataUrl==='data:image/png;base64,eA=='&&!('img' in im),'_oa strips the coexisting img on a dataUrl write');
+  assert.ok(html.includes("{ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k])")&&html.includes("else if(imgNew){if(_sw(ex.img,'@'))ex.img=ex.img.slice(1);_park(this._imgPending,ex.id,ex.img)}"),'snapshot merge keeps _gTouch + park parity per key');
+  assert.ok(html.includes("for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id"),'s.pg is a deliberate unpaired structural write — patches never carry pg');
+  ptr.down=false;ptr.panning=false;ptr.dragStartShapes=null;ptr.gOrig=null;ptr.gAnc=null;
+  state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.wclock={};Net._imgPending.clear();_invalidateGrid();
+  console.log('  ✓ ADR-1198: _oa patch gate — assign/coex/park/gTouch funnel + sanctioned bypasses');
+  pass += 11;
+}
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);
