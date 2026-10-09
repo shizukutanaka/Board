@@ -1,3 +1,13 @@
+## [1.8.224] - 2026-10-01
+
+### Fix
+- **round950 / ADR-1200 — 孤児グループ国勢調査の漏斗パリティ (`_recordCommitted`)**: ADR-1199 の `_grpSweep` は `_apply` 尾部 + `_recordCommitted` の `replace` のみだったが、caller-mutated op は `replace` 以外にも単独 carrier を残し得た — `doUngroup` は locked メンバーの gid を保持し (remote は census で即剥奪 → local に ghost gid 残存で発散窓)、`_nugLock` が mid-run lock で 1 メンバーへ縮退した `group` op も同型 (remote は strip・local は gid 保持)。`_recordCommitted` のセンサスを `_apply` 尾と同一の 9-op 正規表現へ一般化し、両漏斗が同一 op に同一終端状態を生成する契約へ。
+
+## [1.8.223] - 2026-10-01
+
+### Fix
+- **round949 / ADR-1199 — 孤立グループ国勢調査 `_grpSweep` (生存メンバー ≥2 または groupId 除去)**: メンバーシップが 1 に減った際に groupId を除去する経路が一切存在せず、`_bN` 生存者・keep-survivor・partial ungroup undo・wire `group`・`_placeCopies` gidMap など全発生源で幻の単一メンバーグループが残存していた残穴を閉塞 — ハロー描画・SR「(グループ)」announce・`_grpOf` 選択拡張が偽の帰属を報告していた。決定論的センサスを `_apply` 尾部 (membership 変更 9 op) と `_recordCommitted` (caller-mutated `replace` swap) の両 funnel へ配置し、`_gTouch`+`w['groupId']=C` で専用 group チャネルと同じ時計語彙でスタンプ。描画面にも `_grpMapGet` の `members≥2` ガードを追加。
+
 ## [1.8.222] - 2026-10-01
 
 ### Docs+Test
