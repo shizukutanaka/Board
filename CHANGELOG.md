@@ -1,3 +1,43 @@
+## [1.8.227] - 2026-10-01
+
+### Fix
+- **round953 / ADR-1203 — reborn commit ゲート (スカラ orig) + マーク寿命のジェスチャスコープ化**: ADR-1202 はスカラ orig ジェスチャの変異ループのみを `_rb` 閉塞し、commit サイトは残存 — remote reborn で live=remote 値のまま `{before: stale-arm-orig, after: remote}` の phantom op を記録し、undo の inverse wire op が全 peer の remote 幾何を stale 値へ巻き戻す発散窓を、resize/rotate/ebend/cbend/way/lblpos の 6 commit サイトへの `!_rb` ゲートで閉塞 (live が remote 真値のため skip は冪等収束)。併せて `ptr.reborn` が `_ptrReset` でしか消えず正常 PU 末尾で残存していた残穴 — 次ジェスチャでも `_rb` が真のまま変異+commit 両方 dead で、一度 remote-reborn された図形が事実上永久ローカル編集不能になっていた false-positive を、PU 末尾の `ptr.reborn=null` でジェスチャスコープへ閉塞。
+
+## [1.8.226] - 2026-10-01
+
+### Fix
+- **round952 / ADR-1202 — remote-reborn メンバーへのローカル mutation 全面閉塞**: ADR-0964→1201 の `_rb` 保護チェーンは復元系 (undo/cancel) のみを覆い、mutation 系は裸だった — (a) `_bT` で remote 誕生を採用した図形が `ptr.down` ジェスチャ中の `dragStartShapes`/`gOrig`/`gAnc` に残り続け、doMove/gresize/grot の毎フレーム `_geoR` が remote 幾何を stale 値で上書き + commit が自クロックで LWW 勝利して peer の新幾何を静黙破壊していた残穴を、マーク時の **map 削除** で閉塞 (変異ループが orig map を走査するため削除=以後非訪問、commit の `[...keys()]`/`mids` 側も自動除外)。(b) スカラ orig ジェスチャ (resize/rotate/ebend/cbend/lblpos/way) の変異ループを `!_rb` ゲートで閉塞。(c) `_nug` producer 全域 (nudgeSelection/Alt+arrow/unlockedSelectionIds/doFlip/doLock/doRotate/fontSizeStep/toggleTextFlag/swapFillStroke) の member 導出を新 `_nrb`/`_unrb` ゲートで reborn 除外し、`_xFS` フレーム子拡張の直後に再除外 — reborn-前の arm は収束済み、reborn-中の member は gone-purge と整合。undo 側の stale-before 復元も `before` 配列が `_unrb` 済みから生成されるため一致。
+
+## [1.8.225] - 2026-10-01
+
+### Fix
+- **round951 / ADR-1201 — mid-arm ro flip 境界の隣接2欠陥**: (a) pending move op の生スナップショット map `op.orig` は `ids/before/after/changes` へ施す `gone` 滤過の対象外だった — arm 中に `state.ro` が立つと `_roRe` が `op.orig` を走査し、remote が reborn したメンバーに stale ローカル幾何を復元 → remote-reborn 状態をローカル限定で破壊する発散。`gone` を `op.orig` からも除去。(b) `_keepSel` が「commit が履歴に push した」前提で履歴 tip へ `origSel` を書いていた — ro/dedup 棄却の commit は push しないため、直前の無関係な op の undo 選択復元を静的に汚染し、空履歴では TypeError。`_keepSel=(op,arr)` を op オブジェクトへ書く形へ全13サイトを移行し (`_placeCopies` は内部で `_selIds()` 捕捉)、`_repC`/`beautify` の origSel-in-literal イディオムに統一 (wire 非流出は `_slimOp` が保証)。
+
+## [1.8.224] - 2026-10-01
+
+### Fix
+- **round950 / ADR-1200 — 孤児グループ国勢調査の漏斗パリティ (`_recordCommitted`)**: ADR-1199 の `_grpSweep` は `_apply` 尾部 + `_recordCommitted` の `replace` のみだったが、caller-mutated op は `replace` 以外にも単独 carrier を残し得た — `doUngroup` は locked メンバーの gid を保持し (remote は census で即剥奪 → local に ghost gid 残存で発散窓)、`_nugLock` が mid-run lock で 1 メンバーへ縮退した `group` op も同型 (remote は strip・local は gid 保持)。`_recordCommitted` のセンサスを `_apply` 尾と同一の 9-op 正規表現へ一般化し、両漏斗が同一 op に同一終端状態を生成する契約へ。
+
+## [1.8.223] - 2026-10-01
+
+### Fix
+- **round949 / ADR-1199 — 孤立グループ国勢調査 `_grpSweep` (生存メンバー ≥2 または groupId 除去)**: メンバーシップが 1 に減った際に groupId を除去する経路が一切存在せず、`_bN` 生存者・keep-survivor・partial ungroup undo・wire `group`・`_placeCopies` gidMap など全発生源で幻の単一メンバーグループが残存していた残穴を閉塞 — ハロー描画・SR「(グループ)」announce・`_grpOf` 選択拡張が偽の帰属を報告していた。決定論的センサスを `_apply` 尾部 (membership 変更 9 op) と `_recordCommitted` (caller-mutated `replace` swap) の両 funnel へ配置し、`_gTouch`+`w['groupId']=C` で専用 group チャネルと同じ時計語彙でスタンプ。描画面にも `_grpMapGet` の `members≥2` ガードを追加。
+
+## [1.8.222] - 2026-10-01
+
+### Docs+Test
+- **round948 / ADR-1198 — `_oa` パッチゲート契約の規約化 + ピン (_apply 内直接書込み全監査 clean 完走)**: 生図形 prop 書込みの単一漏斗契約を文書化 — `_oa` = assign + dataUrl/img 共存解消 + img 参照 `_park` (imgq heal) + `_gTouch` (pending nug/ジェスチャ orig 折り込み) の4効果。`_oa` が表現できない書込み (delete/個別キー) は直接書込み+明示 `_gTouch` ペア (move 絶対値/group/ungroup/zorder/snapshot-merge)。許容バイパス: 構造 prop (`s.pg`/ページ行/wclock/op 自己記録 — patch ドメイン外でスナップショットが復元し得ない)、install 経路 (`_attachShape` が構築時 park+coex)、wholesale swap (`_pcC`/`_pcR`/`_iG` 一括パージ)、backward (undo が `_nugEnd`+ptr cancel 先行で pending 不在)。行動変更なし — 5ソース+6挙動ピン (remote move/group で武装 orig がリモート値を吸収、down 解除で非折込、remote upd で `_park`+共存除去) で契約固定。
+
+## [1.8.221] - 2026-10-01
+
+### Docs+Test
+- **round947 / ADR-1197 — `_gridVer` 図形バージョンエポック契約の規約化 + ピン (5軸監査 clean 完走)**: 全派生キャッシュを駆動する単一版カウンタの契約を文書化 — `_invalidateGrid()` が唯一のライター (init+`++` の2サイトのみ)、`_apply` 冒頭 `_iG()` が全 op (forward/backward 双方・prop-only 含む全17種) の bump 漏斗、`_rs`/`_pgAdopt`/`switchPage`/消去復元の非 op 変異も直接 bump、消費者 (mirror/検索/ハロー/snap/minimap) は全てこのエポックを共有。意図的な帯外: 画像 blob 到着は `_iv()`+`Minimap.invalidateCache()` で bitmap のみ無効化し `_iG()` しない (blob ごとの O(n) 索引/ミラー再構築回避)。行動変更なし — 3ソース+6挙動ピン (prop-only remote op で mirror/検索再構築・local commit/undo で双方向 bump) で契約固定。
+
+## [1.8.220] - 2026-10-01
+
+### Fix
+- **round946 / ADR-1196 — CLAUDE.md ADR index のファイル名 parity (9件の rename 残存 dead link 修正 + drift ゲート)**: index が言及していた9件のファイル名が実在ファイルと不一致で dead link 化していた残穴を修正 (0391/0392/0393/0394/0397/0398/0399/1047/1049)。同時に `docs/ADR-*.md` 実ファイル集合 ⇄ index 言及集合の一致を `node test.mjs` が毎回検証する drift ゲートを追加 — index→file 方向 (dead link) と file→index 方向 (orphan ADR) の両方向を3アサートで固定。
+
 ## [1.8.219] - 2026-10-01
 
 ### Docs
