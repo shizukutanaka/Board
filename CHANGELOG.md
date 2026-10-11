@@ -1,3 +1,278 @@
+## [1.8.227] - 2026-10-01
+
+### Fix
+- **round953 / ADR-1203 — reborn commit ゲート (スカラ orig) + マーク寿命のジェスチャスコープ化**: ADR-1202 はスカラ orig ジェスチャの変異ループのみを `_rb` 閉塞し、commit サイトは残存 — remote reborn で live=remote 値のまま `{before: stale-arm-orig, after: remote}` の phantom op を記録し、undo の inverse wire op が全 peer の remote 幾何を stale 値へ巻き戻す発散窓を、resize/rotate/ebend/cbend/way/lblpos の 6 commit サイトへの `!_rb` ゲートで閉塞 (live が remote 真値のため skip は冪等収束)。併せて `ptr.reborn` が `_ptrReset` でしか消えず正常 PU 末尾で残存していた残穴 — 次ジェスチャでも `_rb` が真のまま変異+commit 両方 dead で、一度 remote-reborn された図形が事実上永久ローカル編集不能になっていた false-positive を、PU 末尾の `ptr.reborn=null` でジェスチャスコープへ閉塞。
+
+## [1.8.226] - 2026-10-01
+
+### Fix
+- **round952 / ADR-1202 — remote-reborn メンバーへのローカル mutation 全面閉塞**: ADR-0964→1201 の `_rb` 保護チェーンは復元系 (undo/cancel) のみを覆い、mutation 系は裸だった — (a) `_bT` で remote 誕生を採用した図形が `ptr.down` ジェスチャ中の `dragStartShapes`/`gOrig`/`gAnc` に残り続け、doMove/gresize/grot の毎フレーム `_geoR` が remote 幾何を stale 値で上書き + commit が自クロックで LWW 勝利して peer の新幾何を静黙破壊していた残穴を、マーク時の **map 削除** で閉塞 (変異ループが orig map を走査するため削除=以後非訪問、commit の `[...keys()]`/`mids` 側も自動除外)。(b) スカラ orig ジェスチャ (resize/rotate/ebend/cbend/lblpos/way) の変異ループを `!_rb` ゲートで閉塞。(c) `_nug` producer 全域 (nudgeSelection/Alt+arrow/unlockedSelectionIds/doFlip/doLock/doRotate/fontSizeStep/toggleTextFlag/swapFillStroke) の member 導出を新 `_nrb`/`_unrb` ゲートで reborn 除外し、`_xFS` フレーム子拡張の直後に再除外 — reborn-前の arm は収束済み、reborn-中の member は gone-purge と整合。undo 側の stale-before 復元も `before` 配列が `_unrb` 済みから生成されるため一致。
+
+## [1.8.225] - 2026-10-01
+
+### Fix
+- **round951 / ADR-1201 — mid-arm ro flip 境界の隣接2欠陥**: (a) pending move op の生スナップショット map `op.orig` は `ids/before/after/changes` へ施す `gone` 滤過の対象外だった — arm 中に `state.ro` が立つと `_roRe` が `op.orig` を走査し、remote が reborn したメンバーに stale ローカル幾何を復元 → remote-reborn 状態をローカル限定で破壊する発散。`gone` を `op.orig` からも除去。(b) `_keepSel` が「commit が履歴に push した」前提で履歴 tip へ `origSel` を書いていた — ro/dedup 棄却の commit は push しないため、直前の無関係な op の undo 選択復元を静的に汚染し、空履歴では TypeError。`_keepSel=(op,arr)` を op オブジェクトへ書く形へ全13サイトを移行し (`_placeCopies` は内部で `_selIds()` 捕捉)、`_repC`/`beautify` の origSel-in-literal イディオムに統一 (wire 非流出は `_slimOp` が保証)。
+
+## [1.8.224] - 2026-10-01
+
+### Fix
+- **round950 / ADR-1200 — 孤児グループ国勢調査の漏斗パリティ (`_recordCommitted`)**: ADR-1199 の `_grpSweep` は `_apply` 尾部 + `_recordCommitted` の `replace` のみだったが、caller-mutated op は `replace` 以外にも単独 carrier を残し得た — `doUngroup` は locked メンバーの gid を保持し (remote は census で即剥奪 → local に ghost gid 残存で発散窓)、`_nugLock` が mid-run lock で 1 メンバーへ縮退した `group` op も同型 (remote は strip・local は gid 保持)。`_recordCommitted` のセンサスを `_apply` 尾と同一の 9-op 正規表現へ一般化し、両漏斗が同一 op に同一終端状態を生成する契約へ。
+
+## [1.8.223] - 2026-10-01
+
+### Fix
+- **round949 / ADR-1199 — 孤立グループ国勢調査 `_grpSweep` (生存メンバー ≥2 または groupId 除去)**: メンバーシップが 1 に減った際に groupId を除去する経路が一切存在せず、`_bN` 生存者・keep-survivor・partial ungroup undo・wire `group`・`_placeCopies` gidMap など全発生源で幻の単一メンバーグループが残存していた残穴を閉塞 — ハロー描画・SR「(グループ)」announce・`_grpOf` 選択拡張が偽の帰属を報告していた。決定論的センサスを `_apply` 尾部 (membership 変更 9 op) と `_recordCommitted` (caller-mutated `replace` swap) の両 funnel へ配置し、`_gTouch`+`w['groupId']=C` で専用 group チャネルと同じ時計語彙でスタンプ。描画面にも `_grpMapGet` の `members≥2` ガードを追加。
+
+## [1.8.222] - 2026-10-01
+
+### Docs+Test
+- **round948 / ADR-1198 — `_oa` パッチゲート契約の規約化 + ピン (_apply 内直接書込み全監査 clean 完走)**: 生図形 prop 書込みの単一漏斗契約を文書化 — `_oa` = assign + dataUrl/img 共存解消 + img 参照 `_park` (imgq heal) + `_gTouch` (pending nug/ジェスチャ orig 折り込み) の4効果。`_oa` が表現できない書込み (delete/個別キー) は直接書込み+明示 `_gTouch` ペア (move 絶対値/group/ungroup/zorder/snapshot-merge)。許容バイパス: 構造 prop (`s.pg`/ページ行/wclock/op 自己記録 — patch ドメイン外でスナップショットが復元し得ない)、install 経路 (`_attachShape` が構築時 park+coex)、wholesale swap (`_pcC`/`_pcR`/`_iG` 一括パージ)、backward (undo が `_nugEnd`+ptr cancel 先行で pending 不在)。行動変更なし — 5ソース+6挙動ピン (remote move/group で武装 orig がリモート値を吸収、down 解除で非折込、remote upd で `_park`+共存除去) で契約固定。
+
+## [1.8.221] - 2026-10-01
+
+### Docs+Test
+- **round947 / ADR-1197 — `_gridVer` 図形バージョンエポック契約の規約化 + ピン (5軸監査 clean 完走)**: 全派生キャッシュを駆動する単一版カウンタの契約を文書化 — `_invalidateGrid()` が唯一のライター (init+`++` の2サイトのみ)、`_apply` 冒頭 `_iG()` が全 op (forward/backward 双方・prop-only 含む全17種) の bump 漏斗、`_rs`/`_pgAdopt`/`switchPage`/消去復元の非 op 変異も直接 bump、消費者 (mirror/検索/ハロー/snap/minimap) は全てこのエポックを共有。意図的な帯外: 画像 blob 到着は `_iv()`+`Minimap.invalidateCache()` で bitmap のみ無効化し `_iG()` しない (blob ごとの O(n) 索引/ミラー再構築回避)。行動変更なし — 3ソース+6挙動ピン (prop-only remote op で mirror/検索再構築・local commit/undo で双方向 bump) で契約固定。
+
+## [1.8.220] - 2026-10-01
+
+### Fix
+- **round946 / ADR-1196 — CLAUDE.md ADR index のファイル名 parity (9件の rename 残存 dead link 修正 + drift ゲート)**: index が言及していた9件のファイル名が実在ファイルと不一致で dead link 化していた残穴を修正 (0391/0392/0393/0394/0397/0398/0399/1047/1049)。同時に `docs/ADR-*.md` 実ファイル集合 ⇄ index 言及集合の一致を `node test.mjs` が毎回検証する drift ゲートを追加 — index→file 方向 (dead link) と file→index 方向 (orphan ADR) の両方向を3アサートで固定。
+
+## [1.8.219] - 2026-10-01
+
+### Docs
+- **round945 / ADR-1195 — `Net.init` の cleared/retained 契約を規約化 + 挙動ピン (room-bound vs doc-bound の state 分離監査、clean 完走)**: ~15 ADR が個別に積み上げてきた room 切替リセット境界を一箇所で規約化。cleared (room-bound — 部屋の「今の相手」にのみ意味のある状態): `bc` close+bye・`seenOps` dedup・join-sync 位相 (`_snapT`/`_snapRx`/`_snapRetry`/`_snapRqs`)・`_imgSent`/`_imgChunks`/`_imgOuts`/`_fragOuts` 流出記録・`_snapIn`/`_opcIn` 受信再組立・`_imgqT`/`_imgScanN`・`_dcKey`/`_dcQ`/`_dcQB`・presence 送信位相・`_presenceTimer`・非 `rtc:` ピア行+`_pCt`・(真の切替時のみ) 因果 marker+`dc`/`rtc` close。retained (doc-bound — 同一 doc が依存): `_imgIn`/`_imgInB` 受信 blob キャッシュ・`_imgPending` heal 待ち行列・`rtc:` ピア行・`_rtcPeerId`。「答えた」集合は部屋ごと・「持っている」集合は doc ごとの非対称が正であること、`_imgIn` 消去は live 図形の参照空転を招くこと、`seenOps` クリアによる再適用は op 冪等性で安全であることを確認。行動変更なし — 7 挙動アサート (retained 2・cleared 5) で契約固定。
+
+## [1.8.218] - 2026-10-01
+
+### Docs
+- **round944 / ADR-1194 — wire protocol reference: kind × transport × bounds の正規契約を1文書へ集約 (ADR-1048 残 P4 の消化)**: 認証エンベロープ (canon 除外=mac/dmac/data・`_send`/`_bcast`/`_sendDC` タグ漏斗・verify 順序・peer bound) と全13 envelope kind (`hello`/`ping`/`sync-req`/`cursor`/`selection`/`bye`/`name`/`op`/`snapshot`/`snap`/`opc`/`img`/`imgq`) の transport 行列・送信サイト・フィールド境界・intake 効果を、~40 ADR に分散していた規則から一括集約。op サブ op (17) 一覧と frag/img/imgq の送信ライフサイクル規則も同梱。行動変更なし — dispatch switch の `case` 群と全 `_mk` 送信 kind が doc に命名されることを担保する drift ゲート7ピンで契約固定 (kind 網羅・transport 行列・auth エンベロープ・bound リテラル・op sub-op 列挙)。
+
+## [1.8.217] - 2026-10-01
+
+### Fixed
+- **round943 / ADR-1193 — `_sec()` の mint が `uid()×4`=128文字で全 `≤64` ゲートを超過していた認証連鎖の閉塞 (wire-auth 鍵ライフサイクル監査 + 契約ピン)**: 検証順序 (self-echo→peer bounds→MAC→kind)・`_dcKey` 遷移の監査中に発見 — mint された鍵は以下の全ダウンストリーム境界に再採用不能: (a) `board.rs` 読み取りゲート (`_ln(v)<=64`) で自身の保存値を棄却 → 同一オリジンタブが別鍵を mint し BC `_mac` が恒常失敗でクロスタブ同期が沈黙 dead、(b) IDB `d.rs` 復元ゲート (2サイト同様 `<=64`) で永続鍵を棄却 → リロード毎に新鍵を mint、(c) `_decodeToken` の `k` bound (`<=64`) で offer トークンの鍵を棄却 → joiner は `_dcKey=null` で自己鍵にフォールバックし **双方向の DC dmac が恒常失敗 = RTC リンクが接続成立しても全メッセージ沈黙 dead**。mint を `uid()+uid()`=64文字 (256bit) へ修正し全境界へ通過可能化 — BC 収束・doc rs 復元・トークン鍵採用が初めて正しく往復する。併せて verify-order・`_dcKey` ライフサイクル (init→offer mint→token adopt→consume 冪等→onclose→`_dmac≡_mac` フォールバック)・プリミティブ (`_hmac` RFC2104/`_eqs` 定数時間/`_canon` 除外限定) の完全契約をピン化。11挙動/ソースピンで固定 (64-hex mint・board.rs 往復採用・RFC4231 ベクトル・forged/viaRtc 棄却順序)。
+
+## [1.8.216] - 2026-10-01
+
+### Fixed
+- **round942 / ADR-1192 — op `before` ベースライン lookup の残存 plain `{}` を `_wM()` へ統一 (null-proto 契約の完走)**: ADR-0788→1191 と続いた sweep の最終面として index.html の全 `={}`/`Map`/`Object.create` サイトを wire 制御キーかで分類監査 — Net 画像/フラグメント/ピア管理・wclock・id/grp/cache 索引は全て `_mP()`/`_sT()`/`_wM()` 済みで、残存 wire 由来キーの plain-`{}` は `_lwwDrop`/`_stampWrites` の `before` ベースライン map `bmap`/`bb` 4サイトのみだった。`patches()` は `id:'__proto__'` を通す (`_iS`+≤64) ため、`bmap['__proto__']=E` が [[Prototype]] 書換えとなり、**全メンバーのベースラインが毒 E に解決** — patch 枝で変更 props を一括 drop (`_chg(E,after)` 偽装)、group 枝で `op.ids` 全滅。悪用度は限定 (before は送信者委任の baseline) だが、契約規則「wire 由来文字列キーの map は全て null-proto」を完走して consumer 増設・shared-mutation の事故面を閉塞。7挙動/ソースピンで固定 (forged `__proto__` baseline でも group member 保持・patch prop 保持・stampWrites 正常スタンプ・2 ソースピン)。
+
+## [1.8.215] - 2026-10-01
+
+### Fixed
+- **round941 / ADR-1191 — id-keyed wire マップの残存 plain `{}` を `_wM()` へ統一 (`__proto__` 汚染の閉塞)**: `_reqWc` (sync-req horizon 解析)・`_syncReqWc` (horizon 構築)・`cov` (op baseline 網羅判定) の3サイトが wire 由来キーを plain object へ書いていた。`m['__proto__']=clock` は own key を作らず **[[Prototype]] を書き換える**ため、`validClock` が許す余計な自身プロパティ (例: `{ts:1,peer:'x',seq:0,sA:{ts:1e12}}`) がプロトタイプ経由で任意の shape id へ解決し、`_snapshotMsg` の `req[s.id]` が偽 clock を返して当該図形の delta を標的抑制できた (broadcast される応答自体を歪める)。`_wM()` (null-proto、`Object.create(null)` 統一) で `__proto__` を通常 own key 化 — ADR-0788 の null-proto 契約を最後の残存サイトへ完走。10挙動/ソースピンで固定 (proto 汚染の非解決・`__proto__` の own key 化・全か無か契約・cap 拒否・3サイトソースピン)。
+
+## [1.8.214] - 2026-10-01
+
+### Fixed
+- **round940 / ADR-1190 — `_sendSnapshot` の throttle 窓内で 2 件目以降の ask が暗黙 drop されていた残穴を閉塞**: 旧実装は `_snapT` armed 中の呼出を記録せず return し、armed flush が**最初の asker の horizon** で計算された delta snapshot しか送らなかった。同一 1s 窓内で別の joiner (特に空盤面の新規 peer) が `hello`/`sync-req` を発行すると、その ask は失われ — joiner は horizon より古い図形を全て取り損ね、`_snapRx` 未達で sync-req retry (3回 bound × ~5s) に頼る最大 ~15s の不完全盤面に沈んでいた。deferral を per-ask queue へ置換: 各 ask は自 horizon で計算された応答 (送判定+dels) を受け、falsy ask は queue を collapse (full が全 ask を包含)、8 cap 越えは `[null]` へ潰れて flood amplification の上限を維持。`init` が `_snapRqs` をクリアし旧ルームの ask を持ち越さない。9挙動/ソースピンで固定 (両 ask queue・per-ask horizon 応答・falsy collapse・overflow→full・init クリア)。
+
+## [1.8.213] - 2026-10-01
+
+### Fixed
+- **round939 / ADR-1189 — 画像 heal ライフサイクル契約の監査完走 + `_imgDbGet` 補助契約ピン (docs+pin)**: `img` 参照ヒーリングの遷移列 (park→ask→answer→resolve→rescan) を一巡監査し全局面 clean を確認。20+ ADR に分散していた契約を1文書へ集約: `_attachShape`/`_attachOp` の `_imgPending` 駐留 (256 cap・`_idOK` 二重ゲート)、`_imgqSweep` の TTL+per-key dedup re-ask、`_imgRescan` 低速再駐留、回答3層 (`_imgIn`→`_imgSent`→`_imgDbGet` IDB fallback)、`_stgOK` 64MB 下流、per-(key,sender) slot 再組立+ハッシュ検証、pending 解消まで。`_imgDbGet` の残存エッジを9挙動/ソースピンで補完: 非同期 staging・永続 hit・wire flush・missing key・transaction throw 嚥下・非 id キー不入力・64MB cap 拒否。
+
+## [1.8.212] - 2026-10-01
+
+### Fixed
+- **round938 / ADR-1188 — `restoreBackup` の imgs-store 読取失敗でバックアップが永久にリストア不能だった ADR-1187 同型残穴を閉塞**: バックアップの図形リストは正常に読めていても、imgs ストアの `getAll`/`getAllKeys` 失敗で `restoreBackup()` 全体が reject → `backupRestoreFailed` を返す。slot は残るが再試行も同一点で落ちるため、imgs ストアが恒久的に壊れているとバックアップは永遠に復元不能。ADR-1187 と同じ隔離パターン: attach を nested try で包み、失敗時は図形をそのまま採用し `_attachShape` が ref を `_imgPending` へ駐留 → imgq heal へ送る。3挙動ピン (fake IDB で backup doc 返却+imgs 拒否 → restore 成功・図形生存・ref 駐留) で固定。
+
+## [1.8.211] - 2026-10-01
+
+### Fixed
+- **round937 / ADR-1187 — `Persist.load` の imgs-store 読取失敗が doc 全体のロードを沈めていた残穴を閉塞**: `load()` は doc read 成功後、imgs ストアの `getAll`/`getAllKeys` を無防備なまま `await` していたため、imgs ストア読取だけが失敗 (store 破損・tx abort) しても `load()` 全体が reject — 図形ゼロで立ち上がり、次回 `save()` が復旧可能な doc を空盤面で上書きするデータ喪失経路。img attach を nested try で隔離: 失敗時は図形をそのまま採用し、`Net._attachShape` (ADR-0840) が ref 保持 img を `Net._imgPending` へ留めて imgq heal へ送る — load 正常系・失敗系いずれでも「有効な図形リストは沈めない」契約。3挙動ピン (fake IDB で getAll/getAllKeys 拒否 → 図形生存・ref 駐留・無損失) で固定。
+
+## [1.8.210] - 2026-10-01
+
+### Fixed
+- **round936 / ADR-1186 — `save()` の `_md(!1)` が mid-save 変異の dirty を clobber していた残穴を閉塞**: `save()` は `await txDone` 成功後に `_md(!1)` を書いていたため、非同期書込み中に `schedule()` 経由で立った `_md(!0)` + arm 済み `_saveT` が `txDone` で clear され、`beforeunload` (プロンプト+即時 save) と `flushIfHidden` (即時 save) の両カバーが ~500ms 偽値を読む窓があった。`_md(!1)` を書込み開始時へ移し、失敗時は catch で `_md(!0)` 復元 — dirty が常時「未書込み変更あり」の真値を返す。3挙動ピン (fake IDB 経由の mid-save 生存・失敗復元・正常 clear) で固定。
+
+## [1.8.209] - 2026-10-01
+
+### Fixed
+- **round935 / ADR-1185 — オーバーレイ chrome 上の `_curSp` 陳腐化が幽霊カーソルを送出していた残穴を閉塞**: `_curSp` は canvas `pointermove` のみがスタンプするが、minimap/ツールバー/パネル/編集 overlay は canvas ボックス内の兄弟要素のため `pointerleave` が発火せず、ポインタが chrome 上にある間 `_curSp` が最後の canvas 点で凍結。`frame()` の `sendCursorMoved` がその陳腐点を新 viewport で再導出し、minimap スクラブ毎フレーム・chrome hover 中のズーム/頁送りのたびにピアへ幽霊カーソルジャンプを送出していた。document レベル `pointermove` で `e.target!==canvas` 時に `_curSp` を null 化 (broadcast せず、pointer capture 中のドラッグは存続)。4挙動ピン (実リスナ経路) で固定。
+
+## [1.8.208] - 2026-10-01
+
+### Fixed
+- **round934 / ADR-1184 — 全置換が武装済みズームプレビューを破棄しない stale bitmap 残存を閉塞**: 全置換の共有パージシーム `_pcC` (`_rs`/`clear`/`replace` 双方向/pageDel member kill が全て通過) が `_pinchSnap`/`_pinchVp` を消さなかった。`ptr.down=false` のまま mint する ctrl+wheel プレビュー (180ms 再アーミング) や iOS pinch 中に同頁の全置換が着地すると、`draw()` が早期 return で交換前ビットマップを blit し続けた (stale 表示 + detached 全解像度 canvas 保持)。`_pcC` 内の pair 破棄で全5サイトを一括閉塞 — パージ後 `_lastVp=null` により完全シーンパスで自己修復。4挙動ピン (実リスナ wheel 経路) で固定。
+
+## [1.8.207] - 2026-10-01
+
+### Fixed
+- **round933 / ADR-1183 — exportPDF の popup-blocked blob URL 漏洩を閉塞**: `fin` コールバックが `window.open` の成否確認前に `_oURL(bl)` で blob URL を生成していたため、popup がブロックされた早期 return で revoke されずリーク (ADR-0813 同型)。URL 生成を `w2` ガード後へ移動する純粋な並べ替えで閉塞 (raw 増加ゼロ)。全 `_oURL` サイト (6 ダウンロード export は `_rO` 済み、画像は dataUrl モデル) とブート順序・履歴漏斗・`_oa` callsite の監査も完走 clean。6挙動ピン + `window.open` harness trampoline で固定。
+
+## [1.8.206] - 2026-10-01
+
+### Test
+- **round932 / ADR-1182 — peer lifecycle contract の監査完走 + ピン**: `bye`(`_pk` 経由・両 transport)・TTL reap (`rtc:` 免除は dc.onclose 管理のため)・ルーム切替 purge + `_pCt` 再ベースライン・armed `_selT`/`_curT` のルーム横断 announce セマンティクスを監査し clean 完走。9挙動+2ソース=11ピンで固定 (docs+pin ラウンド)。
+
+## [1.8.205] - 2026-10-01
+
+### Test
+- **round931 / ADR-1181 — presence 受信側契約の監査完走 + ピン**: peer row の生成・採用・描画経路を監査し clean 完走 (ADR-1177..1180 の send-side 閉塞の対称面)。契約を13ピンで固定 — BC 未知ピアの cursor が行を mint しない / ping で生成 / pg ≤64 截断 / 非配列 ids 拒否 / 死 id+非 wire id の intake フィルタ / 過長・自己・偽造 `rtc:` peer 拒否 (MAC より先) / viaRtc 行復活 / `h:1`→null / `_s0(,4096)` キャップ / 両 presence kind の pg bound。修正なし (docs+pin ラウンド)。
+
+## [1.8.204] - 2026-10-01
+
+### Fixed
+- **round930 / ADR-1180 — hide clears precede the peers gate**: `sendCursorHide` reset `_curSp`/`_curT`/`_lastCurKey` *after* the `_pr().size===0` early return — hiding with no peers present left the tracking point, the armed resend timer, and the dedup key alive. A peer joining afterwards heard one stale world cursor through `sendCursorMoved` even though the pointer had left (an `h:1` was never sent and shouldn't have been — there was nobody to tell, but the *state* should still reset). The three-field clear now runs before the peers gate; the `h:1` broadcast itself still correctly requires recipients. Pinned by 3 behavioural + 1 source asserts.
+
+## [1.8.203] - 2026-10-01
+
+### Fixed
+- **round929 / ADR-1179 — cursor presence completeness**: the cursor send had three residual staleness holes of the same family ADR-1177/1178 closed for selection. (a) **Trailing-edge drop**: `sendCursor` discarded every move inside the throttle window with no trailing resend — when the pointer stopped inside a window, the resting position never reached peers until the next physical move (possibly never). Throttled skips now arm a `_curT` resend that re-derives the world point at fire time (mirrors `_selT`). (b) **Viewport drift**: pan/zoom/fit/minimap move the world point under a still pointer silently — no presence emit until the next physical move. Every canvas pointermove now records the last screen point `_curSp`, and the frame hook calls `Net.sendCursorMoved()` — any viewport change invalidates a frame, re-derives `s2w(_curSp)`, and emits only when the derived point differs from the last emitted one (`_lastCurKey` dedup over `x|y|pg`). (c) **Lifecycle parity**: the dedup key resets on `sendCursorHide` (with `_curSp`/`_curT` — a hidden cursor can't be resurrected by a stray timer), on `Net.init` room switch (self-latecomer re-announce), and on `_touchPeer` latecomer join (the joiner hears a resting cursor once instead of waiting for a move). `_curSp` is intentionally not cleared on room switch (a screen point stays valid across rooms/viewports) nor during pinch (`_nP()>=2` gates the emit, matching the send gate). Pinned by 11 behavioural + 4 source asserts.
+
+## [1.8.202] - 2026-10-01
+
+### Fixed
+- **round928 / ADR-1178 — presence send state resets on room switch**: `Net.init` swept the receive-side state (seenOps, snapshot/img/frag queues, old-room peer rows) but left the *send-side* presence bookkeeping untouched — `_lastSelSent` still held the key the old room had already seen, so after joining a room where the user was the latecomer, `sendSelectionIfChanged` dedup-dropped the re-announcement and the room's existing peers never saw the user's selection until the set next changed (potentially never). The selection dedup key and the selection/cursor throttle clocks now reset alongside the rest of init's presence state (the self-latecomer case of ADR-0011's `_touchPeer` reset); the next frame re-announces the current selection once. `_selT` is left armed — it re-evaluates the key at fire time and self-corrects. Pinned by 4 behavioural + 1 source asserts.
+
+## [1.8.201] - 2026-10-01
+
+### Fixed
+- **round927 / ADR-1177 — selection presence rides the cursor throttle**: `sendSelectionIfChanged` is invoked every frame by the render-loop hook, and its dedup key only collapses *unchanged* selections — during a marquee drag the id set mutates per frame, so the full selection-id array went out ~16–60 times/second, the last unthrottled presence send (`sendCursor` has had `CURSOR_THROTTLE_MS` since ADR-0010). The send now mirrors the cursor gate: a changed key inside the window arms one trailing `_selT` resend instead of broadcasting (the dedup key stays pending, so the settled selection lands within `CURSOR_THROTTLE_MS` — latest-wins, nothing lost), and `_touchPeer` clears `_lastSelAt` too so a latecomer's forced resend reaches the new peer immediately rather than after a window it never observed. Pinned by 5 behavioural + 2 source asserts; ADR-0011/1031 latecomer literals recalibrated.
+
+## [1.8.200] - 2026-10-01
+
+### Changed
+- **round926 / ADR-1176 — member-pg intake funnel audit (clean)**: a census of every `s.pg` write site confirms the funnel is closed — all six assignment sites either resolve to a page that exists at write time (local births stamp `state.curPg`, `_pgHome`, `_pgDup`, `_pgDel2`'s `firstId` rehome, pageAdd's `c2.pg=op.id`, drawio's per-diagram stamp) or scrub `s.pg` (pages-null tails → `_pgOk` fallback), and everything outside the census routes through `_pgHeal`/`_pgHealS`. The last unpinned fork — a cap-blocked op-carried member when the 64-page cap forbids the `'?'` stub — now has a behavioural pin (scrub + rehome to `pages[0]`, no stub). Pinned by 4 behavioural + 2 source asserts (the census count itself).
+
+## [1.8.199] - 2026-10-01
+
+### Fixed
+- **round925 / ADR-1175 — unhealable member rehome**: both `'?'`-stub producers (`_pgHealS` set-heal and the `applyRemote` op-intake loop) ran the same gate `s.pg && !_pgById && _stubOk && <64` and did nothing when the stub couldn't be produced — a member carrying a tomb-dead or cap-blocked `pg` kept the dead id, `_pgOk` fails on every page → invisible, unreachable, silent. ADR-1174's cap-drop makes the case load-bearing: a snapshot that fills the 64-page cap drops local pages AND forbids the stub that could save their members. New shared `_pgHeal(s)` forks the decision — stub when producible (unknown-no-tomb `pg` is evidence the page is merely in flight), else scrub `s.pg` so the member rehomes to `pages[0]` via the `_pgOk` fallback, identical to `_pgDel2`'s member rehoming on page deletion. `applyRemote` delegates its inline stub loop to the shared rule (same rehome arm, free). Convergent: same input page set → same local decision on every peer; `pg` re-arbitrates as a normal prop. Tomb-dead ids still get no stub (ADR-1137 intact — the member rehomes without reviving the page). Pinned by 3 behavioural + 3 recalibrated source asserts.
+
+## [1.8.198] - 2026-10-01
+
+### Fixed
+- **round924 / ADR-1174 — snapshot union-heal `curPg` re-derivation**: the snapshot page union (already-paged board, `_iA(msg.pages)` merge branch) built `np` under the 64-page cap without re-deriving the view — an incoming set that fills the cap drops every local-only page including `curPg`'s, leaving `curPg` pointing at a dead id. `_pgOk` then fails for **all** members (pg-less ones fall back to `pages[0].id` ≠ stale id) → whole board invisible with data intact, no toast, no crash; `_pgHealS` can't repair it (`np=64` blocks the `'?'` stub, and the dead page's members keep `pg=dead-id` regardless). The union branch now re-derives the view exactly like `_pgAdopt`/`_pgDel2` — `switchPage(np[0].id)` when `curPg` no longer resolves (gesture fold + cursorHide + selection revalidate + SR announce + persist), `curPg=null` defensively for an empty `np` (unreachable: local leftovers always supply ≥1 — stated, not assumed). Pinned by 4 behavioural + 1 source assert.
+
+## [1.8.197] - 2026-10-01
+
+### Fixed
+- **round923 / ADR-1173 — intake page-homing**: the three single-page external-file intakes (`.drawio` single-diagram tail, `.svg`, `.excalidraw`) committed bare `addMany` ops — pg-less members attribute to `pages[0]` via `_pgOk`'s fallback, so on a multi-page board with `curPg≠first` the import landed invisibly yet still toasted success (ADR-1072 sibling), while a payload-carried foreign `pg` stayed live (phantom-page vector). New `_pgHome` helper stamps `s.pg=state.curPg` (or deletes a carried `pg` on a page-less board) at all four local intake seams — the three file importers plus `_placeCopies`, whose identical inline stamp folded into the shared rule. One seam now states the contract: a locally introduced shape homes on the viewed page, or on none. Pinned by 3 behavioural + 3 source asserts; 2 stale literals recalibrated.
+
+## [1.8.196] - 2026-10-01
+
+### Fixed
+- **round922 / ADR-1172 — ad-hoc send-failure parity**: the two remaining unguarded `Net.broadcast` sites were the companion `addMany` sends riding alongside `pageAdd` commits — `_pgDup`'s throw stranded `switchPage` (the duplicate page + members committed locally but the view never followed), and the multi-page `.drawio` paste loop's throw abandoned every later page plus `switchPage`/selection/viewport/docName/repaint (a silent half-import). Both now collect the first send error and rethrow after the bookkeeping lands — ADR-1171 parity. Every `Net.broadcast` site is now try-guarded or terminal; the send-failure contract class is closed. Pinned by 4 behavioural + 3 source asserts (incl. an 8-site census).
+
+## [1.8.195] - 2026-10-01
+
+### Fixed
+- **round921 / ADR-1171 — send-failure bookkeeping parity**: ADR-1135 gave undo's inverse-wire loop best-effort sends (collect `_werr`, run `_pgFollow`/`_txFlush`/`_rdb`, rethrow), but the same class survived at the two other propagation sites — redo's unguarded `Net.broadcast` could strand `_pgFollow`/`_txFlush`/`_rdb` after `histIdx++` had already consumed the op (local re-applied, peers never told, follow-up skipped → silent divergence), and commit's could strand `_txFlush` (armed convergence queue drains late, out of order). Both now complete bookkeeping before surfacing the error; `_recordCommitted`'s send was already terminal and `_txC` sends last in its try — no change. Pinned by 4 behavioural + 3 source asserts.
+
+## [1.8.194] - 2026-10-01
+
+### Fixed
+- **round920 / ADR-1170 — undo-domain purity: history is a local-only op log**: audit of the undo-target selection seam resolved clean — `state.history` is written by exactly two producers (`commit` + `_recordCommitted`, both local funnels running dedup → redo-chop → `_hi().push(op)` → `histIdx++` → outbound-only re-broadcast), while `applyRemote` applies/dedups/stamps clocks but never pushes, so ⌘Z/⌘Y always replay a self-authored op whose `before` is a local snapshot and peer edits stay reversible only through the undo-wire protocol (a peer's own ⌘Z emits inverses). Remote arrivals between locals leave `histIdx` untouched: undo walks the last LOCAL op across the interleave and a redo branch is never chopped by remote traffic. A regression here (recording remote ops "for auditability") would silently flip ⌘Z to global undo — any user could revert a peer's op and re-broadcast the inverse — so the local-only contract is now pinned with 6 behavioural asserts + 3 source pins.
+
+## [1.8.193] - 2026-10-01
+
+### Fixed
+- **round919 / ADR-1169 — gesture × wholesale-swap contract pinned**: audit of the post-swap ephemeral-state seam resolved clean — `_pgAdopt` cancels a live gesture only when the adopted landing page differs (`nc!==oc`), which reads as a hole for `pages:null` swaps (`null===null` → gesture survives) but is the intended half of the contract: a same-page swap isn't a context switch, `_bT` marks every swapped-in remote-born id into `ptr.reborn` so the restore-merge paths (`_gR1`/`_gR2`/`_gRst`/`_gRL`/`_nugLock`) skip them (ADR-0984), and every commit path re-resolves ids against live shapes at emit (`mids` filter, `byId(orig.id)`) so swap-dropped ids never reach history or the wire. A premature "always-cancel" edit broke the ADR-0984 pin — cancelled gestures lose `ptr.reborn` and the restore-merge can't tell keep-survivors from swapped-in ids; the correct statement is the two-case contract now pinned with 4 behavioural asserts + 2 source pins.
+
+## [1.8.192] - 2026-10-01
+
+### Fixed
+- **round918 / ADR-1168 — swap undo/redo restores pages without birth clocks**: undoing a doc-switch import dropped every recorded page whose record lacked `bts` (pre-ADR-1110 persisted docs, clock-less adoptions, hash imports): `Store.undo` re-mints `op.clock` at T2, the backward apply tombs the swapped-in pages then calls `_pgAdopt(beforePages,…)` — whose keep filter arbitrated *carried birth vs tomb only*, so `bts==null` entries lost to the swap's own tomb T1 and `state.pages`/`curPg` went null, converged on peers via the undo wire. Redo had the same hole (recorded `op.pages` can carry bts-less adopted pages, vetoed by the undo's own T2 tombs). The shape-side gate `_tmE` already arbitrates *tomb vs op clock* (a tomb only vetoes when newer than the op); pages now get the same rule via a new `und` flag on `_pgAdopt` — `und` = doc-swap apply (both 'replace' directions + backup restore), snapshot union-heal keeps the strict bts-only arbitration. 17 behavioural asserts + 4 source pins.
+
+## [1.8.191] - 2026-10-01
+
+### Fixed
+- **round917 / ADR-1167 — docName joins the swap's restore domain**: undoing a doc-switch import (.board file, share link, backup restore) restored shapes, pages, ro and the camera — but left the *adopted* document name behind, and a silent local restore would have diverged from peers anyway since docName is a shared LWW channel (`_nameTs`/`_namePeer`/`_nameWin`). The three swap sites now capture `bnm=_dn()` pre-adoption alongside `bvp`, and `_repC` records `anm=_dn()` post-adoption (the `avp` idiom). On undo `_apply` runs `_setDocName(op.bnm)` and re-broadcasts via `_bName()` so peers converge on the restored name; on own redo only (`op.clock.peer===_pi()`) it re-adopts `anm`. The `_slimOp` 'replace' whitelist keeps `bnm`/`anm` off the wire — undo-domain data still never transports. 5 behavioural asserts + 2 source pins; the ADR-1164 signature pin recalibrated to the new `bvp,bnm` call shape.
+
+## [1.8.190] - 2026-10-01
+
+### Fixed
+- **round916 / ADR-1166 — dup-chain delta lifecycle**: audit of the ADR-0080 `dupIds`/`dupDelta` smart-duplicate chain found two live gaps. (a) **Phantom vector under ro**: an arrow-key nudge in read-only mode live-writes, gets rejected at the `commit` ro gate and `_roRe`-reverted — but the `_dd()` feed ran *unconditionally*, so `dupDelta` grew while nothing moved; the next ⌘D after ro lifted landed displaced. Both feed sites (`nudgeSelection`, `endSelect` drag-move) now gate the feed on `!state.ro`. (b) **Undo asymmetry**: undoing an armed-set move reverted position but not the delta, so ⌘D after undo applied the post-move vector. Feeding move ops now carry `op.dd` — the pre-move delta snapshot — and `_apply` restores it on backward and re-feeds `dd+dx/dd+dy` on own redo only (`op.clock.peer===_pi()`, the ADR-1163 bro/bvp idiom). `dd` joins `orig`/`moved`/`origSel` in the `_slimOp` strip: undo-domain data never rides the wire. 8 behavioural asserts + 3 source pins (2 recalibrated for the new literals).
+
+## [1.8.189] - 2026-10-01
+
+### Fixed
+- **round915 / ADR-1165 — delta-snapshot intake contract pinned**: audit of the `'snap:'` seq channel (ADR-1055) came back clean on every gate — this round records the contract so a future change can't silently weaken it. Pinned: (a) `dels` entries need bounded ids + `validClock`, stamp the tomb, honour the born-newer escape (`!_tAlive`) and the locked-shape skip, and get `del`-parity page splicing via `_pgDel2` with the sender's rehome `firstId`; (b) merge `ops` stay 'add'-only, each `op.clock.peer` bound to the wire envelope `msg.peer` (ADR-0932), per-prop LWW off `op.wc` with local-winner divergence emitting a convergence `upd`; (c) `_applySnapshot` stamps carried existence clocks via `_wAdopt` (ADR-0927); (d) a snapshot whose `rep` loses to `_lastRep` is rejected wholesale; (e) the sender advertises only live tombs beyond the asker's horizon (`_bN`+`validClock`+`clockNewer`, ADR-1093). 13 behavioural asserts through real `_onRecv` (MAC-stamped) + 3 source pins.
+
+## [1.8.188] - 2026-10-01
+
+### Fixed
+- **round914 / ADR-1164 — replace undo/redo restores the document's viewport**: the three wholesale-swap paths adopt the payload's saved `viewport`, but the `replace` op recorded none of it — undoing an import returned the old board while the camera stayed parked on the imported doc's view (old shapes possibly off-screen). `bvp`/`avp` now ride the op alongside `bro`/`aro` (ADR-1163 idiom): captured at the `_bpg`/`_bcp` pre-swap seam, restored on backward, re-landed on own redo only (`op.clock.peer===_pi()`); `_slimOp`'s whitelist rebuild keeps both fields off the wire, so a peer's swap never moves your camera. Doc-scalar adopt-vs-restore map audited: docName converges on its own channel (ADR-0696), `rs` reseed stays (ADR-1056/1133), `d.rep`/`d.nts` are not adopted by import paths — viewport was the last unrecorded scalar. +4 behavioural asserts, 2 source pins.
+
+## [1.8.187] - 2026-10-01
+
+### Fixed
+- **round913 / ADR-1163 — replace undo/redo restores the document's ro flag**: `replace` ops recorded every swapped piece of doc state (shapes, wclock, pages, origSel) **except `state.ro`** — an ro doc importing an editable payload (ADR-1069 unlock-adopt) then undoing kept `ro=false` on the pre-import read-only document: the unlock leaked past the undo. `_repC` now records `bro`/`aro` on the op (captured before the ADR-1162 commit-while-writable flip); `_apply` restores `bro` on backward and re-adopts `aro` on own redo only (`op.clock.peer===_pi()` — the wire-slimmed 'replace' never carries either field, so a peer can't push their doc-mode onto you). The re-locked doc's redo is naturally refused by the ADR-1057 gate. +6 behavioural asserts, 2 source pins, 2 recalibrated `_repC` call-site pins.
+
+## [1.8.186] - 2026-10-01
+
+### Fixed
+- **round912 / ADR-1162 — wholesale-swap imports get the ro contract**: the three swap paths (`importBoard` .board file, `importFromHash` #b= link, `Persist.restoreBackup`) adopted `state.ro=d.ro===1` **before** `_repC` recorded the replace — so a `ro:1` payload made the commit unconditional collateral: swap applied, op dropped, **no undo, no wire broadcast**, the local view silently diverging from peers (live ops merging into the imported doc, `_sz` persisting it, snapshot heal leaking it back). Two changes: (1) entry gate `state.ro&&d.ro===1` rejects ro→ro swaps before any mutation (hash cleared, backup slot kept); (2) the adoption moved after `_repC` — `state.ro=false` keeps the commit writable, then the payload's flag lands. A writable doc importing a read-only payload now records a real replace. `_mergeImport` gets the same entry gate as its siblings. Recalibrated 2 pins that asserted the silent-swap behaviour; 28 asserts + 7 source pins.
+
+## [1.8.185] - 2026-10-01
+
+### Fixed
+- **round911 / ADR-1161 — the drop target is the whole window**: `dragover`/`drop` were canvas-only, so a file dropped on the toolbar, stylePanel, page-strip or any other chrome hit the browser default — **navigate away to the file**, closing the app (board persists, but peers/undo/gestures are lost). Listeners hoisted to `window` with three gates: `dragover`+`drop` suppress the nav everywhere; a *fileless* text drop into `input/textarea` stays native (field insertion still works); `_pA()` keeps the presentation view-only (nav blocked, import skipped). File drops now import from anywhere — `_o2w` projects the chrome-side drop point into world coordinates. 4 pins (window registration, chrome-target cascade reach, native field passthrough, pres gate); the 11 existing drop pins redispatched `canvas._L`→`fakeWin._L`.
+
+## [1.8.184] - 2026-10-01
+
+### Fixed
+- **round910 / ADR-1160 — the activation-key contract covers presentation mode**: ADR-1159's button guard sat *below* the `_pA()` branch, so inside a presentation the last reachable control (the `✕ Esc` exit button) was still hijacked — a focused-button Space press hit the pres nav mapping: `_pd` suppressed the button's native click **and** `Presentation.next()` advanced the slide, so Space could never fire `leave()`. (Enter was already consistent — not a pres nav key — and arrow keys aren't activation keys.) The guard is hoisted above `_pA()`: `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` now precedes every routed branch, one line moved, zero new logic. Uniform contract: a focused control owns Enter/Space in every mode. 5 pins (guard position + pres-focused-button Space/Enter stay on frame 0 + off-control non-vacuity); the ADR-1159 ordering pin recalibrated for the hoist.
+
+## [1.8.183] - 2026-10-01
+
+### Fixed
+- **round909 / ADR-1159 — a focused control owns its activation keys**: the key router's early-return covered only `input,textarea` and open dialogs — a focused `<button>` still bubbled Enter/Space to the canvas shortcuts, so native activation (click) **and** the canvas action fired together: Enter `_pd`'d the button's click while `editSelectedShapeKbd()`/`createShapeKbd()` stamped a shape or opened a second editor (and the repeat whitelist re-stamped on hold); Space fired the click **and** armed temp-hand, with the keyup restore silently flipping the tool back. One line after the dialog trap — `if(e.target.matches?.('button')&&(k===_EN||k===' '))return` — closes the gap (no `contenteditable`/`select`/DOM `<a>` exist, so `button` completes the native-activation surface). 6 pins (2 source + 4 behavioural incl. off-control non-vacuity); recalibrated the v1.6.71 pres-guard distance bound for the ~210B insert.
+
+## [1.8.182] - 2026-10-01
+
+### Fixed
+- **round908 / ADR-1158 — the presentation folds the remaining interactive chrome**: `enter()` covered the screen at `z-index:8999` and hid toolbar/topbar/statusbar/minimap, but `#stylePanel` (swatches/colors/ranges → `applyStyleToSelection` = mutation ops + broadcast), `.zoom-badge` (4 live viewport writes vs `_goto` slide-fit) and `#shapeMirror` (`_mirrorGo` → `_ss`+`_fitViewport`) stayed **tabbable** — visual coverage is not reachability. Pointer input was `_pA()`-gated (ADR-0640) and non-nav keys swallowed, but an element focused *at enter time* kept DOM focus and Space/Enter activation still fired mid-slide. `enter()` now folds ctx/stylePanel/zoom-badge/mirror in one block; `leave()` restores them — exactly one reachable control during pres (the exit button). 10 pins (2 source + 8 behavioural).
+
+## [1.8.181] - 2026-10-01
+
+### Fixed
+- **round907 / ADR-1157 — the find box folds before a modal / presentation opens**: the ctx-menu→modal direction was closed in ADR-1155, but the find box (`#sqinput`, `z-index:999`) had the inverse hole — `UI.openShare`/`UI.toggleHelp`/`Presentation.enter` never folded it, so an open search box **rendered above** the share/help dialog (`z-index:100`) and **popped back mid-screen** after `leave()` with a stale query. `_captureFocus`/`_focusTrigger` then recorded the floating input itself as the invoker. New `_foldSq` seam is called *before* each invoker capture: `toggleSq`'s close path restores the pre-search focus, so the capture records the true chain end. One transient overlay at a time now holds symmetric. 7 pins (4 source + 3 behavioural).
+
+## [1.8.180] - 2026-10-01
+
+### Fixed
+- **round906 / ADR-1156 — closed-`<details>` children are excluded from the focus trap**: `_focusables`' `disabled`/`hidden` filter never accounted for `<details>` — the `#share` dialog's closed `.share-details` peer block contributed its `<summary>` plus all nine RTC controls to the trap list even though only the summary is rendered. Two live symptoms: (1) Tab on the mid-list `summary` hit `_trapStep`'s `null` middle branch, and native Tab walked out of the modal onto `<body>` (the dialog is last in document order); (2) ⇧Tab on the first item `shareClose` wrapped to the list tail `rtcAnswer` — a `focus()` on an unrendered element no-ops, permanently stranding ⇧Tab. The filter now drops elements inside `details:not([open])` except the `summary` itself, so every wrap sentinel and every middle step lands on a rendered, focusable element. 8 pins (2 source + 6 behavioural).
+
+## [1.8.179] - 2026-10-01
+
+### Fixed
+- **round905 / ADR-1155 — an invoker inside a dying overlay is never recorded**: generalised the ADR-1154 rule into a shared dying-host predicate `_dyingH` (inside `#ctx` or an open `.help-overlay`) and closed the shared `_prevFocus` slot's two clobber directions at the chokepoint: `_captureFocus` skips recording a dying host's child (the already-armed invoker stands in for it), and `openCtxMenu` early-returns while a modal dialog is open — a menu can never float over a modal and record a dialog child. `toggleSq`'s `_sqPrev` substitution now consults `_dyingH` (covers dialog interiors too). The editors' `_edPrev` is documented unreachable (all editor-open paths are gated while either overlay is up). 10 pins + recalibrated ADR-1154 source pin.
+
+## [1.8.178] - 2026-10-01
+
+### Fixed
+- **round904 / ADR-1154 — invoker capture skips elements inside the closing ctx menu**: the ctx-search path broke the focus contract — the `ctxSearch` item is focused when its `fn()` runs, so `toggleSq` recorded `_sqPrev` as a `.ctx-item` that dies with the menu (`display:none`, still `isConnected` — the fallback gate can't see it). Esc then restored focus to a non-rendered element (`focus()` no-ops) and left `activeElement` on `<body>` — the same stranded-focus defect ADR-1150..1153 closed elsewhere. The capture now substitutes `UI._prevFocus` (the menu's own recorded invoker) when the captured element sits inside `#ctx`. Audit: all three invoker slots — `_prevFocus` can't capture a menu item (capture runs before items are focusable), `_edPrev` is unreachable via ctx (no menu item opens an editor), `_sqPrev` was the sole ctx→overlay transition. 5 pins (1 source + 4 behavioural).
+
+## [1.8.177] - 2026-10-01
+
+### Fixed
+- **round903 / ADR-1153 — editor overlays join the focus contract**: the text and label editors never captured/restored focus — every fold (blur commit, Esc, remote-del/lock/hide/page/ro teardown) removed a focused element and left `activeElement` on `<body>`, stranding keyboard/SR users off the document surface after every inline edit (the same defect class ADR-1150/1151 closed for ctx menu and find box). Both openers now capture the invoker into a shared `_edPrev` slot, and all seven removal sites go through `_foldOv`: if the element still held focus (`had`) or focus already fell to `<body>` (the blur path, where `activeElement` has already moved), it is handed back to the invoker — detached invokers fall back to `canvas`. A blur that moved focus to a real element (a button/menu item) is never stolen. 7 pins (2 source + 5 behavioural incl. the real element-then-window blur order).
+
+## [1.8.176] - 2026-10-01
+
+### Fixed
+- **round902 / ADR-1152 — find-box Esc fold single-owner**: ADR-1151 introduced a real regression — sqinput's own keydown listener folded the box at the target, then the SAME keydown bubbling to window hit `e.target===sqinput` → `toggleSq()`, which saw `display:none` and reopened the box (Esc closed then immediately reopened). The element-level Esc branch is removed (single owner: the window router), `toggleSq` close also clears `sq.value` (parity with the old manual fold — a reopened box no longer shows a query whose filter is inactive), and the ⌘Enter commit's manual fold nulls `_sqPrev` (slot is spent). 4 pins (1 source + 3 behavioural incl. real element-then-window dispatch order).
+
+## [1.8.175] - 2026-10-01
+
+### Fixed
+- **round901 / ADR-1151 — find box Esc fold + focus contract**: Esc inside the find box (`sqinput`) only blurred the input — the box stayed open and visible while focus fell to `<body>` (the input early-return swallowed Esc before the overlay router could see it). Esc now folds the box via `toggleSq`, which also joins the focus contract: the invoker is captured on open into a dedicated `_sqPrev` slot (the find box can outlive a menu/dialog cycle, which the shared `_prevFocus` cannot represent) and restored on close only while the box still holds focus — closing it unfocused steals nothing. 6 pins (2 source + 4 behavioural).
+
+## [1.8.174] - 2026-10-01
+
+### Fixed
+- **round900 / ADR-1150 — ctx menu joins the overlays' focus contract**: the context menu was the only overlay that didn't capture/restore focus — closing it left `activeElement` on `<body>` (the focused item is inside a `display:none` region), so keyboard/SR users lost their focus context after every menu interaction (dialogs already did `_captureFocus`/`_restoreFocus` via ADR-0215/0982). `openCtxMenu` now captures the invoker on a closed→open transition only (a re-open keeps the first invoker), and `closeCtxMenu` restores it — but only while the menu still holds focus (`m.contains(_aE())`), so an item that focuses elsewhere itself (ctxSearch → the search input) keeps its target. 7 pins (2 source + 5 behavioural).
+
+## [1.8.173] - 2026-10-01
+
+### Fixed
+- **round899 / ADR-1149 — ctx menu keyboard reachability**: keyboard-only users can now open the context menu — the ContextMenu key (≣) and ⇧F10 are bound in the global keydown chain (previously the only entry paths were right-click and touch long-press). The menu anchors on the selection's union-bbox centre; empty selection centres the canvas. Held-key repeats are suppressed by the ADR-1007 gate, presentation mode absorbs the key via the existing early return, and mid-gesture opens fold the gesture via openCtxMenu's own cancel. Help row now lists all three entry paths. 10 pins (5 source + 5 behavioural via the real keydown listener).
+
 ## [1.8.172] - 2026-10-01
 
 ### Fixed
