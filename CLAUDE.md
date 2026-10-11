@@ -440,15 +440,15 @@ Board/
 │   ├── ADR-0388-shape-id-type.md   # shape id string/長さ検査 (実装済)
 │   ├── ADR-0389-toast-dedupe.md   # 同一トースト再付け替え (実装済)
 │   ├── ADR-0390-exc-frameid-emit.md   # exc frameId 空間内包 emit (実装済)
-│   ├── ADR-0391-more-literal-shorthands.md   # _TR/_ud/_now (実装済)
-│   ├── ADR-0392-sa-al-ap-shorthands.md   # _sa/_AL/_AP (実装済)
-│   ├── ADR-0393-board-viewport-roundtrip.md   # .board viewport 往復 (実装済)
-│   ├── ADR-0394-more-dom-shorthands.md   # DOM shorthand 追加 (実装済)
+│   ├── ADR-0391-tr-ud-now-shorthands.md   # _TR/_ud/_now (実装済)
+│   ├── ADR-0392-sa-shorthand.md   # _sa/_AL/_AP (実装済)
+│   ├── ADR-0393-board-file-viewport.md   # .board viewport 往復 (実装済)
+│   ├── ADR-0394-aria-const-shorthands.md   # DOM shorthand 追加 (実装済)
 │   ├── ADR-0395-toast-key-consts.md   # トーストキー定数化 (実装済)
 │   ├── ADR-0396-locked-delete-toast.md   # ロック済削除トースト (実装済)
-│   ├── ADR-0397-st-pd-consts.md   # _St/_PD + 残トーストキー (実装済)
-│   ├── ADR-0398-file-import-32mb-guard.md   # 全取込 32MB ガード (実装済)
-│   ├── ADR-0399-ap-sto-kd-ch-ck-shorthands.md   # _ap/_stO/_KD/_CH/_CK/_vpS (実装済)
+│   ├── ADR-0397-st-pd-toast-consts.md   # _St/_PD + 残トーストキー (実装済)
+│   ├── ADR-0398-file-size-guard.md   # 全取込 32MB ガード (実装済)
+│   ├── ADR-0399-more-shorthands.md   # _ap/_stO/_KD/_CH/_CK/_vpS (実装済)
 │   ├── ADR-0400-snap-sender-chunks.md   # RTC snapshot 送信側チャンク化 (実装済)
 │   ├── ADR-0401-dual-send-bcast-helper.md   # _bcast/_setDocName/_dpr/_PM/_PU/_PC/_lc (実装済)
 │   ├── ADR-0402-docname-sync.md   # ドキュメント名ピア同期 (実装済)
@@ -1095,9 +1095,9 @@ Board/
 │   └── ADR-1044-pending-nudge-remote-lifecycle.md  # `_nug` coalescer の flush 網羅監査 — 全ローカル変異は `_recordCommitted` で flush、remote は `_gTouch` fold + `n.reborn` で整合、clean 完走
 │   └── ADR-1045-snapshot-img-answer-store.md  # snapshot の `sent` 使い捨てマップで img 参照キーが `_imgSent` 不達 → imgq 応答不能の実害を解消 (snapshot puts も応答ストアへ登録)
 │   └── ADR-1046-img-pending-waitlist-bound.md  # `_park` 待機リスト 256上限+FIFO 監査 — 追い出しでも straggler スキャンで自己治癒、再 park は挿入位置維持、clean 完走
-│   └── ADR-1047-minimap-img-ik-verify.md  # minimap 描画の `_ik` バイト検証 — getImg parity で指紋衝突の誤ビットマップを解消
+│   └── ADR-1047-minimap-img-verify.md  # minimap 描画の `_ik` バイト検証 — getImg parity で指紋衝突の誤ビットマップを解消
 │   └── ADR-1048-5050-audit.md  # 長所50/短所50 + ソクラテス式仮定監査 + P0–P4 改善候補リスト
-│   └── ADR-1049-img-rescan-repark.md  # presence sweep 内の 5分 `_imgRescan` — 60s 期限切れ parked ref の永久プレースホルダー化を解消
+│   └── ADR-1049-imgq-slow-rescan.md  # presence sweep 内の 5分 `_imgRescan` — 60s 期限切れ parked ref の永久プレースホルダー化を解消
 │   └── ADR-1053-peer-display-names.md  # presence (`ping`/`cursor`/`selection`) に `n` フィールドでピア表示名 — カーソルマーカー+アバター tooltip に表示
 │   └── ADR-1054-merge-mode-import.md  # 非空ボードでの .board/共有リンク取込にマージor置換の選択 — `_placeCopies` 経由で 1 回の undoable addMany (round823 でスタック再構築ロスから復元)
 │   └── ADR-1074-zero-delta-dup-chain.md  # ゼロデルタ dup シードをチェーンなし扱い — ⌘D の不可視スタック解消
@@ -1177,6 +1177,59 @@ Board/
 │   ├── ADR-1148-help-grid-keymap-parity.md  # ? ヘルプグリッド × 実キーマップ parity — 未掲載の live バインド10件を行追加 (⌘⇧G/⌘⇧I/⌘Y/⌘Enter/⇧wheel/⇧click/⌥drag二重意味/⌥hover計測/⌥click経路/long-press) + 新 i18n キー7件 (ja+en)、片方向に過剰記載しない契約を12ピンで固定
 │   ├── ADR-1149-ctx-menu-keyboard-reach.md  # ctx メニューへのキーボード経路 — ContextMenu(≣)/⇧F10 で開放 (右クリ/long-press のみだった残穴)、選択 union bbox 中心 or キャンバス中心にアンカー、ヘルプ行3経路集約、10ピンで固定
 │   ├── ADR-1150-ctx-menu-focus-contract.md  # ctx メニューのフォーカス契約 — closed→open で呼出元捕捉、contains ゲートでメニュー保持時のみ復元 (fn が別要素へ移す ctxSearch は据置)、7ピンで固定
+│   ├── ADR-1151-find-box-focus-contract.md  # 検索ボックスのフォーカス契約 — Esc は blur ではなく畳む (ゴースト overlay 解消)、専用 `_sqPrev` スロットで invoker 復元、6ピンで固定
+│   ├── ADR-1152-find-box-esc-single-owner.md  # 検索ボックス Esc fold の単一 owner 化 — element 側 fold と window 側 toggleSq の競合 (閉じて即再オープンする回帰) を解消、close で `sq.value` クリア + ⌘Enter 経路 `_sqPrev=null`、4ピンで固定
+│   ├── ADR-1153-editor-fold-focus-contract.md  # text/label エディタのフォーカス契約加入 — 全7 fold 経路が `_foldOv` 経由で invoker へフォーカス返却 (<body> 落下を解消)、実要素への blur は奪わない、7ピンで固定
+│   ├── ADR-1154-invoker-capture-skips-closing-menu.md  # invoker 捕捉が ctx メニュー内要素を記録しない — ctxSearch で `_sqPrev` が死にゆく `.ctx-item` を捕捉して <body> 落下していた欠陥を `UI._prevFocus` 代替で閉塞 (全3スロット監査で唯一の ctx→overlay 遷移)、5ピンで固定
+│   ├── ADR-1155-dying-overlay-invoker-never-recorded.md  # 死にゆく overlay 内部の要素は invoker に記録しない — `_dyingH` 判定で `_captureFocus`/`_sqPrev` を一般化し、`openCtxMenu` を modal 中拒否。共有 `_prevFocus` の両方向 clobber を chokepoint 閉塞、10ピンで固定
+│   ├── ADR-1156-closed-details-focus-trap.md  # 閉じた `<details>` の子はフォーカストラップに列挙しない — `_focusables` が `#share` の閉 `.share-details` 内 RTC 全10要素をタブ対象化し Tab 脱出/⇧Tab 呪縛していた残穴を `details:not([open])` 祖先除外で閉塞 (summary は残す)、8ピンで固定
+│   ├── ADR-1157-find-box-folds-on-modal-open.md  # find box は modal/プレゼン開始前に畳む — sqinput (z999) が help/share (z100) の上に描画され leave() で中画面に復活していた残穴を `_foldSq` 単一シームで閉塞 (invoker capture 前に畳み真の呼出元を記録)、7ピンで固定
+│   ├── ADR-1158-presentation-folds-remaining-chrome.md  # プレゼンは残存インタラクティブ chrome を畳む — stylePanel/zoom-badge/shapeMirror/ctx が canvas 被覆下も tabbable で Space/Enter 活性化がスライド中に変異 op を撃っていた残穴を enter 一括 `_dsp` で閉塞 (leave で復元)、10ピンで固定
+│   ├── ADR-1159-button-owns-activation.md  # フォーカス中コントロールは活性化キーを所有する — focused `<button>` の Enter/Space がネイティブ click とキャンバス shortcut を二重発火していた残穴を dialog trap 直後の `button` ガードで閉塞、6ピンで固定
+│   ├── ADR-1160-pres-activation-keys.md  # 活性化キー契約はプレゼンにも適用 — pres 内で Space が nav key のため focused exit button の Space が `_pd`+`next()` でハイジャックされていた残穴を、ガードを `_pA()` 直上へホイストして閉塞、5ピンで固定
+│   ├── ADR-1161-window-drop-target.md  # ドロップ標的は window 全体 — toolbar/stylePanel 等 chrome へのファイルドロップがブラウザ既定でアプリからナビゲーション離脱していた残穴を canvas→window ホイストで閉塞 (input へのテキストドロップは native 維持・pres は view-only)、4ピンで固定
+│   ├── ADR-1162-ro-swap-gate.md  # 総入替 import の ro 契約 — `state.ro=d.ro===1` の repC 前採用が全 ro:1 payload の swap を「op なし」で着地させていた残穴を、入口ゲート (ro→ro 拒否) + 採用順序反転 (writable commit → ro 採用) で閉塞、28+7ピンで固定
+│   ├── ADR-1163-replace-undo-restores-ro.md  # `replace` op が doc 状態のうち `state.ro` だけを記録していなかった残穴 (ro→editable import の undo で unlock が漏洩) を、`bro`/`aro` の op 記録 + backward 復元/own-redo 再再採用で閉塞、34+9ピンで固定
+│   ├── ADR-1164-replace-undo-restores-viewport.md  # `replace` op が doc スカラーのうち `state.viewport` を記録していなかった残穴 (import undo で旧盤に戻ってもカメラが採用 doc のビューに留まる) を、`bvp`/`avp` 記録 + backward 復元/own-redo 再着地で閉塞、38+11ピンで固定
+│   ├── ADR-1165-delta-snapshot-intake-contract.md  # 'snap:' delta チャネルの dels/ops/rep 受入契約 — dels bounded-id+validClock+_tAlive/locked skip+_pgDel2 parity、ops 'add' 限定+envelope peer 結合+per-prop LWW、_wAdopt existence スタンプ、stale-rep wholesale 棄却、sender は生きた tomb のみ広告 (監査 clean、13+3ピン)
+│   ├── ADR-1166-dup-chain-delta-lifecycle.md  # smart-duplicate チェーンのデルタ・ライフサイクル — ro-revert された nudge が座標を戻しつつ dupDelta だけ増やす幻影ベクトル (両 feed サイトを !state.ro ゲート化) + armed-set move の undo が delta を戻さない非対称 (op.dd snapshot で backward 復元/own-redo 再 feed、dd は _slimOp で wire から剥がす undo-domain) を閉塞、8+3ピンで固定
+│   ├── ADR-1167-docname-swap-restore.md  # docName を swap の復元領域へ — インポート undo が採用名を残す局所不整合 + 静黙復元なら LWW チャネル発散のため、3サイトが bvp 同様に採用前 bnm 捕捉・_repC が anm 記録、backward は _setDocName(bnm)+_bName() で復元名を再送出、own-redo のみ anm 再適用 (wire は _slimOp で自動 strip)、5+2ピン
+│   ├── ADR-1168-swap-page-set-restore.md  # swap undo/redo で bts-less ページが消滅する実害 — keep フィルタが carried-birth×tomb のみ仲裁で swap 自身の tomb T1 に全敗 → pages=null (undo-wire で全ピア同損失)。形状側 _tmE (tomb が op 時計より新しいときのみ dead) と同規則を _pgAdopt の und フラグで導入: 'replace' 両方向 + backup restore は op-clock parity、snapshot union-heal は strict 維持、17+4ピン
+│   ├── ADR-1169-gesture-wholesale-swap-contract.md  # ジェスチャ×全置換の2条件契約ピン — 着地ページ変化のみ _pgAdopt が cancel (同頁/pages-null は生存: ptr.reborn が swapped-in id を復元から除外する ADR-0984 設計)、commit 経路は emit 時の live-id フィルタで dead-id を除去、4+2ピン
+│   ├── ADR-1170-undo-domain-purity.md  # undo 領域純度ピン — history は commit + _recordCommitted の2漏斗のみが push する local-only op ログ、applyRemote は非記録 (⌘Z/⌘Y は常に自著 op、remote 到着は histIdx 不変で redo 枝を切らない)、6+3ピン
+│   ├── ADR-1171-send-failure-bookkeeping-parity.md  # 送信失敗対称性 — ADR-1135 の best-effort 送信を redo/commit に拡張 (broadcast throw が _pgFollow/_txFlush/_rdb・収束 flush を取り残す同型残穴を閉塞、_recordCommitted は送信最終文で既に安全)、4+3ピン
+│   ├── ADR-1172-ad-hoc-send-failure-parity.md  # ad-hoc 送信失敗対称性 — 残存2無防備送出 (pageAdd 伴走 addMany: _pgDup の switchPage 孤立 + drawio 複数頁 paste のループ中断) を best-effort 化、全 Net.broadcast サイトが try 保護または終端化 (8サイトセンサスピン)、4+3ピン
+│   ├── ADR-1173-intake-page-homing.md  # 単頁外部取込の pg 帰属 — drawio 単頁尾/svg/exc が bare addMany で pg-less メンバーが pages[0] 帰属し curPg≠先頭で不可視 (成功 toast 付き、ADR-1072 同型) + 外来 pg 残留の幻影頁ベクタを、共有 `_pgHome` (閲覧頁スタンプ/頁なしで pg 抹消) で4ローカル取込経路 (3 importer + _placeCopies 畳込) へ閉塞、3+3ピン
+│   ├── ADR-1174-snapshot-union-curpg.md  # snapshot union-heal の curPg 再導出 — 64頁上限でローカル頁 (curPg 含む) が落ちると curPg が死 id となり全メンバー `_pgOk` 失敗→盤面全体不可視の静黙発散 (`_pgHealS` は np<64+メンバー参照でしか修復不能) — `_pgAdopt`/`_pgDel2` 同型に `switchPage(np[0].id)` 着地へ、4+1ピン
+│   ├── ADR-1175-unhealable-member-rehome.md  # 修復不能メンバーの pg 抹消 — stub 生成不能 (tomb-dead/64頁満杯) なら `pg=<死id>` のまま全頁で不可視の実害を、共有 `_pgHeal` (stub 可能→'?'頁、不可→pg 削除で pages[0] 再帰属、_pgDel2 同型) へ2生成サイト (_pgHealS + applyRemote op-intake) 集約で閉塞、3+3ピン
+│   ├── ADR-1176-member-pg-intake-funnel.md  # member-pg 取込漏斗監査 (clean 完走) — 全 `s.pg` 書込みサイト census: 6 代入サイト全て書込時点の実在頁へ解決 or 抹消 (null→_pgOk fallback)、残余は `_pgHeal`/`_pgHealS` へ。64頁満杯で stub 不能の op 取込フォークを4挙動+2ソースピンで固定
+│   ├── ADR-1178-room-switch-presence-state.md  # ルーム切替で presence 送出状態をリセット — `_lastSelSent` が旧ルームの既視キーを保持し、自分が遅参になった経路では dedup が再送を恒久的に棄却していた実害を、送出側3フィールドの init リセット (次フレームで現選択を一度アナウンス) で閉塞。`_touchPeer` 遅参リセットの self 版、4挙動+1ソースピン
+│   ├── ADR-1179-cursor-send-completeness.md  # カーソル送出の完全性 — trailing-edge 落ち (窓内で静止した位置が永未到達) + viewport ドリフト (pan/zoom で静止カーソルの世界座標が silently 不整合) + 遅参カーソル未再送の3残穴を、`_curSp` 記録 + `_curT` trailing resend + `_lastCurKey` dedup + frame() の `sendCursorMoved` で閉塞、11挙動+4ソースピン
+│   ├── ADR-1180-hide-clears-before-gate.md  # hide クリアを peers ゲート手前へ — ピア不在時の hide が `_curSp`/`_curT`/`_lastCurKey` を armed のまま残し、後続 joiner へ stale カーソル1発を送出していた残穴を、クリア無条件・emit のみゲートの契約で閉塞、3挙動+1ソースピン
+│   ├── ADR-1181-presence-recv-contract.md  # presence 受信側契約の監査完走 — peer row の生成・採用・描画全経路 clean (envelope bound/BC 非 mint/pg≤64/死 id フィルタ/viaRtc 復活)、11挙動+2ソースピンで固定 (docs+pin ラウンド)
+│   ├── ADR-1182-peer-lifecycle-contract.md  # peer ライフサイクル契約の監査完走 — bye (_pk fold)/TTL reap (rtc: 免除)/ルーム切替 purge+_pCt 再ベースライン/armed timer のルーム横断 announce — clean、9挙動+2ソースピンで固定 (docs+pin ラウンド)
+│   ├── ADR-1183-exportpdf-blob-url.md  # exportPDF の popup-blocked blob URL 漏洩を閉塞 — `fin` が `window.open` 確認前に `_oURL` を生成し blocked 早期 return で revoke なし (ADR-0813 同型)、`_wO` ガード後への純粋並べ替えで閉塞 (raw 増加ゼロ)、6挙動ピン + `open` harness trampoline
+│   ├── ADR-1184-pinch-preview-purge.md  # 全置換パージが武装済みズームプレビューも破棄 — `_pcC` (`_rs`/`clear`/`replace`/pageDel の共有 purge) が `_pinchSnap`/`_pinchVp` を残し、`ptr.down=false` プレビュー中の同頁全置換で交換前ビットマップを blit し続けた残穴を `_pcC` 内 pair 破棄で一括閉塞、4挙動ピン
+│   ├── ADR-1185-cursor-point-chrome-clear.md  # オーバーレイ chrome 上で `_curSp` 陳腐化 → 幽霊カーソル送出を閉塞 — minimap 等は canvas ボックス内兄弟要素で pointerleave が発火せず、`sendCursorMoved` が陳腐画面点を新 viewport で再導出 (minimap スクラブで毎フレーム幽霊ジャンプ)。document `_PM` で非 canvas ターゲット時 `_curSp=null` (capture 中ドラッグは存続)、4挙動ピン
+│   ├── ADR-1186-save-boundary-dirty-flag.md  # `save()` の `_md(!1)` が mid-save 変異の dirty を clobber → `beforeunload`/`flushIfHidden` カバーが ~500ms 偽値を読む窓を、書込み開始時 clear + 失敗時復元で閉塞 — dirty が常時「未書込みあり」の真値。3挙動ピン (fake IDB で mid-save 生存・失敗復元・正常 clear)
+│   ├── ADR-1187-imgs-store-load-isolation.md  # `Persist.load` の imgs-store 読取失敗が doc 全体のロードを沈めていた残穴 — `getAll`/`getAllKeys` の reject で `load()` 全体が落ち図形ゼロ起動 → 次回 `save()` が復旧可能な doc を空盤面で上書き。img attach を nested try で隔離、`_attachShape` が ref を `_imgPending` へ駐留し imgq heal へ送る。3挙動ピン (図形生存・ref 駐留・無損失)
+│   ├── ADR-1188-backup-restore-imgs-isolation.md  # ADR-1187 同型の残存面 — `restoreBackup` の imgs-store 読取失敗でバックアップが永久にリストア不能 (slot は残り retry も同一点で落ちる)。同一隔離パターンで閉塞、ref は `_imgPending` 駐留→imgq heal。3挙動ピン (restore 成功・図形生存・ref 駐留)
+│   ├── ADR-1189-img-heal-lifecycle.md  # 画像 heal ライフサイクル (park→ask→answer→resolve→rescan) 監査完走 — 20+ ADR に分散実装された契約を網羅確認、`_imgDbGet` の残存エッジ (async staging・missing key・throw 嚥下・非 id ゲート・cap 拒否) を9ピンで補完 (docs+pin ラウンド)
+│   ├── ADR-1190-snapshot-ask-queue.md  # `_sendSnapshot` throttle 窓内の 2 件目以降の ask drop を閉塞 — deferral を per-ask queue へ (各 ask は自 horizon の応答+falsy collapse+8 cap overflow→full、init でクリア)。joiner の horizon 不整合による ~15s 不完全盤面を解消、9 ピン
+│   ├── ADR-1191-null-proto-wire-maps.md  # `_reqWc`/`_syncReqWc`/`cov` の残存 plain `{}` を `_wM()` へ — `__proto__` wire id が [[Prototype]] を書き換えて `req[s.id]` 等を標的抑制する残穴を null-proto で閉塞 (ADR-0788 契約完走)、10 ピン
+│   ├── ADR-1192-null-proto-op-baseline-maps.md  # `_lwwDrop`/`_stampWrites` の `before` baseline `bmap`/`bb` 4サイトを `_wM()` へ — `id:'__proto__'` が [[Prototype]] を書き換え全メンバー baseline を毒 E に解決させる残穴を閉塞 (null-proto 契約完走)、7 ピン
+│   ├── ADR-1193-wire-auth-verify-lifecycle.md  # `_sec()` mint を `uid()×4`=128→`uid()×2`=64 へ — 全 `≤64` ゲート (board.rs/d.rs/token k) を超過して BC/RTC リンクが沈黙 dead だった連鎖を閉塞、verify-order+鍵ライフサイクル契約ピン、11 ピン
+│   ├── ADR-1194-wire-protocol-reference.md  # wire プロトコル正規リファレンス — 認証エンベロープ + 全13 kind の transport 行列・フィールド境界・intake 効果を ~40 ADR から集約 (ADR-1048 P4)、drift ゲート7ピン
+│   ├── ADR-1195-net-init-reset-contract.md  # Net.init の cleared/retained 契約 — room-bound (dedup/frag/queue/presence/peer) vs doc-bound (_imgIn/_imgPending/rtc: 行) の state 分離規約、挙動ピン7件
+│   ├── ADR-1196-adr-index-filename-parity.md  # ADR index のファイル名 parity — 9件の rename 残存 dead link を修正 + docs/ ⇄ index 集合一致の drift ゲートピン
+│   ├── ADR-1197-gridver-epoch.md  # `_gridVer` 図形バージョンエポック契約 — `_iG()` 単一ライター・`_apply` 漏斗 (prop-only/undo 含む全 op)・消費者エポック共有・img blob は bitmap 帯外チャネル、3ソース+6挙動ピン
+│   ├── ADR-1198-oa-patch-gate.md  # `_oa` パッチゲート契約 — 生図形書込みの単一漏斗 (assign+共存解消+`_park`+`_gTouch`)・明示 `_gTouch` ペア (move/group/ungroup/zorder/snapshot-merge)・構造 prop (pg/ページ行/wclock) は patch ドメイン外・backward は cancel 先行で exempt、5ソース+6挙動ピン
+│   ├── ADR-1199-orphan-group-census.md  # 孤児グループ国勢調査 `_grpSweep` — メンバーシップ op 9種の尾で live メンバー<2 の gid を全ピア決定論的に剥がす (halō/SR の幻影1人グループ消滅)、両漏斗 (_apply tail + `_recordCommitted` replace)・locked 孤児も scrub・`w['groupId']=C` 仲裁、6挙動+3ソースピン
+│   ├── ADR-1200-orphan-group-census-funnel-parity.md  # `_recordCommitted` のセンサスを `_apply` 尾と同一の 9-op 正規表現へ — doUngroup の locked 孤児 / `_nugLock` で 1 メンバー化した group が local で ghost gid を残す発散窓を閉塞、3挙動+1ソースピン
+│   ├── ADR-1201-nuglock-orig-gone-purge.md  # mid-arm ro flip 境界2欠陥: `_nugLock` の `gone` パーティションを `op.orig` へ拡張 (remote-reborn への stale 復元閉塞) + `_keepSel` を履歴 tip から op オブジェクト書き込みへ (棄却 commit の origSel 汚染/クラッシュ閉塞)、5挙動+1ソースピン
+│   ├── ADR-1202-reborn-mutation-gates.md  # remote-reborn メンバーへの mutation 全面閉塞: `_bT` でジェスチャ orig map から mark-and-remove (doMove/gresize/grot の毎フレーム stale 復元+commit LWW 勝利を閉塞) + スカラ orig ゲート `!_rb` + `_nrb`/`_unrb` で `_nug` producer 全域の member 導出を reborn 除外、9挙動+3ソースピン
+│   ├── ADR-1203-reborn-scalar-commit-gates.md  # reborn commit ゲート + マーク寿命: スカラ orig 6 commit サイトに `!_rb` (stale-before phantom op が undo wire で remote 幾何を巻き戻す発散閉塞) + PU 末尾に `ptr.reborn=null` (正常終了で残る stale マークが次ジェスチャを永久凍結する残穴閉塞)、8挙動+2ソースピン
+│   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
 │   └── ADR-1057-read-only-share.md  # 閲覧のみ共有リンク — `ro:1` フラグが変異漏斗 + 入力経路をゲート (🔒 バッジで解除、UX ゲート=認可ではない) (ADR-1048 P3-a)
