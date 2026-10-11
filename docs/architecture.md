@@ -461,8 +461,11 @@ DOM 要素は `data-t` 属性 + `UI.applyI18n()` で翻訳 (起動時に 1 回�
 - **応答選出**: snapshot/sync-req の応答者は `_loResp` (最小 id ピア) で
   N→1 応答を抑止 (ADR-0455)。asker は選出から除外 — 最小 id の joiner が
   応答者 0 人になる飢餓を防止 (ADR-0465)。
-- **throttle 再送**: `_sendSnapshot` が throttle で棄却した要求は 1.1s で
-  遅延再送 (`_snapT`) — joiner が応答を得られない窓を解消 (ADR-0452)。
+- **throttle 再送**: `_sendSnapshot` が throttle で棄却した要求は遅延再送
+  (`_snapT`) — joiner が応答を得られない窓を解消 (ADR-0452)。棄却分は
+  per-ask queue (`_snapRqs`) へ積み、flush が各 ask へ自 horizon の応答を
+  送る (falsy ask は queue を collapse、8 cap 越えは full 一回へ) — 窓内
+  2 件目の ask drop による horizon 不整合を解消 (ADR-1190)。
 - **有界再送**: joiner は `_snapRx`/`_snapRetry` で応答未達を検出し、
   presence tick で sync-req を 3 回まで再送 (ADR-0475) — 応答喪失時の
   空盤面待機を解消。`Net.init` で両フラグをリセット。
