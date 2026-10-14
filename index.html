@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.228';   // ADR-1204
+const V='1.8.229';   // ADR-1205
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500;
@@ -8944,8 +8944,9 @@ const Persist={
       r.onupgradeneeded=()=>{const d=r.result;
         if(!d.objectStoreNames.contains(DB_STORE))d.createObjectStore(DB_STORE);
         if(!d.objectStoreNames.contains(DB_IMG_STORE))d.createObjectStore(DB_IMG_STORE);};
-      r.onblocked=()=>{_oT('saveBlocked');res()};   // ADR-0884
-      r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null};res()};   // ADR-0884
+      let blocked=0;
+      r.onblocked=()=>{blocked=1;_oT('saveBlocked');res()};   // ADR-0884
+      r.onsuccess=()=>{this.db=r.result;this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null};if(blocked&&!_nS())this.load().catch(()=>{});res()};   // ADR-0884/1205
       r.onerror=()=>rej(r.error);
     });
   },

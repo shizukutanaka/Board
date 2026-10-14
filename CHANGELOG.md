@@ -1,3 +1,8 @@
+## [1.8.229] - 2026-10-01
+
+### Fix
+- **round955 / ADR-1205 — deferred `open()` attach が保存済み doc を load せず上書きする経路の閉塞**: `Persist.open()` は `onblocked` で in-memory resolve するが、blocked リクエストは IDB 内部で pending のまま残り、blocker 解放時に遅延 `onsuccess` が `this.db` を接続 — しかし `load()` は boot 時に `!this.db` で no-op 済みのため二度と走らず、ブロック中の空盤面が次回 autosave で**読まれなかった保存済みドキュメントを上書き**するデータ損失窓 (PWA 版更新直後の2タブ併存で実発生)。`blocked` マークを追加し、遅延 `onsuccess` がローカル盤面が空 (`!_nS()`) の間だけ `this.load()` を fire-and-forget — ユーザーが描き始めた盤面 (non-empty) は local strokes を優先し load を行わない (in-memory 継続の既設 tradeoff を維持、双方向 clobber を双方回避)。unblocked 経路は従来どおり boot の `await Persist.load()` が load を担い二重 load なし。
+
 ## [1.8.228] - 2026-10-01
 
 ### Fix

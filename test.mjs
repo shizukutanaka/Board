@@ -1269,7 +1269,8 @@ const checks = [
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
   // v1.7.910: Persist.open blocked/yield lifecycle (ADR-0884)
-  ['Persist.open resolves on onblocked (stale-tab hold → in-memory, no boot hang)', html.includes("r.onblocked=()=>{_oT('saveBlocked');res()}")],
+  ['Persist.open resolves on onblocked (stale-tab hold → in-memory, no boot hang)', html.includes("r.onblocked=()=>{blocked=1;_oT('saveBlocked');res()}")],
+  ['Persist.open: deferred connect loads the doc on an empty board (ADR-1205)', html.includes("if(blocked&&!_nS())this.load().catch(()=>{})")],
   ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
   ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
@@ -9584,6 +9585,34 @@ try {
     assert.strictEqual(Persist.db, null, 'versionchange → db cleared so saves no-op safely');
     fakeWin.indexedDB.open = origOpen;
     console.log('  ✓ Persist.open: blocked→in-memory resolve + versionchange yield (ADR-0884)');
+    // ADR-1205: a deferred connect after onblocked loads the stored doc when the
+    // local board is still empty — otherwise the next save() clobbers it unseen.
+    const reqD = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null, onblocked:null };
+    fakeWin.indexedDB.open = () => reqD;
+    const pD = Persist.open();
+    reqD.onblocked();
+    await pD;
+    let loads = 0;
+    const origLoad = Persist.load, svShapes = state.shapes;
+    Persist.load = () => { loads++; return Promise.resolve(); };
+    state.shapes = [];
+    reqD.result = { close(){} };
+    reqD.onsuccess();
+    assert.strictEqual(Persist.db === reqD.result, true, 'ADR-1205: deferred connect binds db');
+    assert.strictEqual(loads, 1, 'ADR-1205: empty local board → deferred attach loads the stored doc');
+    const reqE = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null, onblocked:null };
+    fakeWin.indexedDB.open = () => reqE;
+    const pE = Persist.open();
+    reqE.onblocked();
+    await pE;
+    state.shapes = [{ id: 'u1' }];
+    reqE.result = { close(){} };
+    reqE.onsuccess();
+    assert.strictEqual(loads, 1, 'ADR-1205: non-empty local board → deferred attach keeps local strokes');
+    Persist.load = origLoad;
+    state.shapes = svShapes;
+    Persist.db = null;
+    fakeWin.indexedDB.open = origOpen;
   }
 
   // v1.6.78: coalescedSamples + pen multi-sample capture (high-rate stylus smoothness).
@@ -10734,7 +10763,7 @@ try {
     assert.ok(html.includes('if(!this.db)return this._dbWarn()'),'save() covers db-loss paths');
     assert.ok(html.includes('Persist._dbWarn()'),'boot surfaces open failure');
     assert.ok(html.includes("noStore:'保存不可")&&html.includes("noStore:'No storage"),'noStore key both locales');
-    assert.ok(html.includes("r.onblocked=()=>{_oT('saveBlocked')"),'onblocked path unchanged');
+    assert.ok(html.includes("r.onblocked=()=>{blocked=1;_oT('saveBlocked')"),'onblocked path marks + toasts');
     console.log('  \u2713 no-store warn-once pins (ADR-1005, 5 asserts)');
   }
   pass += 5; // ADR-1005 no-store warning pins
