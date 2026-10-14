@@ -1,3 +1,8 @@
+## [1.8.228] - 2026-10-01
+
+### Fix
+- **round954 / ADR-1204 — img 別キー採用時の stale dataUrl 除去 (#603 review 指摘の実害)**: `_oa` は `'img' in p` で新参照を park するため heal 経路は既に閉塞済みだったが、img が仲裁に勝った際に旧コンテンツの bytes が残存 — blob 未到達で「真の内容 B」ではなく「旧画像 A」が永続表示される幻影。`_oa` (全 live-patch 漏斗) で `p.img!==旧img` なら stale dataUrl を即座に除去、`_mergeSnapshotOp` の `imgNew` 枝も同規則化 (`'@'` 正規化後比較)。同キー再書きは対応 bytes を保持、`dataUrl` 書込みは従来どおり img を落とす (bytes 優先)。除去後は `_park` → imgq heal で blob 到着時に dataUrl 再具現化 — dataUrl は content-hash のローカル具現化のため除去で情報損失なし。
+
 ## [1.8.227] - 2026-10-01
 
 ### Fix
