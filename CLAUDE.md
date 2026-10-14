@@ -1229,6 +1229,8 @@ Board/
 │   ├── ADR-1201-nuglock-orig-gone-purge.md  # mid-arm ro flip 境界2欠陥: `_nugLock` の `gone` パーティションを `op.orig` へ拡張 (remote-reborn への stale 復元閉塞) + `_keepSel` を履歴 tip から op オブジェクト書き込みへ (棄却 commit の origSel 汚染/クラッシュ閉塞)、5挙動+1ソースピン
 │   ├── ADR-1202-reborn-mutation-gates.md  # remote-reborn メンバーへの mutation 全面閉塞: `_bT` でジェスチャ orig map から mark-and-remove (doMove/gresize/grot の毎フレーム stale 復元+commit LWW 勝利を閉塞) + スカラ orig ゲート `!_rb` + `_nrb`/`_unrb` で `_nug` producer 全域の member 導出を reborn 除外、9挙動+3ソースピン
 │   ├── ADR-1203-reborn-scalar-commit-gates.md  # reborn commit ゲート + マーク寿命: スカラ orig 6 commit サイトに `!_rb` (stale-before phantom op が undo wire で remote 幾何を巻き戻す発散閉塞) + PU 末尾に `ptr.reborn=null` (正常終了で残る stale マークが次ジェスチャを永久凍結する残穴閉塞)、8挙動+2ソースピン
+│   ├── ADR-1204-img-patch-stale-bytes.md  # img 別キー採用時の stale dataUrl 除去: `_oa`+`_mergeSnapshotOp` 両漏斗で旧 bytes を drop (blob 未到達の旧画像永続表示を閉塞)、同キー再書きは保持 (#603 review 指摘)
+│   ├── ADR-1205-deferred-open-load.md  # blocked `open()` の遅延 `onsuccess` が空盤面を保存済み doc の上に上書きする経路を閉塞 — `blocked` マーク + `!_nS()` ゲート付き `this.load()` fire-and-forget (描画済み盤面は local strokes 優先)
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)

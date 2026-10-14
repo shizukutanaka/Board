@@ -1269,7 +1269,8 @@ const checks = [
   // v1.6.79: Persist.flushIfHidden — visibilitychange→hidden as mobile-reliable durability signal
   ['Persist.flushIfHidden gates on vis===hidden && _dt()', html.includes("flushIfHidden(vis){") && html.includes("if(vis==='hidden'&&_dt()){")],
   // v1.7.910: Persist.open blocked/yield lifecycle (ADR-0884)
-  ['Persist.open resolves on onblocked (stale-tab hold → in-memory, no boot hang)', html.includes("r.onblocked=()=>{_oT('saveBlocked');res()}")],
+  ['Persist.open resolves on onblocked (stale-tab hold → in-memory, no boot hang)', html.includes("r.onblocked=()=>{blocked=1;_oT('saveBlocked');res()}")],
+  ['Persist.open: deferred connect loads the doc on an empty board (ADR-1205)', html.includes("if(blocked&&!_nS())this.load().catch(()=>{})")],
   ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
   ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
@@ -9584,6 +9585,34 @@ try {
     assert.strictEqual(Persist.db, null, 'versionchange → db cleared so saves no-op safely');
     fakeWin.indexedDB.open = origOpen;
     console.log('  ✓ Persist.open: blocked→in-memory resolve + versionchange yield (ADR-0884)');
+    // ADR-1205: a deferred connect after onblocked loads the stored doc when the
+    // local board is still empty — otherwise the next save() clobbers it unseen.
+    const reqD = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null, onblocked:null };
+    fakeWin.indexedDB.open = () => reqD;
+    const pD = Persist.open();
+    reqD.onblocked();
+    await pD;
+    let loads = 0;
+    const origLoad = Persist.load, svShapes = state.shapes;
+    Persist.load = () => { loads++; return Promise.resolve(); };
+    state.shapes = [];
+    reqD.result = { close(){} };
+    reqD.onsuccess();
+    assert.strictEqual(Persist.db === reqD.result, true, 'ADR-1205: deferred connect binds db');
+    assert.strictEqual(loads, 1, 'ADR-1205: empty local board → deferred attach loads the stored doc');
+    const reqE = { addEventListener(){}, onsuccess:null, onerror:null, onupgradeneeded:null, onblocked:null };
+    fakeWin.indexedDB.open = () => reqE;
+    const pE = Persist.open();
+    reqE.onblocked();
+    await pE;
+    state.shapes = [{ id: 'u1' }];
+    reqE.result = { close(){} };
+    reqE.onsuccess();
+    assert.strictEqual(loads, 1, 'ADR-1205: non-empty local board → deferred attach keeps local strokes');
+    Persist.load = origLoad;
+    state.shapes = svShapes;
+    Persist.db = null;
+    fakeWin.indexedDB.open = origOpen;
   }
 
   // v1.6.78: coalescedSamples + pen multi-sample capture (high-rate stylus smoothness).
@@ -10734,7 +10763,7 @@ try {
     assert.ok(html.includes('if(!this.db)return this._dbWarn()'),'save() covers db-loss paths');
     assert.ok(html.includes('Persist._dbWarn()'),'boot surfaces open failure');
     assert.ok(html.includes("noStore:'保存不可")&&html.includes("noStore:'No storage"),'noStore key both locales');
-    assert.ok(html.includes("r.onblocked=()=>{_oT('saveBlocked')"),'onblocked path unchanged');
+    assert.ok(html.includes("r.onblocked=()=>{blocked=1;_oT('saveBlocked')"),'onblocked path marks + toasts');
     console.log('  \u2713 no-store warn-once pins (ADR-1005, 5 asserts)');
   }
   pass += 5; // ADR-1005 no-store warning pins
@@ -19095,16 +19124,22 @@ pass += 3;
   _oa(a,{dataUrl:'data:NEW'});
   assert.strictEqual(a.img,undefined,'dataUrl patch kills the stale ref');
   assert.ok(!Net._imgPending.has('o1')||Net._imgPending.get('o1').k!=='K_OLD','stale ref not re-parked');
-  // an img patch parks over surviving stale dataUrl — the adopted ref is the
-  // sender's intent; the blob arrival replaces dataUrl (converges)
+  // an img patch parks the adopted ref and drops stale bytes when the key
+  // changes — a lost blob heals via imgq instead of pinning a wrong picture
+  // forever; the blob arrival re-materializes dataUrl (converges)  (ADR-1204)
   const b={id:'o2',type:'image',x:0,y:0,w:10,h:10,z:1,dataUrl:'data:OLD'};state.shapes.push(b);
   const kH=_imgHash('data:image/png;base64,HEALED');
   _oa(b,{img:kH});
   assert.strictEqual(b.img,kH,'adopted ref kept');
+  assert.strictEqual(b.dataUrl,undefined,'stale dataUrl dropped on ref change');
   assert.ok(Net._imgPending.get('o2')?.k===kH,'adopted ref parks for imgq heal');
   Net._onRecv({k:'img',key:kH,data:'data:image/png;base64,HEALED',n:1,seq:0,peer:'A'},false);
-  assert.strictEqual(b.dataUrl,'data:image/png;base64,HEALED','blob arrival converges the stale dataUrl');
+  assert.strictEqual(b.dataUrl,'data:image/png;base64,HEALED','blob arrival re-materializes dataUrl');
   assert.strictEqual(b.img,undefined,'resolved ref dropped');
+  // a same-key img re-write keeps the corresponding bytes
+  const b2={id:'o2b',type:'image',x:0,y:0,w:10,h:10,z:1,img:'KSAME',dataUrl:'data:SAME'};state.shapes.push(b2);
+  _oa(b2,{img:'KSAME'});
+  assert.strictEqual(b2.dataUrl,'data:SAME','same-key rewrite keeps the bytes');
   // a ref-only shape stays parked across an unrelated patch
   const c={id:'o3',type:'image',x:0,y:0,w:10,h:10,z:1,img:'K3'};state.shapes.push(c);
   Net._imgPending.set('o3',{k:'K3',t0:nowTs()});
@@ -19118,6 +19153,7 @@ pass += 3;
     img:{peer:'A',seq:5,ts:Date.now()+1e3},
   }});
   assert.strictEqual(byId('o4').img,'K_MRG','merge adopts the ref');
+  assert.strictEqual(byId('o4').dataUrl,undefined,'merge drops stale bytes on ref change');
   assert.ok(Net._imgPending.get('o4')?.k==='K_MRG','adopted ref parks past _attachShape');
   // _imgAttach strips a persisted coexistence at load
   const st=_imgAttach([{id:'o5',type:'image',x:0,y:0,w:1,h:1,z:1,img:'k',dataUrl:'d'}],new Map());
@@ -19125,8 +19161,8 @@ pass += 3;
   assert.ok(html.includes("'dataUrl' in p"),'written-prop intent gate at _oa');
   assert.ok(html.includes('else if(imgNew)'),'merge parks adopted refs');
 }
-console.log('  ✓ ADR-1065 img-ref × dataUrl coexistence (12 asserts)');
-pass += 12;
+console.log('  ✓ ADR-1065/1204 img-ref × dataUrl coexistence (15 asserts)');
+pass += 15;
 // ---- ADR-1066: _attachShape enforces bytes-beat-refs on every attach path ----
 {
   state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;
@@ -22316,7 +22352,7 @@ pass += 2;
   // (move/group/ungroup/zorder/snapshot-merge), structural props outside the
   // patch domain (s.pg, page rows, wclock, op self-recording), install-time
   // (_attachShape), or backward-only (local undo — _nug/ptr already flushed).
-  assert.ok(html.includes("_oa=(o,p)=>{const r=Object.assign(o,p);if(r.dataUrl&&r.img&&'dataUrl' in p)delete r.img;if(r.img&&_iS(r.id)&&(!r.dataUrl||'img' in p))_park(Net._imgPending,r.id,r.img);if(byId(o.id)===o)_gTouch(o.id,_ok(p));return r}"),'_oa = assign + coex strip + park + gTouch');
+  assert.ok(html.includes("_oa=(o,p)=>{const w=o.img,r=Object.assign(o,p);if(r.dataUrl&&r.img&&'dataUrl' in p)delete r.img;if(r.dataUrl&&r.img&&'img' in p&&p.img!==w)delete r.dataUrl;if(r.img&&_iS(r.id)&&(!r.dataUrl||'img' in p))_park(Net._imgPending,r.id,r.img);if(byId(o.id)===o)_gTouch(o.id,_ok(p));return r}"),'_oa = assign + coex strip + park + gTouch');
   assert.ok(html.includes("if(p.x!=null)sh.x=p.x;if(p.y!=null)sh.y=p.y;_gTouch(sh.id,['x','y'])"),'move-absolute writes pair with _gTouch');
   assert.ok(html.includes("const n=_nug;if(n){const o=n.op.orig&&n.op.orig[id];if(o)cp(o);")&&html.includes("for(const m of[ptr.dragStartShapes,ptr.gOrig,ptr.gAnc]){const o=m&&m.get(id);if(o)cp(o)}for(const o of[ptr.resizeOrig,ptr.rotOrig,ptr.ebendOrig,ptr.cbendOrig,ptr.wayOrig,ptr.lblOrig])"),'_gTouch folds the pending nug AND every live gesture orig map');
   const g1=Shape.make('rect',{id:'gt1',x:1,y:2,w:10,h:10});
@@ -22337,7 +22373,7 @@ pass += 2;
   assert.strictEqual(Net._imgPending.get('gi1')?.k,'kkGI','_oa parks the img ref through a remote upd');
   Store.applyRemote({op:'upd',id:im.id,after:{dataUrl:'data:image/png;base64,eA=='},clock:{peer:'pG',seq:5,ts:Date.now()}});
   assert.ok(im.dataUrl==='data:image/png;base64,eA=='&&!('img' in im),'_oa strips the coexisting img on a dataUrl write');
-  assert.ok(html.includes("{ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k])")&&html.includes("else if(imgNew){if(_sw(ex.img,'@'))ex.img=ex.img.slice(1);_park(this._imgPending,ex.id,ex.img)}"),'snapshot merge keeps _gTouch + park parity per key');
+  assert.ok(html.includes("{ex[k]=v;lw[k]=clone(rc);dirty=true;_gTouch(ex.id,[k])")&&html.includes("else if(imgNew){if(_sw(ex.img,'@'))ex.img=ex.img.slice(1);if(ex.img!==oImg)delete ex.dataUrl;_park(this._imgPending,ex.id,ex.img)}"),'snapshot merge keeps _gTouch + park parity per key');
   assert.ok(html.includes("for(const s of _sh())if(!s.pg)s.pg=op.id;state.curPg=op.id"),'s.pg is a deliberate unpaired structural write — patches never carry pg');
   ptr.down=false;ptr.panning=false;ptr.dragStartShapes=null;ptr.gOrig=null;ptr.gAnc=null;
   state.shapes.length=0;state.selection.clear();state.seenOps.clear();state.wclock={};Net._imgPending.clear();_invalidateGrid();
