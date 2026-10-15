@@ -1,3 +1,8 @@
+## [1.8.230] - 2026-10-01
+
+### Fix
+- **round956 / ADR-1206 — autosave の stale-dirty 上限 (debounce maxWait)**: `Persist.schedule()` は純粋デバウンスで、`_saveT` を呼出ごとに再武装するため `SAVE_DEBOUNCE` (500ms) 未満間隔の連続 dirty 化で `save()` が**無限に延後**される飢餓窓があった — ローカル連続ジェスチャだけでなく**リモート op 到着も同一 `_ps()` 漏斗**のため、ピア描画中は受信側も同時に非保存状態化し、kill/クラッシュで直近 quiet 以降の全作業を喪失 (visibilitychange/pagehide flush はイベント配達時のみ有効、クラッシュを救えない)。lodash maxWait 相当の2タイマー構造へ細分化: burst 先頭で `_saveMax` を一度だけ武装 (5s)、強制発火時に `_saveT` も畳み冗長 trailing write を防止、`save()` write-start でも disarm — 窓ごと最大1回の書込みで最大作業喪失を ~5s へ限定。
+
 ## [1.8.229] - 2026-10-01
 
 ### Fix

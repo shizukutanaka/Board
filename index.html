@@ -929,10 +929,10 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.229';   // ADR-1205
+const V='1.8.230';   // ADR-1206
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
-const SAVE_DEBOUNCE=500;
+const SAVE_DEBOUNCE=500,SAVE_MAX_WAIT=5e3;   // ADR-1206
 const MAX_HISTORY=500;
 const MAX_SEEN_OPS=2000; // cap seenOps to prevent unbounded growth
 const _ck=op=>op.clock.peer+':'+op.clock.seq;   // ADR-0428
@@ -8923,12 +8923,9 @@ function _syncDocTitle(){document.title=(_dn()||_UT)+' — Board';}
 
 const Persist={
   db:null,
-  _saveT:0,
+  _saveT:0,_saveMax:0,
   _durableAsked:false,
-  // Move the autosave out of the browser's bes
-  // board survives storage pressure — the local copy is the authority.
-  // Requested lazily (only once the user has reached for persistence) — the
-  // prompt taxes the blank first-load. Silent failure tolerated.
+  // navigator.storage.persist() once content exists; lazy + silent failure.
   async requestDurable(){
     if(this._durableAsked)return; this._durableAsked=true;
     try{
@@ -8954,24 +8951,24 @@ const Persist={
     _md(!0);   // ADR-0973
     _cT(this._saveT);
     this._saveT=_stO(()=>this.save(),SAVE_DEBOUNCE);
+    // ADR-1206: pure debounce starves under continuous edits — a stale dirty
+    // flag forces a write once per bounded window, then re-arms on next dirty.
+    if(!this._saveMax)this._saveMax=_stO(()=>{this._saveMax=0;_cT(this._saveT);this._saveT=0;this.save()},SAVE_MAX_WAIT);
   },
-  // PWA durability: beforeunload is unreliable on app-switch (Android may evict
-  // without firing it); visibilitychange→hidden is the signal — flush dirty
-  // state so we don't double-write.
+  // visibilitychange→hidden is the reliable flush signal (beforeunload may
+  // never fire on mobile app-switch).
   flushIfHidden(vis){
     if(vis==='hidden'&&_dt()){
       _cT(this._saveT);
       this.save();
     }
   },
-  // Pure mapping thrown error → toast key; QuotaExceededError is the
-  // actionable case worth surfacing distinctly. Pure → unit-tested.
+  // thrown error → toast key; QuotaExceededError is the actionable case.
   _saveErrMsg(err){
     if(err&&err.name==='QuotaExceededError')return t('quotaExceeded');
     return t('saveFailed')+': '+((err&&err.message)||'unknown');
   },
-  // Proactive quota warning once per ~5min over 80% of the origin budget;
-  // estimate is async + may not exist (old Safari) — errors swallowed.
+  // quota warn once per ~5min over 80% of the origin budget.
   _quotaWarn(){
     const nav=(typeof navigator!==_un)?navigator:null;
     if(!nav||!nav.storage||!nav.storage.estimate)return;
@@ -8980,13 +8977,13 @@ const Persist={
       if(quota&&usage/quota>0.8){this._qWAt=_now();_eT('quotaWarn')}
     }).catch(()=>{});
   },
-  // ADR-1005
-  // warn once per session (saveBlocked parity, not a per-debounce storm).
+  // ADR-1005: warn once per session.
   _dbWarn(){if(this._dbW)return;this._dbW=1;_eT('noStore')},
   async save(explicit){
     if(!this.db)return this._dbWarn();
     try{
       _md(!1);   // ADR-1186
+      _cT(this._saveMax);this._saveMax=0;   // ADR-1206
       const tx=_trx(this.db,[DB_STORE,DB_IMG_STORE],_RW);
       const imgs=_oS(tx,DB_IMG_STORE);
       const kv=await reqDone(imgs.getAll()),ks=await reqDone(imgs.getAllKeys());

@@ -1274,6 +1274,8 @@ const checks = [
   ['Persist.open yields on versionchange (newer tab can upgrade)', html.includes("this.db.onversionchange=()=>{try{this.db.close()}catch(_){}this.db=null}")],
   ['saveBlocked i18n key in both locales', html.includes("saveBlocked:'別タブが旧版を保持") && html.includes("saveBlocked:'Another tab holds an older board")],
   ['Persist.flushIfHidden cancels pending debounce + calls save', html.includes("_cT(this._saveT);\n      this.save();")],
+  ['Persist.schedule arms a stale-dirty bound once per burst (ADR-1206)', html.includes("if(!this._saveMax)this._saveMax=_stO(()=>{this._saveMax=0;_cT(this._saveT);this._saveT=0;this.save()},SAVE_MAX_WAIT)")],
+  ['Persist.save disarms the stale-write timer at write start (ADR-1206)', html.includes("_cT(this._saveMax);this._saveMax=0;")],
   ['visibilitychange listener wires document.visibilityState to flushIfHidden (ADR-0604/0608/0611/0959: commits nudge + cancels gesture + clears touch state + hides cursor first)', html.includes("document.visibilityState==='hidden'){_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Net.sendCursorHide()}Persist.flushIfHidden(document.visibilityState)")],
   ['pagehide routes through flushIfHidden — iOS swipe-away durable (ADR-0453/0604/0608/0959)', html.includes("'pagehide',()=>{_nugEnd();_cxO();if(ptr.down)_cancelPointerGesture();_clearTouchState();Persist.flushIfHidden('hidden');Net._bcast(_mk('bye'))}")],
   ['peer bye drops presence immediately — no 15s ghost (ADR-0457)', html.includes("case 'bye':{") && html.includes("if(pk&&_pr().delete(pk)){_ivO()")],
@@ -2060,6 +2062,34 @@ try {
     assert.ok(state.curPg==='pB'&&state.dirty===true,'page switch arms a dirty save');
     state.pages=null;state.curPg=null;state.dirty=false;clearTimeout(Persist._saveT);Persist._saveT=0;
     console.log('  ✓ ADR-0973: schedule() marks dirty — heal/rename mutations flush on hide');
+  }
+
+  // ADR-1206: a continuous edit burst must not starve the autosave — pure
+  // debounce re-arms forever; the stale-dirty bound forces a write once per
+  // window even while schedule() keeps firing faster than SAVE_DEBOUNCE.
+  {
+    state.dirty=false;
+    clearTimeout(Persist._saveT);clearTimeout(Persist._saveMax);
+    Persist._saveT=0;Persist._saveMax=0;
+    let svs=0;const origSave=Persist.save;
+    Persist.save=async()=>{svs++};
+    Persist.schedule();
+    assert.ok(Persist._saveMax,'first dirty schedule arms the stale-write timer');
+    const armed=Persist._saveMax;
+    Persist.schedule();Persist.schedule();
+    assert.strictEqual(Persist._saveMax,armed,'burst re-arms debounce only — bound armed once');
+    const t0=Date.now();let sampled=false;
+    while(Date.now()-t0<5600&&svs===0){
+      Persist.schedule();
+      if(!sampled&&Date.now()-t0>1200){sampled=true;assert.strictEqual(svs,0,'re-armed debounce starves — no save inside the window')}
+      await new Promise(r=>setTimeout(r,80));
+    }
+    assert.ok(svs>=1,'continuous schedule() burst still produces a save at the bound');
+    assert.strictEqual(Persist._saveMax,0,'forced fire disarmed itself');
+    Persist.save=origSave;
+    clearTimeout(Persist._saveT);clearTimeout(Persist._saveMax);
+    Persist._saveT=0;Persist._saveMax=0;state.dirty=false;
+    console.log('  ✓ ADR-1206: stale-dirty bound forces a write under a continuous edit burst');
   }
 
   // applyRemote from different peer
