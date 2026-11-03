@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.233';   // ADR-1209
+const V='1.8.234';   // ADR-1210
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500,SAVE_MAX_WAIT=5e3;   // ADR-1206
@@ -7450,6 +7450,14 @@ function _svgStyle(el,g){
   const so=_pF(get('stroke-opacity')),fo=_pF(get('fill-opacity'));
   if(_fin(so))alpha*=so;else if(_fin(fo))alpha*=fo;
   if(alpha<1)st.opacity=_max(0.05,_min(1,alpha));
+  // ADR-1210: stroke-dasharray → dash. The SVG export emits this attribute,
+  // so a dashed Board shape round-tripped its paint but lost the dash —
+  // the only importer that ignored line style (mxgraph and excalidraw both
+  // read it). Dots are distinguished by a first segment at/below stroke
+  // width (the export writes [size*0.5,…] for dots vs [size*3,…] for dashes).
+  const da=_trm(get('stroke-dasharray')||'');
+  if(da){if(/^none\b/.test(da))st.dash=0;   // explicit none cancels an inherited/default dash too
+    else{const d0=_pF(da.split(/[\s,]+/)[0]);if(_fin(d0))st.dash=d0<=(st.size||2)?2:1}}
   const fs=_pF(get('font-size'));if(_fin(fs))st.fontSize=fs;
   return st;
 }
