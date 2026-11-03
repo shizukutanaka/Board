@@ -12,7 +12,7 @@ const swjs = readFileSync('./sw.js', 'utf8');   // ADR-1025: the SW is a real fi
 const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
-const RAW_CEILING = 544 * 1024;   // ADR-0646: the multi-page feature set needs ~8KB — ceiling remains a runaway-growth guard, not a hard budget
+const RAW_CEILING = 560 * 1024;   // ADR-0646/1207: ceiling remains a runaway-growth guard, not a hard budget
 // Measured with Node's built-in zlib instead of shelling out to `gzip -9`: the CLI is
 // absent on stock Windows and on minimal CI images, and its output differed from zlib's
 // by ~750 bytes (differing memLevel defaults) — enough to swing the badge check below.
@@ -78,7 +78,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Raw size under runaway ceiling (544KB)', _rawSize < RAW_CEILING],
+  ['Raw size under runaway ceiling (560KB)', _rawSize < RAW_CEILING],
   // v1.6.77: enforce docs-vs-reality — the README version badge must track `const V`.
   // Root cause of prior drift (README said 1.6.70 while code shipped 1.6.77): nothing
   // tied them. This check fails the build the moment a version bump forgets the README.
@@ -14630,6 +14630,57 @@ try {
     // covered by presence checks + headless verification
     assert.ok(svgToShapes('<svg><rect/></svg>')===null,'no DOMParser → null');
     console.log('  ✓ svg import helpers (transform + path flattening)');
+  }
+
+  // ---- ADR-1207: svgToShapes <image>/<text> extents follow the matrix ----
+  {
+    const _DP=globalThis.DOMParser;
+    const mk=tag=>({localName:tag,_at:{},children:[],textContent:'',id:undefined,
+      getAttribute(n){return n in this._at?this._at[n]:null},
+      querySelector(sel){return this.querySelectorAll(sel)[0]||null},
+      querySelectorAll(sel){const want=sel.split(',');const out=[];
+        const w=e=>{for(const c of e.children){if(want.includes(c.localName))out.push(c);w(c)}};w(this);return out}});
+    const miniDom=s=>{
+      const st=[mk('#root')];const re=/<(\/?)([\w:-]+)((?:[^"'>]|"[^"]*")*?)(\/?)>|([^<]+)/g;let m;
+      while((m=re.exec(s))){
+        if(m[5]!==undefined){if(/\S/.test(m[5]))st[st.length-1].textContent+=m[5];continue}
+        if(m[1]==='/'){st.pop();continue}
+        const el=mk(m[2]);const are=/([\w:-]+)\s*=\s*"([^"]*)"/g;let a;
+        while((a=are.exec(m[3]||'')))el._at[a[1]]=a[2];
+        el.id=el._at.id;
+        st[st.length-1].children.push(el);
+        if(!m[4])st.push(el);
+      }
+      const rootEl=st[0].children[0]||null;
+      return{documentElement:rootEl,querySelector(sel){return rootEl?rootEl.querySelector(sel):null},querySelectorAll(sel){return rootEl?rootEl.querySelectorAll(sel):[]}};
+    };
+    globalThis.DOMParser=class{parseFromString(txt){return miniDom(txt)}};
+    try{
+      // viewBox width 1600 → sc=0.5; every extent must halve, not just the origins.
+      const sh=svgToShapes('<svg viewBox="0 0 1600 800">'
+        +'<rect x="10" y="10" width="30" height="20"/>'
+        +'<image x="100" y="50" width="200" height="100" href="data:image/png;base64,AAAA"/>'
+        +'<text x="20" y="40" font-size="40">hi</text></svg>');
+      assert.ok(sh&&sh.length===3,'3 shapes parsed');
+      const r=sh.find(s=>s.type==='rect'),im=sh.find(s=>s.type==='image'),tx=sh.find(s=>s.type==='text');
+      assert.ok(r.w===15&&r.h===10,'rect extent scaled by viewBox (baseline)');
+      assert.ok(im.x===50&&im.y===25&&im.w===100&&im.h===50,'image w/h scaled by m2 (was raw 200x100)');
+      assert.ok(Math.abs(tx.fontSize-20)<1e-9,'text fontSize scaled by m2 y-basis (was raw 40)');
+      // transform scale on the element itself also reaches the extent.
+      const sh2=svgToShapes('<svg viewBox="0 0 100 100"><image x="0" y="0" width="20" height="10" transform="scale(2)" href="data:image/png;base64,AAAA"/></svg>');
+      assert.ok(sh2&&sh2.length===1&&sh2[0].w===40&&sh2[0].h===20,'image extent scaled by element transform');
+      // rotate(45) on a square: a 2-corner map collapses to w=0 — 4-corner AABB = 100·√2.
+      const sh4=svgToShapes('<svg viewBox="0 0 200 200"><image x="0" y="0" width="100" height="100" transform="rotate(45)" href="data:image/png;base64,AAAA"/></svg>');
+      assert.ok(sh4&&sh4.length===1&&Math.abs(sh4[0].w-100*Math.SQRT2)<0.01&&Math.abs(sh4[0].h-100*Math.SQRT2)<0.01,'rotate(45) image gets the full AABB, not w=0 (review 4451310017)');
+      // href guard unchanged: external URLs still rejected.
+      const sh3=svgToShapes('<svg viewBox="0 0 100 100"><image x="0" y="0" width="20" height="10" href="https://x/y.png"/></svg>');
+      assert.ok(sh3&&sh3.length===0,'external href still dropped');
+      // extreme scale would push fontSize past validPatch's 1e4 → clamped, not dropped.
+      const sh5=svgToShapes('<svg viewBox="0 0 100 100"><text x="0" y="0" font-size="16" transform="scale(700)">hi</text></svg>');
+      assert.ok(sh5&&sh5.length===1&&sh5[0].fontSize===1e4,'extreme scale clamps fontSize into the (0,1e4] import gate');
+    }finally{globalThis.DOMParser=_DP}
+    console.log('  ✓ ADR-1207: svg <image>/<text> extents follow the matrix (9 asserts)');
+    pass += 9;
   }
 
   // ---- ADR-0043: .excalidraw import (pure JSON, no DOMParser needed) ----

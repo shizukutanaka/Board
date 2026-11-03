@@ -13,7 +13,7 @@ Board は 4 つ全部を否定する: **単一HTML、ゼロ登録、完全無料
 > **サイズ予算について (2026-06-13 変更)**: かつて「gzip 44KB 未満」を厳格な不変条件として
 > CI / test.mjs で強制していたが、予算の壁が実改善 (回転の全型対応・コネクタ実エッジ投影・
 > a11y) の据え置きを繰り返し招いたため**撤去**した。サイズは依然として価値 (単一ファイル・
-> 高速ロード) だが、ハードな上限ではなく**指針**として扱う。暴走防止に raw 512KB の緩い上限
+> 高速ロード) だが、ハードな上限ではなく**指針**として扱う。暴走防止に raw 560KB の緩い上限
 > のみ残す。新機能は「小さく保つ」意識を持ちつつ、整合性・正しさを優先してよい。
 
 ## MAP — 構造
@@ -1232,6 +1232,7 @@ Board/
 │   ├── ADR-1204-img-patch-stale-bytes.md  # img 別キー採用時の stale dataUrl 除去: `_oa`+`_mergeSnapshotOp` 両漏斗で旧 bytes を drop (blob 未到達の旧画像永続表示を閉塞)、同キー再書きは保持 (#603 review 指摘)
 │   ├── ADR-1205-deferred-open-load.md  # blocked `open()` の遅延 `onsuccess` が空盤面を保存済み doc の上に上書きする経路を閉塞 — `blocked` マーク + `!_nS()` ゲート付き `this.load()` fire-and-forget (描画済み盤面は local strokes 優先)
 │   ├── ADR-1206-stale-dirty-maxwait.md  # autosave の純粋デバウンス飢餓を閉塞 — burst 先頭で一度だけ武装する `_saveMax` (5s) が連続編集中の無限延後を強制書込みで解消 (lodash maxWait 相当、窓ごと最大1回)
+│   ├── ADR-1207-svg-extent-matrix.md  # svgToShapes の `<image>`/`<text>` が位置のみ m2 適用で寸法は生値だった不対称を閉塞 — viewBox cap/transform 下で画像・文字だけ変換前サイズで張り出す不一致を、4隅 AABB 写像と y 基底長の fontSize スケールで全型統一 (対角2隅では rotate(45) 正方形が w=0 で不可視)、8挙動ピン
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)
@@ -1261,7 +1262,7 @@ Board/
 **重要な不変条件**:
 - `index.html` は単一ファイル。外部 `<script src>` / `<link href>` を絶対に追加しない。
 - サイズはハード上限なし (2026-06-13 に gzip 44KB 予算を撤去)。指針として小さく保つが、
-  整合性・正しさを優先してよい。暴走防止に raw 512KB の緩い上限のみ `test.mjs` で残す。
+  整合性・正しさを優先してよい。暴走防止に raw 560KB の緩い上限のみ `test.mjs` で残す。
 - `state` は Store 経由でしか書き換えない (undo の完全性のため)。
 - Render は副作用を最小化する: `state` を読むのみが原則。
   - 例外: `getImg()` は `_imgCache` (LRU) を書き換え + `img.onload` コールバックを登録する。
