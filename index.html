@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.230';   // ADR-1206
+const V='1.8.231';   // ADR-1207
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500,SAVE_MAX_WAIT=5e3;   // ADR-1206
@@ -7546,18 +7546,19 @@ function svgToShapes(txt){
       const href=_ga(el,'href')||_ga(el,'xlink:href')||'';
       const w=+_ga(el,'width')||0,ht=+_ga(el,'height')||0;
       if(/^data:image\//.test(href)&&w>0&&ht>0){
-        const a=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
-        s=_smk('image',{x:a.x,y:a.y,w:w,h:ht,dataUrl:_s0(href,25_000_000)});
+        const x=+_ga(el,'x')||0,y=+_ga(el,'y')||0;
+        const a=_svgMPt(m2,x,y),b=_svgMPt(m2,x+w,y+ht);   // ADR-1207: both corners
+        s=_smk('image',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y),dataUrl:_s0(href,25_000_000)});
       }
     }else if(tag==='text'){
       const content=_trm((el.textContent||'').replace(/\s+/g,' '));
       if(content){
         const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
-        const fs=_svgStyle(el,_grad).fontSize||16;
+        const fs=(_svgStyle(el,_grad).fontSize||16)*(_hp(m2[2],m2[3])||1);   // ADR-1207: font follows the m2 y-basis
         s=_smk('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:_s0(content,200),fontSize:fs});
       }
     }
-    if(s){const st=_svgStyle(el,_grad);if(s.type!=='text')delete st.fontSize;_oa(s,st);_pu(shapes,s)}
+    if(s){const st=_svgStyle(el,_grad);delete st.fontSize;_oa(s,st);_pu(shapes,s)}
     for(const c of el.children)visit(c,m2);
   };
   visit(root,base);
