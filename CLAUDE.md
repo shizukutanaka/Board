@@ -1235,6 +1235,7 @@ Board/
 │   ├── ADR-1207-svg-extent-matrix.md  # svgToShapes の `<image>`/`<text>` が位置のみ m2 適用で寸法は生値だった不対称を閉塞 — viewBox cap/transform 下で画像・文字だけ変換前サイズで張り出す不一致を、4隅 AABB 写像と y 基底長の fontSize スケールで全型統一 (対角2隅では rotate(45) 正方形が w=0 で不可視)、8挙動ピン
 │   ├── ADR-1208-exc-freedraw-angle.md  # excToShapes で freedraw の angle だけ適用先なし (box は s.rotate、conn は端点回転、pen は _hb でも _conn でもない) — 回転ストロークが無回転で取り込まれる漏れを `_rotPtsAbout` の pts 剛体写像 (stroke bbox 中心) で閉塞、3挙動ピン
 │   ├── ADR-1209-svg-group-style-inherit.md  # svgToShapes の `visit` が行列だけ積んでスタイル継承を捨てていた漏れ — `<g fill/stroke/opacity/font-size>` が子孫へ届かず裸で取り込まれる不対称を、継承コンテキスト `{...inh,...own}` + opacity 積算で閉塞、6挙動ピン
+│   ├── ADR-1210-svg-dasharray-import.md  # SVG エクスポートが出す `stroke-dasharray` をインポートが捨てていた往復非対称 — `_svgStyle` で破線/点線を読み (先頭セグメント ≤ stroke-width で点線判定)、`<g>` 継承は ADR-1209 で自動到達、5挙動ピン
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)

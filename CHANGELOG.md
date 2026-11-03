@@ -1,3 +1,8 @@
+## [1.8.234] - 2026-11-03
+
+### Fix
+- **round960 / ADR-1210 — SVG インポートで `stroke-dasharray` が黙って落ちる往復非対称の閉塞**: Board 自身の SVG エクスポートは `stroke-dasharray="…"` を出力するのに、`svgToShapes` の `_svgStyle` はそれを読まず、破線・点線の図形が自分のエクスポートを貼り直すだけで実線に戻っていた — mxgraph (`dashed=1`+`dashPattern`) と excalidraw (`strokeStyle`) は線スタイルを取り込むのに SVG だけが無視する、ADR-1207/1208/1209 と同型の適用不対称。`_svgStyle` で属性・`style=""` 両形を読み、破線/点線は先頭セグメント長が stroke-width 以下かで判定 (エクスポートが点線に `[size*0.5,…]`・破線に `[size*3,…]` を書く規則と一致)。`none`/空値は実線のまま。プレゼンテーション属性なので `<g stroke-dasharray>` の継承も ADR-1209 のコンテキストで自動的に届く。5 挙動ピン (破線・点線判定・none・`<g>` 継承・style 属性形)。
+
 ## [1.8.233] - 2026-11-03
 
 ### Fix

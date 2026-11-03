@@ -14727,6 +14727,49 @@ try {
     pass += 6;
   }
 
+  // ---- ADR-1210: svg stroke-dasharray → s.dash (export emits it; import dropped it) ----
+  {
+    const _DP=globalThis.DOMParser;
+    const mk=tag=>({localName:tag,_at:{},children:[],textContent:'',id:undefined,
+      getAttribute(n){return n in this._at?this._at[n]:null},
+      querySelector(sel){return this.querySelectorAll(sel)[0]||null},
+      querySelectorAll(sel){const want=sel.split(',');const out=[];
+        const w=e=>{for(const c of e.children){if(want.includes(c.localName))out.push(c);w(c)}};w(this);return out}});
+    const miniDom=s=>{
+      const st=[mk('#root')];const re=/<(\/?)([\w:-]+)((?:[^"'>]|"[^"]*")*?)(\/?)>|([^<]+)/g;let m;
+      while((m=re.exec(s))){
+        if(m[5]!==undefined){if(/\S/.test(m[5]))st[st.length-1].textContent+=m[5];continue}
+        if(m[1]==='/'){st.pop();continue}
+        const el=mk(m[2]);const are=/([\w:-]+)\s*=\s*"([^"]*)"/g;let a;
+        while((a=are.exec(m[3]||'')))el._at[a[1]]=a[2];
+        el.id=el._at.id;
+        st[st.length-1].children.push(el);
+        if(!m[4])st.push(el);
+      }
+      const rootEl=st[0].children[0]||null;
+      return{documentElement:rootEl,querySelector(sel){return rootEl?rootEl.querySelector(sel):null},querySelectorAll(sel){return rootEl?rootEl.querySelectorAll(sel):[]}};
+    };
+    globalThis.DOMParser=class{parseFromString(txt){return miniDom(txt)}};
+    try{
+      // A dash segment longer than stroke-width is a dash; at/below it is a dot
+      // (the export writes [size*0.5,…] for dots vs [size*3,…] for dashes).
+      const sh=svgToShapes('<svg viewBox="0 0 100 100"><rect x="0" y="0" width="10" height="10" stroke="#000" stroke-width="2" stroke-dasharray="8 4"/></svg>');
+      assert.ok(sh[0].dash===1,'dasharray 8 4 → dashed (was dropped to solid)');
+      const sh2=svgToShapes('<svg viewBox="0 0 100 100"><rect x="0" y="0" width="10" height="10" stroke="#000" stroke-width="2" stroke-dasharray="0.5 4"/></svg>');
+      assert.ok(sh2[0].dash===2,'dasharray 0.5 4 → dotted (first segment ≤ size)');
+      const sh3=svgToShapes('<svg viewBox="0 0 100 100"><rect x="0" y="0" width="10" height="10" stroke-dasharray="none"/></svg>');
+      assert.ok(!sh3[0].dash,'dasharray none → solid (dash stays 0)');
+      // dasharray is a presentation attribute: it also inherits through <g>.
+      const sh4=svgToShapes('<svg viewBox="0 0 100 100"><g stroke-dasharray="6 3"><rect x="0" y="0" width="10" height="10"/></g></svg>');
+      assert.ok(sh4[0].dash===1,'group dasharray inherits like other style attrs');
+      // the inline style="" form reaches the same path.
+      const sh5=svgToShapes('<svg viewBox="0 0 100 100"><rect x="0" y="0" width="10" height="10" style="stroke-dasharray: 10 5"/></svg>');
+      assert.ok(sh5[0].dash===1,'style="stroke-dasharray:…" honoured');
+    }finally{globalThis.DOMParser=_DP}
+    console.log('  ✓ ADR-1210: svg stroke-dasharray → dash on import (5 asserts)');
+    pass += 5;
+  }
+
   // ---- ADR-0043: .excalidraw import (pure JSON, no DOMParser needed) ----
   {
     const scene=JSON.stringify({type:'excalidraw',version:2,elements:[
