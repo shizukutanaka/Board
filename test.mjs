@@ -14675,9 +14675,12 @@ try {
       // href guard unchanged: external URLs still rejected.
       const sh3=svgToShapes('<svg viewBox="0 0 100 100"><image x="0" y="0" width="20" height="10" href="https://x/y.png"/></svg>');
       assert.ok(sh3&&sh3.length===0,'external href still dropped');
+      // extreme scale would push fontSize past validPatch's 1e4 → clamped, not dropped.
+      const sh5=svgToShapes('<svg viewBox="0 0 100 100"><text x="0" y="0" font-size="16" transform="scale(700)">hi</text></svg>');
+      assert.ok(sh5&&sh5.length===1&&sh5[0].fontSize===1e4,'extreme scale clamps fontSize into the (0,1e4] import gate');
     }finally{globalThis.DOMParser=_DP}
-    console.log('  ✓ ADR-1207: svg <image>/<text> extents follow the matrix (8 asserts)');
-    pass += 8;
+    console.log('  ✓ ADR-1207: svg <image>/<text> extents follow the matrix (9 asserts)');
+    pass += 9;
   }
 
   // ---- ADR-0043: .excalidraw import (pure JSON, no DOMParser needed) ----

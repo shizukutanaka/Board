@@ -7557,7 +7557,7 @@ function svgToShapes(txt){
       const content=_trm((el.textContent||'').replace(/\s+/g,' '));
       if(content){
         const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
-        const fs=(_svgStyle(el,_grad).fontSize||16)*(_hp(m2[2],m2[3])||1);   // ADR-1207: font follows the m2 y-basis
+        const fs=_min(1e4,_max(1,(_svgStyle(el,_grad).fontSize||16)*(_hp(m2[2],m2[3])||1)));   // ADR-1207: font follows the m2 y-basis; stay inside validPatch's (0,1e4] or the import filter drops the text
         s=_smk('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:_s0(content,200),fontSize:fs});
       }
     }
