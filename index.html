@@ -929,7 +929,7 @@ const _JS=JSON.stringify,_JP=JSON.parse;                               // ADR-03
 const _hp=Math.hypot,_PI=Math.PI,_fl=Math.floor,_at2=Math.atan2,_ceil=Math.ceil,_sgn=Math.sign,_sqr=Math.sqrt;   // ADR-0355
 
 // ====================== CONSTANTS ======================
-const V='1.8.232';   // ADR-1208
+const V='1.8.233';   // ADR-1209
 const DB_NAME='board', DB_STORE='docs', DB_IMG_STORE='imgs', DB_VER=2;
 const DOC_KEY='main';                   // single doc (+ ':prev' backup slot, 0004)
 const SAVE_DEBOUNCE=500,SAVE_MAX_WAIT=5e3;   // ADR-1206
@@ -7510,10 +7510,17 @@ function svgToShapes(txt){
   const sc=_min(1,800/w0);
   const base=_svgMMul([sc,0,0,sc,0,0],[1,0,0,1,vbOn?-vb[0]:0,vbOn?-vb[1]:0]);
   const shapes=[];
-  const visit=(el,m)=>{
+  const visit=(el,m,inh)=>{
     if(_ln(shapes)>=SVG_MAX_ELEMS)return;
     const m2=_svgMMul(m,_svgMOf(_ga(el,'transform')));
     const tag=el.localName;
+    // ADR-1209: presentation attributes inherit down the tree — a <g>'s
+    // fill/stroke/opacity/font-size reaches every descendant; only the
+    // element's own values used to apply, so styled groups imported bare.
+    // Group opacity composites, so it multiplies rather than overrides.
+    const own=_svgStyle(el,_grad);
+    const st={...inh,...own};
+    if(own.opacity!=null&&inh.opacity!=null)st.opacity=_max(0.05,+(own.opacity*inh.opacity).toFixed(3));
     let s=null;
     if(tag==='rect'){
       const x=+_ga(el,'x')||0,y=+_ga(el,'y')||0,w=+_ga(el,'width'),h=+_ga(el,'height');
@@ -7557,14 +7564,14 @@ function svgToShapes(txt){
       const content=_trm((el.textContent||'').replace(/\s+/g,' '));
       if(content){
         const p=_svgMPt(m2,+_ga(el,'x')||0,+_ga(el,'y')||0);
-        const fs=_min(1e4,_max(1,(_svgStyle(el,_grad).fontSize||16)*(_hp(m2[2],m2[3])||1)));   // ADR-1207: font follows the m2 y-basis; stay inside validPatch's (0,1e4] or the import filter drops the text
+        const fs=_min(1e4,_max(1,(st.fontSize||16)*(_hp(m2[2],m2[3])||1)));   // ADR-1207/1209: font follows the m2 y-basis + inherited font-size; stay inside validPatch's (0,1e4] or the import filter drops the text
         s=_smk('text',{x:p.x,y:p.y-fs,w:_min(600,_max(60,_ln(content)*fs*0.55)),h:fs*1.4,text:_s0(content,200),fontSize:fs});
       }
     }
-    if(s){const st=_svgStyle(el,_grad);delete st.fontSize;_oa(s,st);_pu(shapes,s)}
-    for(const c of el.children)visit(c,m2);
+    if(s){const st2={...st};delete st2.fontSize;_oa(s,st2);_pu(shapes,s)}   // fontSize is text-only state; don't leak it to the style pass
+    for(const c of el.children)visit(c,m2,st);
   };
-  visit(root,base);
+  visit(root,base,{});
   return shapes;
 }
 function importSvgText(txt,wp){
