@@ -7547,8 +7547,11 @@ function svgToShapes(txt){
       const w=+_ga(el,'width')||0,ht=+_ga(el,'height')||0;
       if(/^data:image\//.test(href)&&w>0&&ht>0){
         const x=+_ga(el,'x')||0,y=+_ga(el,'y')||0;
-        const a=_svgMPt(m2,x,y),b=_svgMPt(m2,x+w,y+ht);   // ADR-1207: both corners
-        s=_smk('image',{x:_min(a.x,b.x),y:_min(a.y,b.y),w:_abs(b.x-a.x),h:_abs(b.y-a.y),dataUrl:_s0(href,25_000_000)});
+        // ADR-1207: ALL four corners — a diagonal pair collapses under
+        // rotate/skew (45°-rotated square → w=0, invisible image).
+        const cs=[[x,y],[x+w,y],[x,y+ht],[x+w,y+ht]].map(q=>_svgMPt(m2,q[0],q[1]));
+        const xs=cs.map(q=>q.x),ys=cs.map(q=>q.y);
+        s=_smk('image',{x:_min(...xs),y:_min(...ys),w:_max(...xs)-_min(...xs),h:_max(...ys)-_min(...ys),dataUrl:_s0(href,25_000_000)});
       }
     }else if(tag==='text'){
       const content=_trm((el.textContent||'').replace(/\s+/g,' '));

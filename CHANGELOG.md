@@ -1,7 +1,7 @@
 ## [1.8.231] - 2026-11-03
 
 ### Fix
-- **round957 / ADR-1207 — SVG インポートの `<image>`/`<text>` が変換行列で寸法をスケールしない不対称の閉塞**: `svgToShapes` は rect/ellipse/line/path 等の全型で両コーナー・全頂点を `m2` (viewBox 800px cap 縮小 `sc` × 親子 `transform` 積算) に通すのに対し、`<image>` は原点のみ・`<text>` はアンカー点のみを写像し `w`/`h`/`fontSize` を生値採用していた — viewBox 幅 >800px の縮小や `transform="scale(k)"` を含む SVG で**幾何は正しく縮むのに画像と文字だけが変換前サイズで張り出す**不一致。`<image>` は rect と同じ両コーナー写像 + `min`/`abs` AABB へ、`<text>` は `fontSize` に `m2` の y 基底ベクトル長を乗算 (uniform scale で x/y 同一、ゼロスケールは生値フォールバック) — `h`/`p.y-fs`/幅見積は fs 派生で自動追従。罠として `_oa` の共有スタイルパスが text の生 `fontSize` を再適用するため `st.fontSize` 削除を全型へ一般化 (text は `_smk` に焼込み)。
+- **round957 / ADR-1207 — SVG インポートの `<image>`/`<text>` が変換行列で寸法をスケールしない不対称の閉塞**: `svgToShapes` は rect/ellipse/line/path 等の全型で両コーナー・全頂点を `m2` (viewBox 800px cap 縮小 `sc` × 親子 `transform` 積算) に通すのに対し、`<image>` は原点のみ・`<text>` はアンカー点のみを写像し `w`/`h`/`fontSize` を生値採用していた — viewBox 幅 >800px の縮小や `transform="scale(k)"` を含む SVG で**幾何は正しく縮むのに画像と文字だけが変換前サイズで張り出す**不一致。`<image>` は **4隅すべて**を写像して min/max の真の AABB へ (対角2隅では `rotate(45)` 正方形が w=0 で不可視になる退行を review 指摘で捕捉)、`<text>` は `fontSize` に `m2` の y 基底ベクトル長を乗算 (uniform scale で x/y 同一、ゼロスケールは生値フォールバック) — `h`/`p.y-fs`/幅見積は fs 派生で自動追従。罠として `_oa` の共有スタイルパスが text の生 `fontSize` を再適用するため `st.fontSize` 削除を全型へ一般化 (text は `_smk` に焼込み)。
 
 ## [1.8.230] - 2026-10-01
 

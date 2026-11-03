@@ -12,7 +12,7 @@ const swjs = readFileSync('./sw.js', 'utf8');   // ADR-1025: the SW is a real fi
 const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
-const RAW_CEILING = 544 * 1024;   // ADR-0646: the multi-page feature set needs ~8KB — ceiling remains a runaway-growth guard, not a hard budget
+const RAW_CEILING = 560 * 1024;   // ADR-0646/1207: ceiling remains a runaway-growth guard, not a hard budget
 // Measured with Node's built-in zlib instead of shelling out to `gzip -9`: the CLI is
 // absent on stock Windows and on minimal CI images, and its output differed from zlib's
 // by ~750 bytes (differing memLevel defaults) — enough to swing the badge check below.
@@ -78,7 +78,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Raw size under runaway ceiling (544KB)', _rawSize < RAW_CEILING],
+  ['Raw size under runaway ceiling (560KB)', _rawSize < RAW_CEILING],
   // v1.6.77: enforce docs-vs-reality — the README version badge must track `const V`.
   // Root cause of prior drift (README said 1.6.70 while code shipped 1.6.77): nothing
   // tied them. This check fails the build the moment a version bump forgets the README.
@@ -14669,12 +14669,15 @@ try {
       // transform scale on the element itself also reaches the extent.
       const sh2=svgToShapes('<svg viewBox="0 0 100 100"><image x="0" y="0" width="20" height="10" transform="scale(2)" href="data:image/png;base64,AAAA"/></svg>');
       assert.ok(sh2&&sh2.length===1&&sh2[0].w===40&&sh2[0].h===20,'image extent scaled by element transform');
+      // rotate(45) on a square: a 2-corner map collapses to w=0 — 4-corner AABB = 100·√2.
+      const sh4=svgToShapes('<svg viewBox="0 0 200 200"><image x="0" y="0" width="100" height="100" transform="rotate(45)" href="data:image/png;base64,AAAA"/></svg>');
+      assert.ok(sh4&&sh4.length===1&&Math.abs(sh4[0].w-100*Math.SQRT2)<0.01&&Math.abs(sh4[0].h-100*Math.SQRT2)<0.01,'rotate(45) image gets the full AABB, not w=0 (review 4451310017)');
       // href guard unchanged: external URLs still rejected.
       const sh3=svgToShapes('<svg viewBox="0 0 100 100"><image x="0" y="0" width="20" height="10" href="https://x/y.png"/></svg>');
       assert.ok(sh3&&sh3.length===0,'external href still dropped');
     }finally{globalThis.DOMParser=_DP}
-    console.log('  ✓ ADR-1207: svg <image>/<text> extents follow the matrix (7 asserts)');
-    pass += 7;
+    console.log('  ✓ ADR-1207: svg <image>/<text> extents follow the matrix (8 asserts)');
+    pass += 8;
   }
 
   // ---- ADR-0043: .excalidraw import (pure JSON, no DOMParser needed) ----

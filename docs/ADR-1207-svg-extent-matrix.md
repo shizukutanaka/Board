@@ -16,9 +16,11 @@
 
 ## 決定
 
-- `<image>` — rect と同じく両コーナー `(x,y)` / `(x+w,y+ht)` を `_svgMPt(m2,…)` に通し、
-  `min`/`abs` で軸平行 bbox を取る。回転を含む transform でも rect と同じ AABB 膨張
-  セマンティクスに一致。
+- `<image>` — **四隅すべて** `(x,y)` / `(x+w,y)` / `(x,y+ht)` / `(x+w,y+ht)` を
+  `_svgMPt(m2,…)` に通し、x/y の min/max から真の外接矩形を取る。
+  対角2隅だけでは回転・シアーで外接矩形が求まらない — `rotate(45)` の正方形は
+  変換後 x 座標が一致し w=0 の不可視画像になる (Devin Review 指摘)。rect は従来の
+  2隅近似のまま据え置き (本 ADR の範囲外)。
 - `<text>` — `fontSize` に `m2` の y 基底ベクトル長 `_hp(m2[2],m2[3])` を掛ける
   (uniform scale では x/y 同一、ゼロスケールは `||1` で生値フォールバック)。
   高さ見積 `h=fs*1.4`・ベースライン `p.y-fs`・幅見積 `_ln*fs*0.55` は fs から派生する
@@ -33,6 +35,7 @@ fontSize を持たない (以前の `delete` と同じ着地点)。
 
 ## 検証
 
-test.mjs に mini-DOMParser を差し込んだ挙動ピン (7 asserts): viewBox 1600 → sc=0.5 で
+test.mjs に mini-DOMParser を差し込んだ挙動ピン (8 asserts): viewBox 1600 → sc=0.5 で
 image が 200x100 → 100x50、font-size 40 → 20、element `transform="scale(2)"` も
-image の extent へ届く、external href は従来どおり拒否。
+image の extent へ届く、`rotate(45)` 正方形は 100·√2 の AABB、external href は
+従来どおり拒否。`RAW_CEILING` は 544KB → 560KB へ再設定 (runaway guard のまま)。
