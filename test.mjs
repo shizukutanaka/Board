@@ -14683,6 +14683,50 @@ try {
     pass += 9;
   }
 
+  // ---- ADR-1209: svgToShapes presentation attributes inherit through <g> ----
+  {
+    const _DP=globalThis.DOMParser;
+    const mk=tag=>({localName:tag,_at:{},children:[],textContent:'',id:undefined,
+      getAttribute(n){return n in this._at?this._at[n]:null},
+      querySelector(sel){return this.querySelectorAll(sel)[0]||null},
+      querySelectorAll(sel){const want=sel.split(',');const out=[];
+        const w=e=>{for(const c of e.children){if(want.includes(c.localName))out.push(c);w(c)}};w(this);return out}});
+    const miniDom=s=>{
+      const st=[mk('#root')];const re=/<(\/?)([\w:-]+)((?:[^"'>]|"[^"]*")*?)(\/?)>|([^<]+)/g;let m;
+      while((m=re.exec(s))){
+        if(m[5]!==undefined){if(/\S/.test(m[5]))st[st.length-1].textContent+=m[5];continue}
+        if(m[1]==='/'){st.pop();continue}
+        const el=mk(m[2]);const are=/([\w:-]+)\s*=\s*"([^"]*)"/g;let a;
+        while((a=are.exec(m[3]||'')))el._at[a[1]]=a[2];
+        el.id=el._at.id;
+        st[st.length-1].children.push(el);
+        if(!m[4])st.push(el);
+      }
+      const rootEl=st[0].children[0]||null;
+      return{documentElement:rootEl,querySelector(sel){return rootEl?rootEl.querySelector(sel):null},querySelectorAll(sel){return rootEl?rootEl.querySelectorAll(sel):[]}};
+    };
+    globalThis.DOMParser=class{parseFromString(txt){return miniDom(txt)}};
+    try{
+      // <g fill/stroke/opacity> reaches descendants that carry no attrs.
+      const sh=svgToShapes('<svg viewBox="0 0 100 100"><g fill="#f00" stroke="#00f" opacity="0.5">'
+        +'<rect x="0" y="0" width="10" height="10"/>'
+        +'<rect x="20" y="0" width="10" height="10" fill="#0f0" opacity="0.5"/></g></svg>');
+      const a=sh.find(s=>s.x===0),b=sh.find(s=>s.x===20);
+      assert.ok(a&&a.fill==='#f00'&&a.stroke==='#00f','group fill/stroke inherited (was dropped bare)');
+      assert.ok(Math.abs(a.opacity-0.5)<1e-9,'group opacity inherited');
+      assert.ok(b.fill==='#0f0','child attr overrides the group');
+      assert.ok(Math.abs(b.opacity-0.25)<1e-9,'group opacity multiplies, not overrides (0.5×0.5)');
+      // font-size inherits to nested <text>.
+      const sh2=svgToShapes('<svg viewBox="0 0 100 100"><g font-size="40"><text x="0" y="40">hi</text></g></svg>');
+      assert.ok(sh2&&sh2.length===1&&sh2[0].fontSize===40,'group font-size inherits to text');
+      // inherited fontSize must not leak onto non-text shapes.
+      const sh3=svgToShapes('<svg viewBox="0 0 100 100"><g font-size="40"><rect x="0" y="0" width="10" height="10"/></g></svg>');
+      assert.ok(sh3[0].fontSize==null,'inherited font-size not leaked to rect');
+    }finally{globalThis.DOMParser=_DP}
+    console.log('  ✓ ADR-1209: svg <g> presentation attributes inherit (6 asserts)');
+    pass += 6;
+  }
+
   // ---- ADR-0043: .excalidraw import (pure JSON, no DOMParser needed) ----
   {
     const scene=JSON.stringify({type:'excalidraw',version:2,elements:[
