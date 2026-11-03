@@ -1233,6 +1233,7 @@ Board/
 │   ├── ADR-1205-deferred-open-load.md  # blocked `open()` の遅延 `onsuccess` が空盤面を保存済み doc の上に上書きする経路を閉塞 — `blocked` マーク + `!_nS()` ゲート付き `this.load()` fire-and-forget (描画済み盤面は local strokes 優先)
 │   ├── ADR-1206-stale-dirty-maxwait.md  # autosave の純粋デバウンス飢餓を閉塞 — burst 先頭で一度だけ武装する `_saveMax` (5s) が連続編集中の無限延後を強制書込みで解消 (lodash maxWait 相当、窓ごと最大1回)
 │   ├── ADR-1207-svg-extent-matrix.md  # svgToShapes の `<image>`/`<text>` が位置のみ m2 適用で寸法は生値だった不対称を閉塞 — viewBox cap/transform 下で画像・文字だけ変換前サイズで張り出す不一致を、4隅 AABB 写像と y 基底長の fontSize スケールで全型統一 (対角2隅では rotate(45) 正方形が w=0 で不可視)、8挙動ピン
+│   ├── ADR-1208-exc-freedraw-angle.md  # excToShapes で freedraw の angle だけ適用先なし (box は s.rotate、conn は端点回転、pen は _hb でも _conn でもない) — 回転ストロークが無回転で取り込まれる漏れを `_rotPtsAbout` の pts 剛体写像 (stroke bbox 中心) で閉塞、3挙動ピン
 │   ├── ADR-1177-selection-presence-throttle.md  # 選択プレゼンスをカーソルスロットルへ統一 — dedup は不変キーのみ畳むため、マーキー中の per-frame 変化が ~60/s で全選択 id を送出していた最後の unthrottled presence を `CURSOR_THROTTLE_MS` ゲート + `_selT` trailing resend (確定値を1窓内で着地) へ。`_touchPeer` は `_lastSelAt` もクリアし遅参への即時再送を維持、5挙動+2ソースピン
 │   └── ADR-1055-delta-snapshot.md  # sync-req に因果ホライズン (per-id 最新時計) を同梱 — 再 join で delta ops + `dels` tomb のみ送出 (ADR-1048 P1-b)
 │   └── ADR-1056-wire-auth.md  # wire メッセージ認証 — doc スコープ秘密 (localStorage `board.rs` + IDB `rs`) で全 kind に HMAC タグ、RTC は SDP token `k` で link 鍵共有 (ADR-1048 P1-c)

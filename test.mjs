@@ -14786,6 +14786,19 @@ try {
      assert.ok(eOut.frameId==null,'export: outside shape gets no frameId (ADR-0390)');
      assert.ok(eFr.frameId==null,'export: the frame itself gets no frameId (ADR-0390)');}
 
+    // ADR-1208: freedraw angle was silently dropped — pts must orbit the
+    // stroke's own bbox centre like doRotate's point geometry (ADR-0055).
+    {const sc=excToShapes(JSON.stringify({type:'excalidraw',elements:[
+       {type:'freedraw',x:100,y:100,width:10,height:0,angle:Math.PI/2,points:[[0,0],[10,0]]},
+       {type:'freedraw',x:0,y:0,width:10,height:0,points:[[0,0],[10,0]]}]}));
+     assert.ok(sc&&sc.length===2,'two strokes parsed');
+     const[rot,plain]=sc;
+     // (100,100),(110,100) about centre (105,100), 90° CCW → (105,95),(105,105)
+     assert.ok(rot.type==='pen'&&Math.abs(rot.pts[0][0]-105)<0.01&&Math.abs(rot.pts[0][1]-95)<0.01&&Math.abs(rot.pts[1][0]-105)<0.01&&Math.abs(rot.pts[1][1]-105)<0.01,'freedraw angle rotates pts about the stroke bbox centre (was dropped)');
+     assert.ok(plain.pts[0][0]===0&&plain.pts[0][1]===0&&plain.pts[1][0]===10,'no angle → pts untouched (baseline)');
+     console.log('  ✓ ADR-1208: excalidraw freedraw angle rotates pts (3 asserts)');
+     pass += 3;}
+
     // ADR-0240: group children carry parent-relative coords in real drawio files.
     // ADR-0250: _dioInflate — real deflate-raw+base64 <diagram> payload round-trips
     {

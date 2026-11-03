@@ -1,3 +1,8 @@
+## [1.8.232] - 2026-11-03
+
+### Fix
+- **round958 / ADR-1208 — excalidraw インポートで freedraw の `angle` が黙って落ちる不対称の閉塞**: `excToShapes` は `e.angle` を box 系 (`_hb`: rect/ellipse/diamond/frame/image) には `s.rotate` として、line/arrow (`_conn`) には端点+way の剛体回転として適用するのに、**freedraw→pen だけは `_hb` でも `_conn` でもないため角度がどこにも届かず**、回転した手書きストロークが無回転で取り込まれていた (現行 ADR-1207 と同型の「型ごとの適用不対称」)。pen は `pts` 剛体写像が既に `doRotate`/`_rotPtsAbout` (ADR-0055) にあるため、`s.pts` を持つ shape には同関数で **ストローク自身の bbox 中心周りに回転** — 端点中点を使う connector 経路とは独立。3 挙動ピン (90° 回転の座標一致 / 角度なしは pts 不変ベースライン)。
+
 ## [1.8.231] - 2026-11-03
 
 ### Fix
