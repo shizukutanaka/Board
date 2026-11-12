@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#00C4CC">
-<meta name="description" content="Board — offline-first infinite whiteboard. zero install, zero signup, zero ads.">
+<meta name="description" content="Board — the whiteboard that is a file. Offline-first infinite whiteboard: zero install, zero signup, zero ads.">
 <title>Board</title>
 <link rel="manifest" href='data:application/manifest+json,{"name":"Board","short_name":"Board","start_url":".","display":"standalone","background_color":"%23ffffff","theme_color":"%2300C4CC","icons":[{"src":"data:image/svg+xml;utf8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%3E%3Crect width=%27192%27 height=%27192%27 rx=%2740%27 fill=%27%2300C4CC%27/%3E%3Cpath d=%27M48 64h96v64H48z%27 fill=%27none%27 stroke=%27white%27 stroke-width=%276%27/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 <style>
@@ -949,6 +949,7 @@ function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers
 const I18N={
   ja:{export:'書き出し',present:'プレゼン',size:'太さ',lineStyle:'線種',helpTitle:'ショートカット',
     helpSub:'全部覚えなくていい。使いながら自然に。',
+    sampleTitle:'Board へようこそ',sampleSticky:'付箋にアイデアをメモ',sampleIdea:'考えをスケッチ',sampleGoal:'ゴールに整える',sampleArrow:'つなぐ',sampleHint:'サンプルボードです。ドラッグで移動、ペンで描画、? でショートカット。全部消せば白紙から始められます',
     saved:'保存済み',savedNow:'たった今',savedAgo:'秒前',
     exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',exportedExc:'.excalidrawファイルを保存しました',loadedBoard:'ボードを読み込みました',
     imagePasted:'画像を貼り付けました',empty:'キャンバスが空',
@@ -1032,6 +1033,7 @@ const I18N={
       rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',digitOpacity:'不透明度 0-9',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換',fixAnchor:'端点を固定アンカーとして結合'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
+    sampleTitle:'Welcome to Board',sampleSticky:'Sticky notes capture quick ideas',sampleIdea:'Sketch a thought',sampleGoal:'Shape the goal',sampleArrow:'connect',sampleHint:'Sample board: drag to move, draw with the pen, press ? for shortcuts. Delete all of this to start blank.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
     exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',exportedExc:'Excalidraw file saved',loadedBoard:'Board loaded',
     imagePasted:'Image pasted',empty:'Canvas is empty',
@@ -8838,6 +8840,7 @@ const Persist={
     const tx=_trx(this.db,[DB_STORE,DB_IMG_STORE],_RO);
     const rq=_oS(tx,DB_STORE).get(DOC_KEY);
     const d=await reqDone(rq);
+    this._noDoc=!(d&&_iA(d.shapes));   // ADR-0785: true only when a completed read finds no saved doc record at all (first run)
     if(d&&_iA(d.shapes)){
       // ADR-0031: v2 records store image bytes in
       // them BEFORE validation so image shapes loo
@@ -10376,6 +10379,23 @@ const Minimap=(()=>{
   return{draw,schedule,invalidateCache,cancelNav(){_mmNav=false}};
 })();
 
+// ADR-0785: first-run sample board. Seeded once, only when a completed IDB read
+// found NO saved doc record at all, nothing was restored/imported, and the URL
+// carried no share/invite hash. It is ordinary content (one undoable addMany
+// op) — an existing user's data is never read into it, altered, or overwritten.
+const _bootHash=location.hash;
+function _seedSample(){
+  if(!Persist._noDoc||_ln(_sh())||_bootHash)return;
+  _cmt({op:'addMany',shapes:[
+    _smk('text',{x:48,y:36,w:340,h:40,text:t('sampleTitle'),fontSize:28}),
+    _smk('sticky',{x:48,y:110,w:190,h:120,color:_YW,text:t('sampleSticky')}),
+    _smk('rect',{x:300,y:110,w:170,h:90,label:t('sampleIdea')}),
+    _smk('ellipse',{x:570,y:110,w:170,h:90,label:t('sampleGoal')}),
+    _smk('arrow',{x1:476,y1:155,x2:564,y2:155,label:t('sampleArrow')}),
+    _smk('text',{x:48,y:286,w:920,h:20,text:t('sampleHint'),fontSize:14})]});
+  Persist.schedule();
+}
+
 // ====================== MAIN ======================
 (async function main(){
   wire();
@@ -10400,6 +10420,7 @@ const Minimap=(()=>{
   // v1.1: import shared board from URL hash (if any)
   try{await Share.importFromHash()}catch(_){}
   try{Share.inviteFromHash()}catch(_){}   // ADR-0045
+  try{_seedSample()}catch(_){}   // ADR-0785: first-run sample (only when no saved doc exists)
   // v1.1: start BroadcastChannel sync for same-browser tab sync
   Net.init();
   _fitIfEmptyView();   // ADR-0106: restored view shows nothing → fit content

@@ -1,6 +1,6 @@
 # Board
 
-**Offline-first infinite whiteboard. Zero install. Zero sign-up. Zero ads.**
+**The whiteboard that is a file.** Offline-first infinite whiteboard. Zero install. Zero sign-up. Zero ads.
 単一HTMLファイル。ダブルクリックで動く。アカウント不要。広告なし。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-00C4CC.svg)](LICENSE)
@@ -25,7 +25,7 @@ All projects at a glance: [Project Portal](https://muse.ai/s/project-portal-bf6a
 | 完全オフライン | 部分 | ✓ | ✓ | **✓ PWA** |
 | サイズ | 数MB | ~1MB | ~2MB | **単一HTML 539KB (gzip 178KB)** |
 | 広告・トラッキング | あり | なし | なし | **ゼロ** |
-| 料金 | $10-16/月 | 無料 + Plus | SDK商用有料 | **完全無料** |
+| 料金 | 無料は編集可能ボード3枚まで / 有料 $8-20/人/月 | 無料 + Plus | 無料 (tldraw offline) / SDK商用有料 | **完全無料** |
 
 Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、オフライン PC — どこでも動く。
 
@@ -128,6 +128,7 @@ start index.html      # Windows
 
 ### 永続化
 - IndexedDB 自動保存 (500ms デバウンス)、リロード後も状態復元
+- 初回起動サンプル (ADR-0785): 保存データが一切無い場合に限り、小さなサンプルボードを1回だけ自動配置。既存データには触れず、通常の図形として編集・削除・Undo 可能
 - ドキュメント名編集可
 - 自己上書き保護 (ADR-0004): 全消去・インポートで置き換えられる直前のボードを自動バックアップ。
   Undo (Ctrl+Z) が有効なうちに気づかずリロード/タブを閉じても、次回起動時に一度だけ復元を確認

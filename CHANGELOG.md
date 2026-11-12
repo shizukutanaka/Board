@@ -1,3 +1,11 @@
+## [Unreleased]
+
+### Added
+- ADR-0785: 初回起動サンプルボード — 保存データ (IndexedDB のドキュメントレコード) が一切無い場合に限り、小さなサンプルボードを1回だけ自動配置。既存ユーザーのデータには触れず、通常の図形として編集・削除・Undo 可能
+
+### Changed
+- README: ヘッドラインに "The whiteboard that is a file" を採用。競合比較表の料金を実勢に更新 (Miro は無料が編集可能ボード3枚まで / 有料 $8-20/人/月、tldraw は無料の tldraw offline を併記)
+
 ## [1.7.810] - 2026-09-29
 
 ### Fixed
