@@ -11,7 +11,7 @@ const readme = readFileSync('./README.md', 'utf8');
 const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
-const RAW_CEILING = 544 * 1024;   // ADR-0646: the multi-page feature set needs ~8KB — ceiling remains a runaway-growth guard, not a hard budget
+const RAW_CEILING = 547 * 1024;   // ADR-0785: the first-run sample board needs ~2KB (was 544KB per ADR-0646) — ceiling remains a runaway-growth guard, not a hard budget
 // Measured with Node's built-in zlib instead of shelling out to `gzip -9`: the CLI is
 // absent on stock Windows and on minimal CI images, and its output differed from zlib's
 // by ~750 bytes (differing memLevel defaults) — enough to swing the badge check below.
@@ -69,6 +69,9 @@ const checks = [
   ['i18n ja + en', /I18N\s*=/.test(html) && html.includes('ja:{') && html.includes('en:{')],
   ['WCAG AAA brand-ink token', html.includes('--brand-ink:#003B40')],
   ['IndexedDB store', html.includes("DB_NAME='board'")],
+  // ADR-0785: the sample may only ever seed on a proven-empty store — all three
+  // gate pieces (completed-read flag, boot-hash snapshot, seeder) must be present.
+  ['First-run sample gate (ADR-0785)', html.includes('this._noDoc=') && html.includes('const _bootHash=location.hash') && html.includes('function _seedSample()') && html.includes("if(!Persist._noDoc||_ln(_sh())||_bootHash)return")],
   ['RAF render loop', /_rAF\(frame\)/.test(html)],
   ['op-log op types (add/del/upd/move/clear/zorder/replace)',
     ['add','del','upd','move','clear','zorder','replace'].every(op => html.includes(`op:'${op}'`))],
@@ -77,7 +80,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Raw size under runaway ceiling (544KB)', _rawSize < RAW_CEILING],
+  ['Raw size under runaway ceiling (547KB)', _rawSize < RAW_CEILING],
   // v1.6.77: enforce docs-vs-reality — the README version badge must track `const V`.
   // Root cause of prior drift (README said 1.6.70 while code shipped 1.6.77): nothing
   // tied them. This check fails the build the moment a version bump forgets the README.
