@@ -721,6 +721,7 @@ body{visibility:visible}
     <h2 id="helpTitle" data-t="helpTitle">ショートカット</h2>
     <p class="sub" data-t="helpSub">すべて覚える必要はない。使いながら自然に身につく。</p>
     <div class="help-grid" id="helpGrid"></div>
+    <p class="sub" data-t="pledgeLine">広告なし・追跡なし。ボードはこの端末の中だけにあり、どこへも送られません。</p>
   </div>
 </div>
 
@@ -949,6 +950,7 @@ function applyTheme(mode){   // mode: 'light'|'dark'|null (auto = follow prefers
 const I18N={
   ja:{export:'書き出し',present:'プレゼン',size:'太さ',lineStyle:'線種',helpTitle:'ショートカット',
     helpSub:'全部覚えなくていい。使いながら自然に。',
+    pledgeLine:'広告なし・追跡なし。ボードはこの端末の中だけにあり、どこへも送られません。',
     sampleTitle:'Board へようこそ',sampleSticky:'付箋にアイデアをメモ',sampleIdea:'考えをスケッチ',sampleGoal:'ゴールに整える',sampleArrow:'つなぐ',sampleHint:'サンプルボードです。ドラッグで移動、ペンで描画、? でショートカット。全部消せば白紙から始められます',
     saved:'保存済み',savedNow:'たった今',savedAgo:'秒前',
     exported:'PNGを書き出しました',exportedSVG:'SVGを書き出しました',exportedBoard:'.boardファイルを保存しました',exportedExc:'.excalidrawファイルを保存しました',loadedBoard:'ボードを読み込みました',
@@ -1033,6 +1035,7 @@ const I18N={
       rotate:'回転 (15° / ノブdrag)',selAllMatches:'件のマッチを選択',search:'検索',searchNav:'次/前のマッチへ移動',moveAxis:'軸拘束移動',resizeRatio:'比率保持リサイズ',resizeCenter:'中心固定リサイズ',kbdResize:'リサイズ (⇧:×10)',lasso:'ラッソ選択',swapFill:'塗り↔線を交換',digitOpacity:'不透明度 0-9',eyedropDone:'スタイルを取得',swapDone:'塗り↔線を交換',fixAnchor:'端点を固定アンカーとして結合'}},
   en:{export:'Export',present:'Present',snap:'Snap',size:'Size',lineStyle:'Line',helpTitle:'Shortcuts',
     helpSub:'No need to memorise. You\'ll pick it up.',
+    pledgeLine:'No ads. No tracking. Your board lives only on this device — it is sent nowhere.',
     sampleTitle:'Welcome to Board',sampleSticky:'Sticky notes capture quick ideas',sampleIdea:'Sketch a thought',sampleGoal:'Shape the goal',sampleArrow:'connect',sampleHint:'Sample board: drag to move, draw with the pen, press ? for shortcuts. Delete all of this to start blank.',
     saved:'saved',savedNow:'just now',savedAgo:'s ago',
     exported:'PNG exported',exportedSVG:'SVG exported',exportedBoard:'Board file saved',exportedExc:'Excalidraw file saved',loadedBoard:'Board loaded',
