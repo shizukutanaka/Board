@@ -11,6 +11,10 @@
 
 All projects at a glance: [Project Portal](https://muse.ai/s/project-portal-bf6avrxu7xyfxl/6PgvpkK4Nn1DPotxc3edgYXaYZgDC5_LeWpXkf1wsrg)
 
+![Board screenshot — the first-run sample board](docs/images/screenshot.png)
+
+*起動直後の画面。初回はサンプルボードが開きます / First launch, showing the built-in sample board — rendered from the single `index.html`, no server, no build.*
+
 ---
 
 ## なぜ Board か / Why Board
