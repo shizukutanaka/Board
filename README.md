@@ -17,6 +17,16 @@ All projects at a glance: [Project Portal](https://muse.ai/s/project-portal-bf6a
 
 ---
 
+## やらないこと / What Board never does
+
+- **広告なし / No ads** — アプリに広告は入りません。
+- **追跡なし / No tracking** — 解析もトラッキングもありません。第三者のサーバーへデータを送る通信自体がなく、`node test.mjs` が「外部オリジンゼロ」を検証しています。
+- **作成者はデータを持たない / The creator never receives your data** — ボードはあなたのブラウザ内（IndexedDB）にだけ保存されます。外に出るのは、あなた自身がファイルや共有リンクを書き出して渡したときだけです。
+
+No accounts, no ads, no tracking — and no server to send anything to. Your board stays in your browser's storage, on your device; the only way it ever leaves is a file or share link you export yourself.
+
+---
+
 ## なぜ Board か / Why Board
 
 既存のホワイトボードはどれも何かを諦めている。
