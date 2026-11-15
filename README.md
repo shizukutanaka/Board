@@ -9,11 +9,41 @@
 [![Offline](https://img.shields.io/badge/offline-first-00C4CC.svg)](#offline)
 [![A11y](https://img.shields.io/badge/WCAG-AAA-00C4CC.svg)](#accessibility)
 
-All projects at a glance: [Project Portal](https://muse.ai/s/project-portal-bf6avrxu7xyfxl/6PgvpkK4Nn1DPotxc3edgYXaYZgDC5_LeWpXkf1wsrg)
-
 ![Board screenshot — the first-run sample board](docs/images/screenshot.png)
 
 *起動直後の画面。初回はサンプルボードが開きます / First launch, showing the built-in sample board — rendered from the single `index.html`, no server, no build.*
+
+## 使い方 / Quick Start
+
+### 最速: 1ファイルを直接ダウンロード / Download the single file
+
+**[⬇ index.html を直接ダウンロード (最新版)](https://github.com/shizukutanaka/Board/raw/HEAD/index.html)**
+&nbsp;·&nbsp;
+[リポジトリ上でプレビュー / view on GitHub](https://github.com/shizukutanaka/Board/blob/HEAD/index.html)
+
+上のリンクを右クリック →「名前を付けて保存」で `index.html` を保存し、ブラウザで開くだけ。
+これ以外に必要なものは何もありません(サーバー・ビルド・登録すべて不要)。
+
+> リンク先の GitHub ページ右上の「Download raw file」ボタンからも保存できます。
+> 特定バージョンの完成品が必要な場合は `HEAD` をタグ名(例 `v1.7.68`, 公開後)に置き換えてください。
+
+### CLI で取得する場合
+
+```bash
+# リポジトリの既定ブランチから index.html だけを取得
+git clone --depth 1 https://github.com/shizukutanaka/Board && cp Board/index.html .
+# または curl で1ファイルだけ
+curl -L -o index.html https://github.com/shizukutanaka/Board/raw/HEAD/index.html
+```
+
+```bash
+# 開く (サーバー不要)
+open index.html       # macOS
+xdg-open index.html   # Linux
+start index.html      # Windows
+```
+
+ブラウザに `file://` でも、任意の静的ホスティング (GitHub Pages / Cloudflare Pages / S3 / Netlify) でも動作。
 
 ---
 
@@ -48,38 +78,6 @@ Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、
 > [HTTP Archive Web Almanac 2025](https://almanac.httparchive.org/en/2025/page-weight) が報告する
 > モバイルページ重量の中央値 2,362KB に対し、およそ **1/33**。
 > 数値は `node test.mjs` が実測し、この README のバッジと ±10% 以内で一致することを検証している。
-
-## 使い方 / Quick Start
-
-### 最速: 1ファイルを直接ダウンロード / Download the single file
-
-**[⬇ index.html を直接ダウンロード (最新版)](https://github.com/shizukutanaka/Board/raw/HEAD/index.html)**
-&nbsp;·&nbsp;
-[リポジトリ上でプレビュー / view on GitHub](https://github.com/shizukutanaka/Board/blob/HEAD/index.html)
-
-上のリンクを右クリック →「名前を付けて保存」で `index.html` を保存し、ブラウザで開くだけ。
-これ以外に必要なものは何もありません(サーバー・ビルド・登録すべて不要)。
-
-> リンク先の GitHub ページ右上の「Download raw file」ボタンからも保存できます。
-> 特定バージョンの完成品が必要な場合は `HEAD` をタグ名(例 `v1.7.68`, 公開後)に置き換えてください。
-
-### CLI で取得する場合
-
-```bash
-# リポジトリの既定ブランチから index.html だけを取得
-git clone --depth 1 https://github.com/shizukutanaka/Board && cp Board/index.html .
-# または curl で1ファイルだけ
-curl -L -o index.html https://github.com/shizukutanaka/Board/raw/HEAD/index.html
-```
-
-```bash
-# 開く (サーバー不要)
-open index.html       # macOS
-xdg-open index.html   # Linux
-start index.html      # Windows
-```
-
-ブラウザに `file://` でも、任意の静的ホスティング (GitHub Pages / Cloudflare Pages / S3 / Netlify) でも動作。
 
 ## 機能 / Features (v1.6)
 
@@ -308,3 +306,5 @@ MIT. 商用利用可、改変可、再配布可。
 競合の優れた点から学んだ: Excalidraw (E2E, no sign-up), tldraw (infinite canvas SDK), Miro (collaboration UX)。
 
 Board はそれらを複雑さなしで実現することを目指す。
+
+All projects at a glance: [Project Portal](https://muse.ai/s/project-portal-bf6avrxu7xyfxl/6PgvpkK4Nn1DPotxc3edgYXaYZgDC5_LeWpXkf1wsrg)
