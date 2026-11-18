@@ -190,11 +190,12 @@ Board のデータはあなたのもの — 他の道具へ持って出せるこ
 
 | 形式 | 開ける場所 | 備考 |
 |---|---|---|
-| `.board` | Board | Board 独自の JSON (全ページ・全図形)。完全なバックアップで、往復で欠けない唯一の形式 |
+| `.board` | Board | Board 独自の JSON (全ページ・全図形)。完全なバックアップ |
 | `.excalidraw` | Excalidraw | Excalidraw の標準形式 (現在のページのみ)。向こうで編集でき、Board への再読み込みも可能 |
 | `.drawio` | diagrams.net (draw.io) | 標準の mxfile (非圧縮、全ページを diagram として出力)。向こうで編集でき、Board への再読み込みも可能 |
-| `.svg` | ほぼ全ての画像・図版ツール | 標準 SVG (見た目を保持)。再読み込み時は図形への分解になる (下記) |
-| `.png` / PDF | どこでも | 画像・印刷用。再編集はできない |
+| `.svg` | ほぼ全ての画像・図版ツール | 標準 SVG (見た目を保持)。Board の書き出しにはシーンが埋め込まれ、Board で開くとそのまま復元される。他の道具の SVG の再読み込みは図形への分解になる (下記) |
+| `.png` | どこでも | 画像用。Board の書き出しにはシーンが埋め込まれ、Board で開くと編集可能なボードとして復元される |
+| PDF | どこでも | 印刷用。再編集はできない |
 
 ### 読み込み (ファイルピッカー / ドラッグ&ドロップ / 貼り付け)
 
@@ -205,6 +206,9 @@ Board のデータはあなたのもの — 他の道具へ持って出せるこ
   複数ページは Board の複数ページになる
 - `.svg` — rect / circle / ellipse / line / polyline / polygon / path / text /
   image の基本図形を編集可能な図形に変換する (複雑な効果は近似になる)
+- Board が書き出した PNG / SVG — ファイル内に埋め込まれたシーンから、
+  編集可能なボードとして復元する (埋め込みが壊れている場合は理由を表示して
+  失敗する)。画像として送ることが、そのままボードを送ることになる
 - 画像ファイル — そのままキャンバスへ。プレーンテキストはテキスト図形に、
   表計算から貼った TSV は付箋のグリッドになる
 
@@ -217,14 +221,18 @@ Board のデータはあなたのもの — 他の道具へ持って出せるこ
   ないため)。手描き風の粗さ (roughness) は再現されず、ハッチ等の一部装飾は
   近似に落ちる
 - `.drawio` 書き出し: ペンの軌跡は折れ線に近似される
-- `.svg` を Board に読み戻すと、ラベルは独立したテキスト図形になるなど、
-  構造は元の図形どおりには戻らない。完全な往復が必要なら `.board` を使うこと
+- 他の道具で作った `.svg` を Board に読み戻すと、ラベルは独立したテキスト
+  図形になるなど、構造は元の図形どおりには戻らない (Board 自身が書き出した
+  SVG は埋め込みシーンから元の図形どおりに復元される)。完全なバックアップ
+  が必要なら `.board` を使うこと
 - 共有リンク (`#...`) は Board 専用で、他の道具では開けない
 
 Your data stays yours: export to Excalidraw (`.excalidraw`) or draw.io
 (`.drawio`) and keep editing there, bring files from both back into Board,
-or fall back to SVG/PNG anywhere. tldraw and Miro formats are not supported;
-the lossless round-trip format is Board's own `.board` (JSON).
+or fall back to SVG/PNG anywhere. PNG/SVG files exported from Board embed
+the scene and reopen in Board as the editable board itself; the full
+backup format is Board's own `.board` (JSON). tldraw and Miro formats are
+not supported.
 
 ## キーボード / Shortcuts
 
