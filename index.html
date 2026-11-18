@@ -740,7 +740,7 @@ body{visibility:visible}
     <label class="share-enc"><input type="checkbox" id="shareEnc"> <span data-t="shareEncLabel">🔒 暗号化リンク (推奨)</span></label>
     <p class="sub share-warn" id="shareWarnPlain" data-t="shareUrlWarn">⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。</p>
     <p class="sub" id="shareWarnEnc" hidden data-t="shareUrlNoteEnc">🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。</p>
-    <p class="sub share-warn" id="shareWarnLong" hidden data-t="shareUrlTooLong">⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧E) の方が確実です。</p>
+    <p class="sub share-warn" id="shareWarnLong" hidden data-t="shareUrlTooLong">⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧S) の方が確実です。</p>
 
     <details class="share-details">
       <summary data-t="sharePeer">相手と直接つなぐ (実験的)</summary>
@@ -996,7 +996,7 @@ const I18N={
     shareUrlHint:'このURLをコピーして送ると、相手に内容が共有されます',
     shareEncLabel:'🔒 暗号化リンク (推奨)',
     shareUrlWarn:'⚠ 盤面の内容はURLに埋め込まれます(圧縮のみ・暗号化なし)。リンクを知る人は誰でも閲覧できます。',
-    shareUrlTooLong:'⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧E) の方が確実です。',
+    shareUrlTooLong:'⚠ URL が非常に長いため、チャット経由だと切り詰められる恐れがあります。大きい盤面は .board エクスポート (⌘⇧S) の方が確実です。',
     shareExportFailed:'共有リンクの生成に失敗しました',
     shareUrlNoteEnc:'🔒 盤面は暗号化されてURLに埋め込まれます。鍵はリンク内に含まれ、リンクを知る人だけが開けます。',
     shareNoKey:'このリンクには復号鍵がありません',shareBadKey:'復号できませんでした — リンクが壊れているか、鍵が一致しません',shareNoCrypto:'この環境では暗号化リンクを開けません(セキュアコンテキストが必要です)',
@@ -1078,7 +1078,7 @@ const I18N={
     shareUrlHint:'Copy this URL and send it — the recipient gets your board.',
     shareEncLabel:'🔒 Encrypted link (recommended)',
     shareUrlWarn:'⚠ Your board is embedded in the URL (compressed, NOT encrypted). Anyone with the link can read it.',
-    shareUrlTooLong:'⚠ This URL is very long and may get truncated when shared over chat. For large boards, exporting .board (⌘⇧E) is more reliable.',
+    shareUrlTooLong:'⚠ This URL is very long and may get truncated when shared over chat. For large boards, exporting .board (⌘⇧S) is more reliable.',
     shareExportFailed:'Failed to build the share link',
     shareUrlNoteEnc:'🔒 Your board is encrypted inside the URL — the key travels in the link, so only people with the link can open it.',
     shareNoKey:'This link is missing its decryption key',shareBadKey:'Could not decrypt — the link is corrupt or the key does not match',shareNoCrypto:'Encrypted links cannot be opened in this context (a secure context is required)',
