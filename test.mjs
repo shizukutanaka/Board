@@ -11,7 +11,7 @@ const readme = readFileSync('./README.md', 'utf8');
 const _codeVer = (html.match(/const V='([^']+)'/) || [])[1];
 // Size is no longer hard-capped (44KB gzip budget removed 2026-06-13). A loose raw
 // ceiling stays purely as a runaway-growth guard; gzip size is reported for visibility.
-const RAW_CEILING = 547 * 1024;   // ADR-0785: the first-run sample board needs ~2KB (was 544KB per ADR-0646) — ceiling remains a runaway-growth guard, not a hard budget
+const RAW_CEILING = 552 * 1024;   // ADR-0786: embed-scene (PNG tEXt + SVG metadata + restore paths) needs ~5KB (was 547KB per ADR-0785) — ceiling remains a runaway-growth guard, not a hard budget
 // Measured with Node's built-in zlib instead of shelling out to `gzip -9`: the CLI is
 // absent on stock Windows and on minimal CI images, and its output differed from zlib's
 // by ~750 bytes (differing memLevel defaults) — enough to swing the badge check below.
@@ -80,7 +80,7 @@ const checks = [
       .every(t => html.includes(`data-tool="${t}"`))],
   ['Keymap covers all tools',
     /KEYMAP\s*=\s*\{v:'select'[^}]+h:'hand'[^}]+p:'pen'/.test(html)],
-  ['Raw size under runaway ceiling (547KB)', _rawSize < RAW_CEILING],
+  ['Raw size under runaway ceiling (552KB)', _rawSize < RAW_CEILING],
   // v1.6.77: enforce docs-vs-reality — the README version badge must track `const V`.
   // Root cause of prior drift (README said 1.6.70 while code shipped 1.6.77): nothing
   // tied them. This check fails the build the moment a version bump forgets the README.
@@ -535,6 +535,10 @@ const checks = [
   ['select same type (ctx)', html.includes('selectSameType')&&html.includes('ctxSelectSameType')&&html.includes('s.type===sel[0].type')],
   ['connector label position (labelPos, drag anchor)', html.includes('_lP(s)!=null&&_fin(_lP(s))')&&html.includes("ptr.dragKind='lblpos'")&&html.includes('_pathNearestT')],
   ['PNG export scale options (1x/4x via _renderPngBlob desired)', html.includes('_renderPngBlob(shapes,cb,desired)')&&html.includes('ctxExportPNG4x')&&html.includes('exportScale(w,h,desired||2)')],
+  ['Embed scene in PNG export (ADR-0786)', html.includes("_pngEmbed(buf,sceneJSON(shapes))")&&html.includes("const _SCENEKEY='board-scene'")],
+  ['Embed scene in SVG export (ADR-0786)', html.includes("buildSVG(shapes,_p(),sceneJSON(shapes))")&&html.includes('data-board-scene')],
+  ['Embedded scene reopens as board on open/drop (ADR-0786)', html.includes('function importPngFile')&&html.includes('_restoreScene(sc)')&&html.includes('.png,image/png')],
+  ['Corrupt embed fails loudly, never half-opens (ADR-0786)', html.includes('if(sc===false){_eT(_IB);return}')&&html.includes("d.shapes.filter(validShape))){_eT(_IB);return}")],
   ['arrowhead style variants (dot/open, both renderers)', html.includes("style==='dot'")&&html.includes("style==='open'")&&html.includes('function _svgArrowHead')&&html.includes('cycleArrowHead')&&html.includes('ctxArrowHead')],
   ['export viewport PNG (view-crop)', html.includes('exportViewportPNG')&&html.includes('ctxExportViewPNG')&&html.includes('inView(s,view)')],
   ['dblclick empty canvas creates text (Excalidraw parity)', html.includes('if(!hit){beginText(wp);return}')],
@@ -810,7 +814,7 @@ const checks = [
   ['svg transform matrix accumulator', html.includes('function _svgMOf(t)') && html.includes('function _svgMMul(P,Q)')],
   ['svg claimed before image branch on drop', html.includes("_ew(f.name,'.svg')||f.type==='image/svg+xml')")],
   ['svg markup paste hook', html.includes("i.type==='text/plain'") && html.includes('importSvgText(s)')],
-  ['file picker accepts svg + excalidraw', html.includes('accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio"')],
+  ['file picker accepts svg + excalidraw', html.includes('accept=".board,.svg,image/svg+xml,.png,image/png,.excalidraw,.drawio,.dio"')],   // ADR-0786: +.png (embedded scene)
   ['i18n has svgImported ja+en', html.includes("svgImported:'SVG を取り込みました'") && html.includes("svgImported:'SVG imported'")],
   // v1.7.101: ADR-0043 .excalidraw import
   ['excalidraw import ceilings defined', html.includes('EXC_MAX_ELEMS') && html.includes('EXC_MAX_PTS')],
@@ -1265,7 +1269,7 @@ const checks = [
   ['_round helper sheds float noise', html.includes("function _round(n,dp){return _iN(n)&&_fin(n)?_rnd(n*10**dp)/10**dp:n;}")],
   ['roundShapesForExport rounds coord/dim fields', html.includes("function roundShapesForExport(shapes,dp=2)") && html.includes("['x','y','w','h','x1','y1','x2','y2','rotate']")],
   ['share export rounds shapes', html.includes("shapes:roundShapesForExport(_sh()),name:_dn()")],
-  ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)})],{type:'application/json'})")],
+  ['.board export rounds shapes', html.includes("shapes:roundShapesForExport(shapes)")&&html.includes("new Blob([sceneJSON(shapes)],{type:'application/json'})")],   // ADR-0786: payload builder extracted as sceneJSON (shared with PNG/SVG embeds)
   // v1.6.84: Net.init clears prior presence timer on re-init (no leaked heartbeat)
   ['Net.init clears prior presence timer', html.includes("clearInterval(this._presenceTimer);   // re-init (room switch) must not leak the old heartbeat")],
   // v1.6.85: WebRTC peers lifecycle-managed (not heartbeat-reaped after 15s)
@@ -1504,7 +1508,7 @@ const checks = [
     html.includes("&&_iN(op.dx)&&_fin(op.dx)&&_iN(op.dy)&&_fin(op.dy)")],
   // v1.7.56 (ADR-0007, FT-07): export menu + .board file-picker DOM/wiring
   ['btnExportMenu button and hidden fileImport input present in the DOM',
-    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio"')],
+    html.includes('id="btnExportMenu"') && html.includes('id="fileImport"') && html.includes('accept=".board,.svg,image/svg+xml,.png,image/png,.excalidraw,.drawio,.dio"')],   // ADR-0786: +.png
   ['btnExportMenu wired to UI.openExportMenu, fileImport routes by type',
     html.includes("UI.openExportMenu(r.left,r.bottom+4)") && html.includes("?importSvgFile(f):importBoard(f);   // ADR-0203")],
   ['openCtxMenu accepts an optional customItems override (backward-compatible default)',
@@ -1707,7 +1711,7 @@ try {
              endRectLike, endLineLike, endSelect, I18N, applyTheme, editSelectedShapeKbd, Share,
              draw, drawOverlay, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx: (c) => { const p = ctx; ctx = c; return p; }, _setOCtx: (c) => { const p = octx; octx = c; return p; },
              _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
-             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
+             _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, importSvgText, _crc32, _pngEmbed, _pngScene, _svgScene, sceneJSON, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
              _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
              switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx,
              _getLang: () => LANG, _getT: () => T };
@@ -1734,7 +1738,7 @@ try {
           _getPasteCount, _resetPasteClipboard,
           endRectLike, endLineLike, endSelect, drawPen, drawPenMaybeCached, _penCached, _penCache, _setCtx,
           _imgHash, _imgNextKey, _imgSlim, _imgAttach, DOC_KEY, _rdp, getImg, _psc, _pcC, _ptsOK, _undoWire, 
-          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
+          _mirrorSync, _mirrorGo, MIRROR_MAX, _svgPathPts, _svgMOf, _svgBoxLabel, _svgMMul, _svgMPt, svgToShapes, _crc32, _pngEmbed, _pngScene, _svgScene, sceneJSON, excToShapes, importExcText, excScene, exportExc, boardToDrawio, exportDrawio, drawioToShapes, _dioInflate, 
           _penFillRange, _penQuad, _penDisc, _penTaperI, _penTaperE, PEN_TAPER,
           switchPage, _pgAdd, _pgDel, _pgRename, _pgDup, _pgOk, _pgAdopt, _pgBar, _pgById, _pgOn, _vPages, _pgIdx } = api;
 
@@ -2398,6 +2402,47 @@ try {
   assert.ok(!/<script/i.test(svgNum), 'no <script via string numeric attr');
   assert.ok(!/alert\(3\)/.test(svgNum), 'malicious coord neutralised, not emitted');
   console.log('  ✓ buildSVG coerces numeric attrs (no breakout via coords)');
+
+  // ADR-0786: embed scene — PNG/SVG exports carry the .board scene and the
+  // extractors recover it byte-exact (round trip), while plain images keep
+  // their old behaviour and a corrupt embed is signalled, never half-opened.
+  {
+    assert.strictEqual(_crc32(new TextEncoder().encode('123456789')), 0xCBF43926, 'CRC32 matches the standard check vector');
+    const png0 = new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'));
+    assert.strictEqual(_pngScene(png0), null, 'plain PNG has no scene');
+    const scene = JSON.stringify({v:'1.7.810', docName:'埋め込みテスト', shapes:[{id:'a', type:'text', text:'</metadata> & "quoted" <tag>'}]});
+    const emb = _pngEmbed(png0, scene);
+    assert.ok(emb, 'embed returns bytes for a real PNG');
+    const tdLen = 12 + Buffer.byteLength('board-scene\0' + Buffer.from(scene, 'utf8').toString('base64'), 'latin1');
+    assert.strictEqual(emb.length, png0.length + tdLen, 'PNG grows by exactly one chunk');
+    assert.strictEqual(String.fromCharCode(...emb.subarray(37, 41)), 'tEXt', 'second chunk is the scene tEXt');
+    assert.ok(Buffer.from(emb.subarray(33 + tdLen)).equals(Buffer.from(png0.subarray(33))), 'original tail bytes untouched after the inserted chunk');
+    // stored CRC must match an independent bitwise CRC over type+data
+    const chunkBody = emb.subarray(37, 33 + tdLen - 4);
+    let crc = 0xFFFFFFFF;
+    for (const b of chunkBody) { crc ^= b; for (let k = 0; k < 8; k++) crc = crc & 1 ? 0xEDB88320 ^ (crc >>> 1) : crc >>> 1; }
+    const stored = new DataView(emb.buffer, emb.byteOffset + 33 + tdLen - 4, 4).getUint32(0);
+    assert.strictEqual((crc ^ 0xFFFFFFFF) >>> 0, stored, 'scene chunk CRC-32 is valid');
+    assert.strictEqual(_pngScene(emb), scene, 'PNG scene round-trips byte-exact (incl. Japanese + markup chars)');
+    const bad = Uint8Array.from(emb);
+    for (let i = 53; i < 61; i++) bad[i] = 33; // '!' over the base64 payload → undecodable
+    assert.strictEqual(_pngScene(bad), false, 'corrupt scene chunk reports false, not null');
+    assert.strictEqual(_pngScene(new Uint8Array([1, 2, 3])), null, 'non-PNG input has no scene');
+    assert.strictEqual(_pngEmbed(new Uint8Array([1, 2, 3]), '{}'), null, 'embed refuses non-PNG input');
+    console.log('  ✓ PNG embed scene round trip + corruption signal (ADR-0786)');
+  }
+  {
+    const rect = Shape.make('rect', {x:0, y:0, w:20, h:20});
+    const scene = JSON.stringify({v:'1.7.810', shapes:[{id:'a', type:'text', text:'</metadata> & <b> "q"'}]});
+    const svgE = buildSVG([rect], '#FFFFFF', scene);
+    assert.ok(svgE.includes('<metadata data-board-scene="1">'), 'SVG export embeds the scene metadata');
+    assert.strictEqual(_svgScene(svgE), scene, 'SVG scene round-trips byte-exact (escaping is reversible)');
+    assert.strictEqual(_svgScene(buildSVG([rect], '#FFFFFF')), null, 'plain SVG export has no scene');
+    assert.ok(svgE.includes('<rect'), 'embedded SVG keeps its rendered shapes alongside the metadata');
+    const sj = JSON.parse(sceneJSON([Shape.make('rect', {x:1, y:2, w:30, h:40})]));
+    assert.ok(Array.isArray(sj.shapes) && sj.shapes.length === 1 && !!sj.v, 'sceneJSON emits the .board payload shape');
+    console.log('  ✓ SVG embed scene round trip (ADR-0786)');
+  }
 
   // viewport culling predicate (drives draw() skip of off-screen shapes)
   const cv = { x:0, y:0, w:800, h:600 };
@@ -8481,9 +8526,13 @@ try {
     assert.ok(sel.length===1&&sel[0].id===b.id,'_selShapes: filters to the live selection');
     const toasts=[];const _ot=UI.toast;UI.toast=(m,k)=>{toasts.push(k)};
     try{
-      exportSelection('png');exportSelection('svg');exportSelection('copy');exportSelection('drawio');
+      // ADR-0786: PNG export embeds its scene — reading the blob bytes makes
+      // its completion (and toast) async, so await each PNG before the next
+      // route fires; the expected order below is unchanged.
+      exportSelection('png');await new Promise(r=>setTimeout(r,30));
+      exportSelection('svg');exportSelection('copy');exportSelection('drawio');
       state.selection=new Set();
-      exportSelection('png');
+      exportSelection('png');await new Promise(r=>setTimeout(r,30));
     }finally{UI.toast=_ot}
     // PNG+SVG reach a.toBlob/buildSVG → 'ok'; copy hits the ClipboardItem guard →
     // 'copyUnsupported' warn; empty selection → 'noSelection' warn.
@@ -13556,6 +13605,31 @@ try {
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='image'&&state.shapes[0].w>0,'a dropped image file decodes and adds an image shape (ADR-0022)');
       }finally{globalThis.Image=_IM}
+      // ADR-0786: a dropped Board PNG restores its embedded scene as the board
+      reset();
+      const keep=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:keep});
+      const embScene='{"v":"1","docName":"Emb","shapes":[{"id":"emb1","type":"rect","x":1,"y":2,"w":30,"h":20,"z":0}]}';
+      const png1=new Uint8Array(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=','base64'));
+      const embBytes=_pngEmbed(png1,embScene);
+      const pfile={name:'s.png',type:'image/png',size:embBytes.length,arrayBuffer:()=>Promise.resolve(embBytes)};
+      for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[pfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+      await new Promise(r=>setTimeout(r,30));
+      assert.ok(state.shapes.length===1&&state.shapes[0].id==='emb1','a dropped embedded PNG restores the scene as the board (ADR-0786)');
+      // ADR-0786: a corrupt embed neither replaces the board nor lands as a picture
+      reset();
+      const keep2=Shape.make('rect',{x:0,y:0,w:10,h:10});
+      Store.commit({op:'add',shape:keep2});
+      const badBytes=Uint8Array.from(embBytes);
+      for(let i=53;i<61;i++)badBytes[i]=33;
+      const bfile={name:'bad.png',type:'image/png',size:badBytes.length,arrayBuffer:()=>Promise.resolve(badBytes)};
+      const _toasts=[];const _ot3=UI.toast;UI.toast=(m,k)=>{_toasts.push(k)};
+      try{
+        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[bfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        await new Promise(r=>setTimeout(r,30));
+      }finally{UI.toast=_ot3}
+      assert.ok(state.shapes.length===1&&state.shapes[0].id===keep2.id,'a corrupt embedded PNG leaves the board untouched (ADR-0786)');
+      assert.ok(_toasts.includes('err'),'a corrupt embedded PNG surfaces an error toast (ADR-0786)');
       const _DP=globalThis.DOMParser;
       const _miniDom=s=>{
         const mk=tag=>({localName:tag,_at:{},children:[],textContent:'',id:undefined,
@@ -13583,6 +13657,13 @@ try {
         for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[sfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
         await new Promise(r=>setTimeout(r,30));
         assert.ok(state.shapes.length===1&&state.shapes[0].type==='rect'&&state.shapes[0].w===30,'a dropped .svg file converts markup to board shapes via DOMParser (ADR-0042)');
+        // ADR-0786: a dropped Board SVG restores its embedded scene instead of decomposing
+        reset();
+        const embSvg=buildSVG([Shape.make('rect',{x:0,y:0,w:10,h:10})],'#FFFFFF','{"v":"1","docName":"EmbSvg","shapes":[{"id":"emb2","type":"rect","x":3,"y":4,"w":50,"h":60,"z":0}]}');
+        const esfile={name:'e.svg',type:'image/svg+xml',size:embSvg.length,text:()=>Promise.resolve(embSvg)};
+        for(const f of (canvas._L['drop']||[]).slice(0,1))f({dataTransfer:{files:[esfile],getData:()=>''},clientX:400,clientY:300,preventDefault(){}});
+        await new Promise(r=>setTimeout(r,30));
+        assert.ok(state.shapes.length===1&&state.shapes[0].id==='emb2','a dropped embedded SVG restores the scene as the board (ADR-0786)');
         reset();
         const dio='<mxfile><diagram><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="c1" value="Hi" style="rounded=0;" vertex="1" parent="1"><mxGeometry x="10" y="10" width="120" height="60" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>';
         const dfile2={name:'d.drawio',type:'',size:dio.length,text:()=>Promise.resolve(dio)};
@@ -14058,7 +14139,7 @@ try {
   // Math.abs(...) checks) — that +1 was carried forward through every subsequent
   // cumulative total below. Corrected here by -1; all deltas above this line describe
   // what was added at the time and are otherwise left as historical record.
-  pass += 1771; // prev 1768 + 3 ADR-0784 _imgIn byte-cap asserts
+  pass += 1791; // prev 1787 + 4 ADR-0786 drop-restore asserts
 
 } catch (err) {
   console.log('  ✗ behavioural tests crashed:', err.stack||err.message);

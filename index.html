@@ -617,7 +617,7 @@ body{visibility:visible}
     <button class="btn icon" id="btnExportMenu" aria-label="More export &amp; import options" title="More export &amp; import options" data-t-aria="moreExport" data-t-title="moreExport">
       <svg class="ic"><use href="#i15"/></svg>
     </button>
-    <input type="file" id="fileImport" accept=".board,.svg,image/svg+xml,.excalidraw,.drawio,.dio" hidden>
+    <input type="file" id="fileImport" accept=".board,.svg,image/svg+xml,.png,image/png,.excalidraw,.drawio,.dio" hidden>
     <button class="btn icon" id="btnInstall" aria-label="Install app" title="Install Board as an app" data-t-aria="install" data-t-title="install" hidden>
       <svg class="ic"><use href="#i16"/></svg>
     </button>
@@ -4826,7 +4826,7 @@ _on(canvas,'drop',e=>{
   // reader.onload is async, so a shared counte
   // (20×N) by the time any onload fires, stack
   files.forEach((f,i)=>{
-    _imgImportFile(f,(dataUrl,nw,nh)=>{
+    const ins=()=>_imgImportFile(f,(dataUrl,nw,nh)=>{
       const maxDim=400;
       let w=nw,h=nh;
       if(w>maxDim||h>maxDim){const r=_min(maxDim/w,maxDim/h);w*=r;h*=r}
@@ -4835,6 +4835,12 @@ _on(canvas,'drop',e=>{
       _ss([sh.id]);
       _iv();_oT('imagePasted');
     });
+    // ADR-0786: a dropped Board PNG reopens as a board, not a picture.
+    if(f.type==='image/png'&&f.arrayBuffer)f.arrayBuffer().then(b=>{
+      const sc=_pngScene(b);
+      if(sc===false)_eT(_IB);else if(sc!=null)_restoreScene(sc);else ins();
+    },ins);
+    else ins();
   });
 });
 
@@ -4860,7 +4866,7 @@ _on(window,'paste',e=>{
   // ADR-0272: an image/svg+xml clipboard item imports as vector shapes —
   // without this it rasterised through the ima
   {const _svi=[...e.clipboardData.items].find(i=>i.type==='image/svg+xml');
-   if(_svi){const f=_svi.getAsFile();if(f){_pd(e);f.text().then(s=>importSvgText(s));return}}}
+   if(_svi){const f=_svi.getAsFile();if(f){_pd(e);f.text().then(s=>{const sc=_svgScene(s);if(sc!=null)_restoreScene(sc);else importSvgText(s)});return}}}
   const items=[...e.clipboardData.items].filter(i=>_sw(i.type,'image/'));
   if(!_ln(items)){
     // ADR-0042: raw SVG markup copied to the cli
@@ -6711,7 +6717,11 @@ function _renderPngBlob(shapes,cb,desired){
   oc.fillRect(0,0,off.width,off.height);
   oc.setTransform(scale,0,0,scale,-b.x*scale+pad*scale,-b.y*scale+pad*scale);
   for(const s of shapes)drawShape(s,oc);
-  off.toBlob(cb,'image/png');
+  // ADR-0786: the PNG carries its scene (see _pngEmbed) so it reopens as a board.
+  off.toBlob(b=>{
+    if(!b||!b.arrayBuffer){cb(b);return}
+    b.arrayBuffer().then(buf=>{const e=_pngEmbed(buf,sceneJSON(shapes));cb(e?new Blob([e],{type:'image/png'}):b)},()=>cb(b));
+  },'image/png');
 }
 // ADR-0052: selection-scoped exports share the whole-board renderers — the
 // exported region is exactly the selection's bbox (same pad/scale semantics).
@@ -6776,7 +6786,7 @@ function copyPNG(shapes=_shV()){   // ADR-0658
 // ADR-0087: selection/board SVG as clipboard text — the ClipboardItem SVG
 // MIME is browser-inconsistent, but plain-text SVG pastes everywhere useful.
 function copySVG(shapes=_shV()){   // ADR-0658
-  const svg=buildSVG(shapes,_p());
+  const svg=buildSVG(shapes,_p(),sceneJSON(shapes));   // ADR-0786
   if(svg===null){_wT(_EM);return}
   _cpT(copyText(svg));
 }
@@ -6823,7 +6833,7 @@ function exportPDF(){
 }
 
 function exportSVG(shapes=_shV()){   // ADR-0658
-  const svg=buildSVG(shapes,_p());
+  const svg=buildSVG(shapes,_p(),sceneJSON(shapes));   // ADR-0786
   if(svg===null){_wT(_EM);return}
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
   const url=_oURL(blob);
@@ -6835,10 +6845,89 @@ function exportSVG(shapes=_shV()){   // ADR-0658
 function exportBoard(shapes=_sh()){                       // ADR-0114: optional selection subset
   if(!_ln(shapes)){_wT(_EM);return}
   const a=_ce('a');
-  const _bu=_oURL(new Blob([_JS({v:V,docName:_dn(),viewport:_vpS(),pages:state.pages,curPg:state.curPg,shapes:roundShapesForExport(shapes)})],{type:'application/json'}));   // ADR-0393
+  const _bu=_oURL(new Blob([sceneJSON(shapes)],{type:'application/json'}));   // ADR-0393
   a.href=_bu;a.download=(_dn()||'board')+'.board';
   _clk(a);_rO(_bu);
   _oT('exportedBoard');
+}
+// ---- ADR-0786: embed scene in PNG/SVG exports -------------------------------
+// Excalidraw parity: the exported image is its own source. PNG carries the
+// .board JSON in a tEXt chunk (base64 of the UTF-8 bytes — tEXt is Latin-1
+// and scene text is not); SVG carries it in a <metadata> element (buildSVG).
+// Reopening either restores the editable board via _restoreScene; images
+// without an embed behave exactly as before.
+function sceneJSON(shapes){return _JS({v:V,docName:_dn(),viewport:_vpS(),pages:state.pages,curPg:state.curPg,shapes:roundShapesForExport(shapes)})}
+let _crcT=null;
+function _crc32(u8){   // PNG CRC-32 (poly 0xEDB88320); table built once, lazily
+  if(!_crcT){_crcT=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;_crcT[n]=c>>>0}}
+  let c=0xFFFFFFFF;for(let i=0;i<_ln(u8);i++)c=_crcT[(c^u8[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+const _SCENEKEY='board-scene';
+function _pngIs(u8){return _ln(u8)>33&&[137,80,78,71,13,10,26,10].every((v,i)=>u8[i]===v)}
+function _b64E(u8){let s='';for(let i=0;i<_ln(u8);i+=8192)s+=String.fromCharCode(...u8.subarray(i,i+8192));return btoa(s)}
+function _b64D(t){const s=atob(t),u8=new Uint8Array(_ln(s));for(let i=0;i<_ln(s);i++)u8[i]=s.charCodeAt(i);return u8}
+// Insert the scene chunk right after IHDR (offset 33). Returns a new
+// Uint8Array, or null when the input is not a PNG (caller keeps the original).
+function _pngEmbed(buf,json){
+  const u8=buf instanceof Uint8Array?buf:new Uint8Array(buf);
+  if(!_pngIs(u8))return null;
+  const td=new TextEncoder().encode(_SCENEKEY+'\0'+_b64E(new TextEncoder().encode(json)));
+  const chunk=new Uint8Array(_ln(td)+12),dv=new DataView(chunk.buffer);
+  dv.setUint32(0,_ln(td));chunk.set([116,69,88,116],4);chunk.set(td,8);   // 'tEXt'
+  dv.setUint32(_ln(td)+8,_crc32(chunk.subarray(4,_ln(td)+8)));
+  const out=new Uint8Array(_ln(u8)+_ln(chunk));
+  out.set(u8.subarray(0,33));out.set(chunk,33);out.set(u8.subarray(33),33+_ln(chunk));
+  return out}
+// Scene JSON string; null when the PNG carries none; false when a scene
+// chunk is present but undecodable (corrupt — the caller must not silently
+// fall back to treating it as a plain picture).
+function _pngScene(buf){
+  const u8=buf instanceof Uint8Array?buf:new Uint8Array(buf);
+  if(!_pngIs(u8))return null;
+  const dec=new TextDecoder();
+  let o=8;
+  while(o+8<=_ln(u8)){
+    const len=new DataView(u8.buffer,u8.byteOffset+o,4).getUint32(0);
+    if(len>_ln(u8)-o-12)break;
+    const ty=String.fromCharCode(...u8.subarray(o+4,o+8));
+    if(ty==='tEXt'){
+      const d=u8.subarray(o+8,o+8+len);let z=0;while(z<_ln(d)&&d[z])z++;
+      if(dec.decode(d.subarray(0,z))===_SCENEKEY){
+        try{return dec.decode(_b64D(dec.decode(d.subarray(z+1))))}catch(_){return false}
+      }
+    }
+    if(ty==='IEND')break;
+    o+=12+len;
+  }
+  return null}
+function _svgScene(txt){
+  const m=_iS(txt)?txt.match(/<metadata[^>]*data-board-scene[^>]*>([\s\S]*?)<\/metadata>/):null;
+  return m?m[1].replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&'):null}
+// Reopen an embedded scene through the .board whole-board swap (importBoard
+// over a Blob) so backup/undo/page adoption stay identical to opening the
+// .board file itself. A scene that parses but holds no valid shape is a
+// corrupt embed: fail with the reason shown, never a half-open board.
+function _restoreScene(txt){
+  let d=null;try{d=_JP(txt)}catch(_){}
+  if(!d||!_iA(d.shapes)||!_ln(d.shapes.filter(validShape))){_eT(_IB);return}
+  importBoard(new Blob([txt],{type:'application/json'}));
+}
+function importPngFile(file,wp){
+  if(_bigFile(file)){_wT(_IB);return}
+  const r=new FileReader();
+  r.onload=()=>{
+    const sc=_pngScene(r.result);
+    if(sc===false){_eT(_IB);return}
+    if(sc!=null){_restoreScene(sc);return}
+    _imgImportFile(file,(dataUrl,nw,nh)=>{
+      wp=wp||_midV();
+      const maxDim=400;let w=nw,h=nh;
+      if(w>maxDim||h>maxDim){const rr=_min(maxDim/w,maxDim/h);w*=rr;h*=rr}
+      const sh=_smk('image',{x:wp.x-w/2,y:wp.y-h/2,w,h,dataUrl});
+      _cmt({op:'add',shape:sh});_ss([sh.id]);_iv();_oT('imagePasted');
+    });
+  };
+  r.onerror=()=>_wT(_IB);
+  r.readAsArrayBuffer(file);
 }
 // ---- ADR-0098: .excalidraw export ------------------------------------------
 // Board shapes → excalidraw elements. Shape ids are preserved verbatim so
@@ -7507,7 +7596,7 @@ function importSvgText(txt,wp){
 function importSvgFile(file,wp){
   if(_bigFile(file)){_wT(_IB);return}
   const r=new FileReader();
-  r.onload=()=>importSvgText(_St(r.result),wp);
+  r.onload=()=>{const txt=_St(r.result),sc=_svgScene(txt);if(sc!=null){_restoreScene(sc);return}importSvgText(txt,wp)};   // ADR-0786: embedded scene reopens as a board
   r.onerror=()=>_wT(_IB);
   r.readAsText(file);
 }
@@ -7760,7 +7849,7 @@ function _connLabelSVG(s,x1,y1,x2,y2,ox,oy,stroke,paper){
     `<text x="${mx}" y="${my-(_ln(lns)-1)*lh2/2}" ${_svgFont(s,fs)} text-anchor="middle" dominant-baseline="central" fill="${stroke}">${tsp}</text>`;   // ADR-0170/0210
 }
 // Pure SVG assembly; returns string or null. All attr values through _esc.
-function buildSVG(shapes,paper){
+function buildSVG(shapes,paper,scene){   // ADR-0786: scene → <metadata> embed (reopens as a board)
   const b=_bA(shapes.filter(_sv));   // ADR-0593: hidden shapes must not inflate the export viewBox
   if(!b)return null;
   const pad=32;
@@ -7768,6 +7857,7 @@ function buildSVG(shapes,paper){
   const ox=-b.x+pad,oy=-b.y+pad;
   const els=[];
   _pu(els,`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`);
+  if(scene)_pu(els,'<metadata data-board-scene="1">'+_esc(scene)+'</metadata>');   // ADR-0786
   _pu(els,`<rect width="100%" height="100%" fill="${_esc(paper||'#FFFFFF')}"/>`);
   // ADR-0194: one shared drop-shadow filter; shapes opt in via filter="url(#bsh)".
   if(shapes.some(s=>_sv(s)&&(s.shadow||_stk(s))))_pu(els,'<defs><filter id="bsh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0F172A" flood-opacity="0.22"/></filter></defs>');   // ADR-0278
@@ -9418,7 +9508,7 @@ function wire(){
   });
   _g('fileImport').onchange=e=>{
     const f=e.target.files[0];
-    if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):_ew(f.name,'.excalidraw')?importExcFile(f):(_ew(f.name,'.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
+    if(f)/\.(drawio|dio)$/i.test(f.name)?importDrawioFile(f):_ew(f.name,'.excalidraw')?importExcFile(f):(_ew(f.name,'.png')||f.type==='image/png')?importPngFile(f):(_ew(f.name,'.svg')||f.type==='image/svg+xml')?importSvgFile(f):importBoard(f);   // ADR-0203
     e.target.value='';   // allow re-selecting the same filename to re-trigger change
   };
   _oC(_g('btnPresent'),()=>Presentation.enter());
