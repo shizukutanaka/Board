@@ -149,8 +149,10 @@ Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、
 - PNG エクスポート (2x 解像度、可視領域自動クロップ、32px パディング)
 - SVG エクスポート (ベクター、属性は全てエスケープ済みで安全)
 - PDF エクスポート (ブラウザ印刷経由)
-- エクスポートメニュー (ADR-0007): PNG ボタン隣のシェブロンから PNG/SVG/PDF/.board を
-  選択可能、`.board` インポートはファイルピッカーからも(drag-drop に加えて)実行可能
+- エクスポートメニュー (ADR-0007): PNG ボタン隣のシェブロンから PNG/SVG/PDF/.board に
+  加えて **.excalidraw / .drawio** も選択可能。読み込みはファイルピッカー /
+  drag-drop / 貼り付けで、`.board` 以外に `.excalidraw` / `.drawio` / `.svg` /
+  画像にも対応する (詳細は下記「データの持ち出しと互換性」)
 
 ### PWA / オフライン
 - インラインマニフェスト + Service Worker
@@ -178,6 +180,51 @@ Board は `index.html` 一枚。自分のドメイン、USB、社内ネット、
   canvas は単一のビットマップとして描画されるため、実際に描いた図形・文字列は
   他の canvas ベース描画ツールと同様に補助技術からは本質的に不可視。これは
   修正対象のバグではなく、この種のツールに共通する構造的な限界として記載する。
+
+## データの持ち出しと互換性 / Data portability & compatibility
+
+Board のデータはあなたのもの — 他の道具へ持って出せること・持って来れることを、
+実測で確認した範囲で明示する。
+
+### 書き出し (エクスポートメニュー / 右クリック)
+
+| 形式 | 開ける場所 | 備考 |
+|---|---|---|
+| `.board` | Board | Board 独自の JSON (全ページ・全図形)。完全なバックアップで、往復で欠けない唯一の形式 |
+| `.excalidraw` | Excalidraw | Excalidraw の標準形式 (現在のページのみ)。向こうで編集でき、Board への再読み込みも可能 |
+| `.drawio` | diagrams.net (draw.io) | 標準の mxfile (非圧縮、全ページを diagram として出力)。向こうで編集でき、Board への再読み込みも可能 |
+| `.svg` | ほぼ全ての画像・図版ツール | 標準 SVG (見た目を保持)。再読み込み時は図形への分解になる (下記) |
+| `.png` / PDF | どこでも | 画像・印刷用。再編集はできない |
+
+### 読み込み (ファイルピッカー / ドラッグ&ドロップ / 貼り付け)
+
+- `.board` — Board のバックアップを復元する
+- `.excalidraw` — Excalidraw で作ったファイルを、編集可能な図形として読み込む
+  (未知の要素・削除済み要素は読み飛ばす)
+- `.drawio` / `.dio` — draw.io のファイル。既定の圧縮保存形式にも対応し、
+  複数ページは Board の複数ページになる
+- `.svg` — rect / circle / ellipse / line / polyline / polygon / path / text /
+  image の基本図形を編集可能な図形に変換する (複雑な効果は近似になる)
+- 画像ファイル — そのままキャンバスへ。プレーンテキストはテキスト図形に、
+  表計算から貼った TSV は付箋のグリッドになる
+
+### 互換でないもの・劣化するもの
+
+- **tldraw の形式 (.tldr / JSON スナップショット) は読み書きできない。**
+  tldraw へ渡す場合は SVG か PNG で渡すこと。Miro などクラウド専用サービスの
+  形式も同様に読み書きできない
+- `.excalidraw` 書き出し: 非表示の図形は含まれない (Excalidraw に非表示の概念が
+  ないため)。手描き風の粗さ (roughness) は再現されず、ハッチ等の一部装飾は
+  近似に落ちる
+- `.drawio` 書き出し: ペンの軌跡は折れ線に近似される
+- `.svg` を Board に読み戻すと、ラベルは独立したテキスト図形になるなど、
+  構造は元の図形どおりには戻らない。完全な往復が必要なら `.board` を使うこと
+- 共有リンク (`#...`) は Board 専用で、他の道具では開けない
+
+Your data stays yours: export to Excalidraw (`.excalidraw`) or draw.io
+(`.drawio`) and keep editing there, bring files from both back into Board,
+or fall back to SVG/PNG anywhere. tldraw and Miro formats are not supported;
+the lossless round-trip format is Board's own `.board` (JSON).
 
 ## キーボード / Shortcuts
 
