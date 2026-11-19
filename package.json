@@ -1,0 +1,42 @@
+{
+  "name": "board",
+  "productName": "Board",
+  "version": "1.7.810",
+  "description": "Offline-first, single-file whiteboard (desktop shell)",
+  "license": "MIT",
+  "author": "shizukutanaka",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "test": "node test.mjs",
+    "start": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.11.4",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "io.github.shizukutanaka.board",
+    "productName": "Board",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "electron/main.js",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "zip",
+      "identity": null
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Graphics"
+    }
+  }
+}
