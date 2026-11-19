@@ -751,21 +751,21 @@ body{visibility:visible}
           <button class="btn" id="rtcOfferCopyBtn" data-t="shareCopyCode">コピー</button>
           <button class="btn" id="rtcInviteLinkBtn" data-t="shareCopyInviteLink">招待リンクをコピー</button>
         </div>
-        <textarea id="rtcOffer" class="share-code" rows="3" readonly placeholder="…"></textarea>
+        <textarea id="rtcOffer" class="share-code" rows="3" readonly placeholder="…" aria-label="自分の招待コード" data-t-aria="shareInvite"></textarea>
 
         <p class="share-step" data-t="shareStep2">誘う側 手順2: 相手に送り、届いた応答コードを下に貼り付けて接続</p>
-        <textarea id="rtcAnswerIn" class="share-code" rows="3" placeholder="" data-t-ph="rtcAnswerPh"></textarea>
+        <textarea id="rtcAnswerIn" class="share-code" rows="3" placeholder="" data-t-ph="rtcAnswerPh" aria-label="相手の応答コード" data-t-aria="sharePeerAnswer"></textarea>
         <button class="btn primary" id="rtcConnect" data-t="shareConnect">接続</button>
 
         <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
 
         <p class="share-step" data-t="sharePaste">招待された側 手順1: 相手の招待コードを貼り付け</p>
-        <textarea id="rtcOfferIn" class="share-code" rows="3" placeholder="" data-t-ph="rtcOfferPh"></textarea>
+        <textarea id="rtcOfferIn" class="share-code" rows="3" placeholder="" data-t-ph="rtcOfferPh" aria-label="相手の招待コード" data-t-aria="sharePeerInvite"></textarea>
         <div class="share-row">
           <button class="btn" id="rtcCreateAnswer" data-t="shareCreateAnswer">応答コード作成</button>
           <button class="btn" id="rtcAnswerCopyBtn" data-t="shareCopyCode">コピー</button>
         </div>
-        <textarea id="rtcAnswer" class="share-code" rows="3" readonly placeholder=""></textarea>
+        <textarea id="rtcAnswer" class="share-code" rows="3" readonly placeholder="" aria-label="自分の応答コード" data-t-aria="shareAnswer"></textarea>
         <p class="share-step" data-t="shareStep3">招待された側 手順2: 上のコードをコピーして相手に送り返す</p>
       </div>
     </details>
@@ -1013,7 +1013,8 @@ const I18N={
     inviteLinkNoCode:'先に招待コードを作成してください',
     shareCreateAnswer:'応答コード作成',
     shareConnect:'接続',
-    shareInvite:'招待コード',shareAnswer:'応答コード',
+    shareInvite:'自分の招待コード',shareAnswer:'自分の応答コード',
+    sharePeerInvite:'相手の招待コード',sharePeerAnswer:'相手の応答コード',
     sharePaste:'招待された側 手順1: 相手の招待コードを貼り付け',
     rtcOfferPh:'相手の招待コードを貼り付け',rtcAnswerPh:'相手の応答コードを貼り付け',
     connected:'接続しました',disconnected:'切断しました',connectFailed:'接続に失敗しました',
@@ -1095,7 +1096,8 @@ const I18N={
     inviteLinkNoCode:'Create the invite code first',
     shareCreateAnswer:'Create answer code',
     shareConnect:'Connect',
-    shareInvite:'Invite code',shareAnswer:'Answer code',
+    shareInvite:'Your invite code',shareAnswer:'Your answer code',
+    sharePeerInvite:'Invite code from your peer',sharePeerAnswer:'Answer code from your peer',
     sharePaste:'Joining side, step 1: Paste the invite code from your peer',
     rtcOfferPh:'Paste the invite code from your peer',rtcAnswerPh:'Paste the answer code from your peer',
     connected:'Connected',disconnected:'Disconnected',connectFailed:'Connection failed',
