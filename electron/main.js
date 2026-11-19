@@ -1,5 +1,5 @@
 'use strict';
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 
@@ -12,6 +12,15 @@ const isAppUrl = (url) => {
     u.hash = '';
     u.search = '';
     return u.href === INDEX_URL;
+  } catch {
+    return false;
+  }
+};
+
+const isWebUrl = (url) => {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:';
   } catch {
     return false;
   }
@@ -31,7 +40,10 @@ function createWindow() {
 }
 
 app.on('web-contents-created', (_e, contents) => {
-  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  contents.setWindowOpenHandler(({ url }) => {
+    if (isWebUrl(url)) shell.openExternal(url).catch(() => {});
+    return { action: 'deny' };
+  });
   contents.on('will-navigate', (e, url) => {
     if (!isAppUrl(url)) e.preventDefault();
   });
