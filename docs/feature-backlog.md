@@ -171,6 +171,8 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
   でのインストールを正しくブロックした。プレーンテキストで直接尋ねる必要がある)。
 
 ## FT-11 — 実スクリーンリーダーでの操作確認(NVDA/VoiceOver 等)
+- Status: macOS Chrome + VoiceOver でスモークテスト済み。共有ダイアログのフォーカス漏れを修正し、
+  実機で再確認。未確認環境と追加所見は監査記録の [macOS VoiceOver 実機確認](a11y-audit-2026-07.md#macos-voiceover-実機確認-2026-11-19-ft-11) を参照。
 - Verdict: `FIX`
 - Evidence: `docs/a11y-audit-2026-07.md`「残作業」。README のアクセシビリティ節には
   「canvas 内容はスクリーンリーダーから本質的に不可視」という構造的制約を明記済みだが、
