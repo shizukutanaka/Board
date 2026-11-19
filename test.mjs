@@ -6766,6 +6766,21 @@ try {
       assert.deepStrictEqual(Object.keys(I18N.ja).sort(),Object.keys(I18N.en).sort(),'i18n: ja/en top-level key sets are identical');
       assert.deepStrictEqual(Object.keys(I18N.ja.k).sort(),Object.keys(I18N.en.k).sort(),'i18n: ja.k/en.k nested key sets are identical');
 
+      const peerFields=[
+        ['rtcOffer','shareInvite'],['rtcAnswerIn','sharePeerAnswer'],
+        ['rtcOfferIn','sharePeerInvite'],['rtcAnswer','shareAnswer'],
+      ];
+      for(const [id,key] of peerFields){
+        const field=html.match(new RegExp(`<textarea id="${id}"[^>]*>`))?.[0];
+        assert.ok(field?.includes(`aria-label="${I18N.ja[key]}"`)&&field.includes(`data-t-aria="${key}"`),
+          `Share: ${id} has a Japanese fallback and a localizable accessible name`);
+      }
+      for(const [locale,strings] of Object.entries(I18N)){
+        const names=peerFields.map(([,key])=>strings[key]);
+        assert.ok(names.every(name=>name?.trim())&&new Set(names).size===peerFields.length,
+          `Share: peer code field names are nonempty and distinct in ${locale}`);
+      }
+
       // (b) UI.announce — SR-only live region for tool/zoom/flip/lock/rotate (visible
       // toasts per keypress would be sighted-user noise; silence was an a11y asymmetry)
       const srEl={textContent:''};
