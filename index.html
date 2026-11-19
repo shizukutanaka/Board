@@ -5925,7 +5925,7 @@ const KEYMAP={v:'select',h:'hand',p:'pen',r:'rect',o:'ellipse',i:'eyedropper',
 // focus to keep Tab/Shift+Tab cycling INSIDE the dialog; else native Tab moves.
 function _focusables(root){
   return [..._qsa(root,'button,[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')]
-    .filter(el=>!el.disabled&&!el.hidden);
+    .filter(el=>!el.disabled&&!el.hidden&&!el.closest('details:not([open]) > :not(summary)'));
 }
 function _trapStep(items,active,back){
   if(!_ln(items))return null;
@@ -5941,12 +5941,18 @@ function _openDialog(){
   return null;
 }
 _on(window,_KD,e=>{
+  const k=_lc(e.key);
+  // Trap dialog Tab before the input/textarea early return.
+  const _dlg=_openDialog();
+  if(_dlg&&k!==_ES){
+    if(k===_TB){const tgt=_trapStep(_focusables(_dlg),_aE(),_sK(e));if(tgt){_pd(e);_fc(tgt)}}
+    return;
+  }
   if(e.target.matches('input,textarea')){
     if(e.key==='Escape'&&!e.isComposing)e.target.blur();   // IME: Esc cancels the conversion first
     return;
   }
   const meta=_mod(e);
-  const k=_lc(e.key);
   // Presentation mode is view-only (see "no ed
   // navigation keys and suppress EVERYTHING el
   // This guard precedes the editing shortcuts
@@ -5955,14 +5961,6 @@ _on(window,_KD,e=>{
     if(k===_AR2||k===_AD||k===' '||k==='pagedown'){_pd(e);Presentation.next()}
     else if(k===_AL2||k===_AU||k==='pageup'){_pd(e);Presentation.prev()}   // ADR-0768
     else if(k===_ES){Presentation.leave()}
-    return;
-  }
-  // Dialog isolation + focus trap: while help/
-  // stop canvas shortcuts (Delete, undo…) firi
-  // through to the close handler below.
-  const _dlg=_openDialog();
-  if(_dlg&&k!==_ES){
-    if(k===_TB){const tgt=_trapStep(_focusables(_dlg),_aE(),_sK(e));if(tgt){_pd(e);_fc(tgt)}}
     return;
   }
   if(meta&&(k==='z'||k==='y')&&ptr.down)_cancelPointerGesture();   // ADR-0574: undo/redo can't apply sanely mid-gesture — the drag's before-snapshot would be stale

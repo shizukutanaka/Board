@@ -9219,6 +9219,39 @@ try {
     console.log('  ✓ _trapStep: focus wraps at dialog boundaries, native in the middle (WCAG focus trap)');
   }
 
+  {
+    const share=fakeDoc.getElementById('share');
+    const before={open:share.dataset.open,qsa:share.querySelectorAll,active:fakeDoc.activeElement};
+    let expanded=false;
+    const control=(tag,{peer=false,disabled=false,hidden=false}={})=>({
+      disabled,hidden,matches:sel=>sel.split(',').includes(tag),
+      closest:sel=>sel==='details:not([open]) > :not(summary)'&&peer&&!expanded?share:null,
+      focus(){fakeDoc.activeElement=this;},
+    });
+    const close=control('button'),url=control('input'),summary=control('summary');
+    const peerInput=control('textarea',{peer:true});
+    share.querySelectorAll=()=>[close,url,control('input',{disabled:true}),summary,peerInput,control('button',{hidden:true})];
+    share.dataset.open='true';
+    const tab=(target,shiftKey,expected)=>{
+      fakeDoc.activeElement=target;
+      let prevented=false;
+      fakeWin._L.keydown[0]({key:'Tab',target,shiftKey,preventDefault(){prevented=true;}});
+      assert.strictEqual(prevented,target!==expected,'Share: only boundary Tabs are intercepted');
+      assert.strictEqual(fakeDoc.activeElement,expected,'Share: Tab wraps to a visible control');
+    };
+    try{
+      tab(summary,false,close);
+      tab(close,true,summary);
+      expanded=true;
+      tab(summary,false,summary);
+      tab(close,true,peerInput);
+      tab(peerInput,false,close);
+    }finally{
+      share.dataset.open=before.open;share.querySelectorAll=before.qsa;fakeDoc.activeElement=before.active;
+    }
+    console.log('  ✓ Share Tab wraps in both directions with peer controls collapsed or expanded');
+  }
+
   // v1.6.86: devicePixelRatio change tracking. resize() only fires on window-resize /
   // orientationchange — dragging the window between monitors of different density changes
   // devicePixelRatio with NO resize event, leaving the canvas backing store at the stale
