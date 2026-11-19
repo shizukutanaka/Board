@@ -14146,5 +14146,54 @@ try {
   fail += 1;
 }
 
+// Desktop shell (electron/main.js): load it against a stub `electron` module and drive
+// the web-contents hooks. http/https window.open goes to the OS browser via
+// shell.openExternal; every other scheme and all in-app navigation stays blocked.
+try {
+  const { default: Module } = await import('module');
+  const opened = [], hooks = {}, contentsHooks = {};
+  let openHandler = null;
+  const stub = {
+    app: {
+      on: (ev, fn) => { hooks[ev] = fn; },
+      requestSingleInstanceLock: () => false,
+      quit: () => {},
+      whenReady: () => new Promise(() => {}),
+    },
+    BrowserWindow: class { static getAllWindows() { return []; } },
+    shell: { openExternal: (url) => { opened.push(url); return Promise.resolve(); } },
+  };
+  const origLoad = Module._load;
+  Module._load = function (req, ...rest) { return req === 'electron' ? stub : origLoad.call(this, req, ...rest); };
+  try { Module.createRequire(import.meta.url)('./electron/main.js'); } finally { Module._load = origLoad; }
+  hooks['web-contents-created']({}, {
+    setWindowOpenHandler: (fn) => { openHandler = fn; },
+    on: (ev, fn) => { contentsHooks[ev] = fn; },
+  });
+  const deny = (url) => openHandler({ url }).action === 'deny';
+  const blocked = (ev, url) => { let p = false; contentsHooks[ev]({ preventDefault: () => { p = true; } }, url); return p; };
+  const { pathToFileURL } = await import('url');
+  const { resolve } = await import('path');
+  const appUrl = pathToFileURL(resolve('index.html')).href;
+  const eChecks = [
+    ['electron: https link denied in-app', deny('https://example.com/a')],
+    ['electron: http link denied in-app', deny('http://example.com/b')],
+    ['electron: file: link denied', deny('file:///etc/passwd')],
+    ['electron: javascript: link denied', deny('javascript:alert(1)')],
+    ['electron: only http/https handed to shell.openExternal',
+      JSON.stringify(opened) === JSON.stringify(['https://example.com/a', 'http://example.com/b'])],
+    ['electron: will-navigate to external page blocked', blocked('will-navigate', 'https://example.com/')],
+    ['electron: will-redirect to external page blocked', blocked('will-redirect', 'https://example.com/')],
+    ['electron: will-navigate within index.html allowed', !blocked('will-navigate', appUrl + '#x')],
+  ];
+  for (const [name, ok] of eChecks) {
+    if (ok) pass++; else { fail++; console.log('  ✗', name); }
+  }
+  console.log('  ✓ electron/main.js external-link policy checked');
+} catch (err) {
+  console.log('  ✗ electron shell tests crashed:', err.stack || err.message);
+  fail += 1;
+}
+
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);

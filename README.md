@@ -30,9 +30,12 @@ npm run dist       # dist/ に配布物をビルド
 > **未署名です。** コード署名・公証を行っていないため、初回起動時に Windows SmartScreen
 > (「WindowsによってPCが保護されました」) や macOS Gatekeeper (「開発元を検証できません」)
 > の警告が出ることがあります。macOS では右クリック →「開く」で起動できます。
-> Release への配布物の自動添付はまだありません(現状は上記の手順でローカルビルド)。
+> `v*` タグを push すると GitHub Actions (`.github/workflows/release.yml`) が `index.html` と
+> 3 OS の配布物を GitHub Releases に自動添付します。手動実行 (workflow_dispatch) では Release を作らず、
+> Actions の artifact としてのみアップロードします。
 >
-> アプリ版は外部ページへの遷移と新規ウィンドウを禁止しているため、図形に付けたリンク (🔗) は開きません。
+> アプリ版はアプリ内での外部ページへの遷移と新規ウィンドウを禁止しています。図形に付けたリンク (🔗) のうち
+> `http` / `https` のものは OS の既定ブラウザで開き、それ以外のスキーム (`file:` など) は開きません。
 
 ### ブラウザで使う: 1ファイルを直接ダウンロード / Download the single file
 
