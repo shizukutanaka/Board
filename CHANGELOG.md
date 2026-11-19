@@ -7,6 +7,9 @@
 ### Changed
 - README: ヘッドラインに "The whiteboard that is a file" を採用。競合比較表の料金を実勢に更新 (Miro は無料が編集可能ボード3枚まで / 有料 $8-20/人/月、tldraw は無料の tldraw offline を併記)
 
+### Fixed
+- デスクトップ配布ビルドを Electron の要件を満たす Node.js 24 LTS で実行し、依存関係の Node.js 要件をインストール時に検証
+
 ## [1.7.810] - 2026-09-29
 
 ### Fixed

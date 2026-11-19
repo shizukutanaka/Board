@@ -19,6 +19,7 @@
 
 Board の正規の配布形態はデスクトップアプリ(`index.html` をそのまま表示する最小の Electron 殻)です。
 配布物: Windows = portable `.exe` / macOS = `.zip` / Linux = `.AppImage`。
+ソースからの起動・ビルドには Node.js 24 LTS を使用してください / Use Node.js 24 LTS to run or build from source.
 
 ```bash
 git clone https://github.com/shizukutanaka/Board && cd Board
