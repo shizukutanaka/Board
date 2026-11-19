@@ -738,7 +738,7 @@ const checks = [
   ['ctx menu has max-height + overflow scroll (ADR-0553)', html.includes('max-height:calc(100vh - 16px)') && html.includes('overflow-y:auto')],
   ['ctx menu top clamp has a lower bound (ADR-0553)', html.includes("_max(8,_min(y,innerHeight-m.offsetHeight-20))")],
   // v1.7.580 (ADR-0552): unhandled ctx-menu keys are swallowed, not bubbled
-  ['ctx menu swallows unhandled keys (ADR-0552)', html.includes("e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}")],
+  ['ctx menu isolates keydown from board shortcuts (ADR-0552)', html.includes("function _ctxMenuKeyNav(m,e){\n  e.stopPropagation();")],
   // v1.7.582 (ADR-0554): presentation frame navigation drops deleted frames
   ['presentation _goto filters stale+off-page frames (ADR-0554/0677)', html.includes('_frames=_frames.map(f=>byId(f.id)).filter(f=>f&&_pgOk(f))')],
   // v1.7.584 (ADR-0556): blur on a remotely-deleted shape must not commit a phantom op
@@ -9465,7 +9465,7 @@ try {
     };
     const [it0,it1,it2] = ['a','b','c'].map(mkItem);
     const mockMenu = { querySelectorAll(s){ return s==='.ctx-item'?[it0,it1,it2]:[]; } };
-    const pd = {key:'',preventDefault(){}};
+    const pd = {key:'',preventDefault(){},stopPropagation(){}};
 
     // ArrowDown: advance to next, wrap at end
     fakeDoc.activeElement = it0;
@@ -9496,10 +9496,10 @@ try {
     let closedMenu = false;
     const origClose = UI.closeCtxMenu;
     UI.closeCtxMenu = () => { closedMenu = true; };
-    _ctxMenuKeyNav(mockMenu, {key:'Tab', shiftKey:false, preventDefault(){}});
+    _ctxMenuKeyNav(mockMenu, {...pd,key:'Tab',shiftKey:false});
     assert.ok(closedMenu, 'ctx Tab: closes menu');
     closedMenu = false;
-    _ctxMenuKeyNav(mockMenu, {key:'Tab', shiftKey:true, preventDefault(){}});
+    _ctxMenuKeyNav(mockMenu, {...pd,key:'Tab',shiftKey:true});
     assert.ok(closedMenu, 'ctx Shift+Tab: closes menu');
 
     // v1.7.580 (ADR-0552): unhandled keys close the menu AND are swallowed — a key
@@ -9513,15 +9513,21 @@ try {
     closedMenu=false;swallowed=false;
     _ctxMenuKeyNav(mockMenu, {key:'Delete', ...mkSw()});
     assert.ok(closedMenu&&swallowed, 'ctx Delete: closes menu + swallows (ADR-0552)');
-    closedMenu=false;
-    _ctxMenuKeyNav(mockMenu, {key:' ', preventDefault(){}});
-    assert.ok(!closedMenu, 'ctx Space: menu stays open (APG item activation)');
-    closedMenu=false;
-    _ctxMenuKeyNav(mockMenu, {key:'Enter', preventDefault(){}});
-    assert.ok(!closedMenu, 'ctx Enter: menu stays open (APG item activation)');
+    for(const key of ['Enter',' ']){
+      closedMenu=false;swallowed=false;
+      let canceled=false;
+      _ctxMenuKeyNav(mockMenu, {key,...mkSw(),preventDefault(){canceled=true}});
+      assert.ok(swallowed&&!canceled&&!closedMenu,
+        `ctx ${JSON.stringify(key)}: blocks board shortcuts without canceling native item activation`);
+    }
+    for(const key of ['ArrowDown','Tab','Escape']){
+      swallowed=false;
+      _ctxMenuKeyNav(mockMenu, {key,...mkSw()});
+      assert.ok(swallowed,`ctx ${key}: does not leak to board shortcuts`);
+    }
     UI.closeCtxMenu = origClose;
 
-    console.log('  ✓ ctx menu keyboard nav: ArrowDown/Up (with wrap), Home/End, Tab/Shift+Tab (ARIA APG)');
+    console.log('  ✓ ctx menu keyboard nav stays local and preserves native item activation');
   }
 
   // v1.6.96: text shapes must have no resize handles (content-driven size)

@@ -9456,6 +9456,7 @@ const UI={
 // Extracted as a named function so test.mjs can exercise it without a real DOM.
 // Pattern: w3.org/WAI/ARIA/apg/patterns/menu-button/
 function _ctxMenuKeyNav(m,e){
+  e.stopPropagation();   // Preserve native activation without triggering board shortcuts.
   // v1.6.96: Tab closes the menu (ARIA APG: next tab stop)
   if(e.key==='Escape'||e.key==='Tab'){_pd(e);UI.closeCtxMenu();return;}
   const items=[..._qsa(m,'.ctx-item')];
@@ -9469,7 +9470,7 @@ function _ctxMenuKeyNav(m,e){
   // a key fired while open shouldn't act on th
   // through the menu deleted the selection). S
   // focused item natively (APG).
-  else if(e.key!==' '&&e.key!=='Enter'){_pd(e);e.stopPropagation();UI.closeCtxMenu()}
+  else if(e.key!==' '&&e.key!=='Enter'){_pd(e);UI.closeCtxMenu()}
 }
 
 // ====================== WIRE-UP ======================

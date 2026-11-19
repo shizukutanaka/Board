@@ -18,6 +18,9 @@ ADR-0541 は「ctx メニュー表示中の未処理キーでメニューを閉�
 
 Space/Enter は従来通りネイティブ (focus 中の item activation、ARIA APG)。
 
+FT-11 の Safari 検証で Enter が図形編集に奪われると分かったため、伝播停止を
+`_ctxMenuKeyNav` の先頭へ移動。Space/Enter の既定動作は取り消さない。
+
 ## 影響
 - 'v'/Delete/⌘Z 等がメニュー表示中に canvas へ届かなくなる
 - 誤操作経路 (メニューが開いているのにショートカットが走る) を閉塞

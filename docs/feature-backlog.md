@@ -171,19 +171,11 @@ Opus/Sonnet が文脈なしで着手できる形式に変換していなかっ�
   でのインストールを正しくブロックした。プレーンテキストで直接尋ねる必要がある)。
 
 ## FT-11 — 実スクリーンリーダーでの操作確認(NVDA/VoiceOver 等)
-- Status: macOS Chrome + VoiceOver でスモークテスト済み。共有ダイアログのフォーカス漏れを修正し、
-  実機で再確認。未確認環境と追加所見は監査記録の [macOS VoiceOver 実機確認](a11y-audit-2026-07.md#macos-voiceover-実機確認-2026-11-19-ft-11) を参照。
-- Verdict: `FIX`
-- Evidence: `docs/a11y-audit-2026-07.md`「残作業」。README のアクセシビリティ節には
-  「canvas 内容はスクリーンリーダーから本質的に不可視」という構造的制約を明記済みだが、
-  ツール自体(ボタン・メニュー・ショートカット)がスクリーンリーダー実機で実際に
-  破綻なく操作できるかは未検証。
-- Action: 実機(NVDA on Windows / VoiceOver on macOS・iOS)でツール切替・図形作成・
-  エクスポート・Share モーダルの一連の操作を確認。この環境には実ブラウザ+スクリーン
-  リーダーの組み合わせが無いため、**この Claude セッションでは実施不可** — 人間の
-  手動確認が必要。
-- Effort: -(人間側のアクションのみ)
-- Depends on: none(実機環境)
+- Status: macOS の Chrome・Safari + VoiceOver でスモークテスト済み。共有ダイアログの
+  フォーカスとコード欄の読み上げ、書き出しメニューの項目実行を修正して実機で再確認。
+- Evidence: [macOS VoiceOver 実機確認](a11y-audit-2026-07.md#macos-voiceover-実機確認-2026-11-19-ft-11)。
+  キャンバスのピクセル自体が読み上げられないという構造的制約は変わらない。
+- Remaining: iOS + VoiceOver、Windows + NVDA でツール切替・図形作成・書き出し・共有を確認。
 
 ## FT-12 — プレゼンス: 他者の選択状態のハイライト(ADR-0010 の続き) — ✅ 実装済み (v1.7.62, ADR-0011)
 - Verdict: `FIX`
