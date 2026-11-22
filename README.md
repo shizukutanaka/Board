@@ -13,6 +13,9 @@
 
 *起動直後の画面。初回はサンプルボードが開きます / First launch, showing the built-in sample board — rendered from the single `index.html`, no server, no build.*
 
+**Built to outlive its maker.** A board is a file on your disk — not a row in someone's database. There is no server to shut down and no account to lose: if this project disappeared tomorrow, your boards still open, and the format also opens in Excalidraw and draw.io.
+作り手より長く生きる設計です。ボードは誰かのデータベースの中ではなく、あなたのディスク上のファイルです。サーバーもアカウントもないので、このプロジェクトが明日消えてもボードはそのまま開け、形式は Excalidraw や draw.io でも開けます。
+
 ## 使い方 / Quick Start
 
 ### デスクトップアプリ (正規の配布形態) / Desktop app (canonical form)
