@@ -11513,7 +11513,8 @@ try {
   {
     state.shapes=[];_invalidateGrid();state.history=[];state.histIdx=-1;state.seq=0;state.seenOps=new Set();state.wclock={};state.selection=new Set();
     const origDb=Persist.db;
-    Persist.db=makeFakeIdb();
+    const fakeDb=makeFakeIdb();
+    Persist.db=fakeDb;
     try{
       const has0=await Persist.checkBackup();
       assert.strictEqual(has0,false,'v1.7.52a: checkBackup false before any saveBackup call');
@@ -11531,6 +11532,9 @@ try {
       assert.deepStrictEqual(state.shapes.map(s=>s.id),[backupSh.id],
         'v1.7.52a: restoreBackup replaces state.shapes with the backed-up shapes');
       assert.strictEqual(state.docName,'Old Board','v1.7.52a: restoreBackup restores the backed-up docName');
+      const docRec=fakeDb._stores.get('docs').get('main');
+      assert.deepStrictEqual((docRec?.shapes||[]).map(s=>s.id),[backupSh.id],
+        'v1.7.52a: restoreBackup makes the restored board durable before consuming the backup slot');
       assert.strictEqual(state.history.length,histLenBefore+1,
         'v1.7.52a: restoreBackup records exactly one history entry (single undo, not N ops)');
       assert.strictEqual(state.history[state.histIdx].op,'replace',
@@ -11546,6 +11550,15 @@ try {
       const has2=await Persist.checkBackup();
       assert.strictEqual(has2,false,
         'v1.7.52a: restoreBackup consumes the backup slot (single-slot, single-notification per ADR-0004)');
+
+      await Persist.saveBackup([backupSh],{x:1,y:2,zoom:1.5},'Old Board');
+      const realTx=fakeDb.transaction;
+      fakeDb.transaction=(names,mode)=>mode==='readwrite'?(()=>{throw new Error('injected save failure')})():realTx(names,mode);
+      const ok2=await Persist.restoreBackup();
+      fakeDb.transaction=realTx;
+      assert.strictEqual(ok2,true,'v1.7.52a: restoreBackup still restores in memory when the durable write fails');
+      assert.strictEqual(await Persist.checkBackup(),true,
+        'v1.7.52a: a failed durable write must not consume the backup slot');
     }finally{Persist.db=origDb;}
     console.log('  ✓ Persist.saveBackup/checkBackup/restoreBackup: round-trip, undoable, single-slot consumption (v1.7.52a, ADR-0004)');
   }
