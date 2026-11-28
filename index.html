@@ -8924,8 +8924,10 @@ const Persist={
       if(_nS())this.requestDurable();   // user has content worth keeping
       this._quotaWarn();                               // ADR-0227
       if(explicit)_oT('saved');
+      return true;
     }catch(err){
       _e(this._saveErrMsg(err));
+      return false;
     }
   },
   async load(){
@@ -9028,8 +9030,7 @@ const Persist={
       }
       _sz();_iv();
       _repC(before,beforeWc,origSel,_bpg,_bcp);
-      await this.discardBackup();
-      this.schedule();
+      if(await this.save())await this.discardBackup();
       _oT('backupRestored');
       return true;
     }catch(_){_eT('backupRestoreFailed');return false}
